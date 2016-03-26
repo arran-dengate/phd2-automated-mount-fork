@@ -105,6 +105,7 @@
 # define INDI_CAMERA
 # define ZWO_ASI
 # define SIMULATOR
+# define OPENSSAG
 #endif
 
 // Currently unused

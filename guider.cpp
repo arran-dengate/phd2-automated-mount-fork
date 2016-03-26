@@ -1052,6 +1052,18 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
 {
     wxString statusMessage;
 
+    // Added by Arran
+    // Save the image so astrometry can have a look at it.
+
+    char signalFilename[] = "/usr/local/goto/signal/signal.txt";
+
+    if (FILE *gotoSignal = fopen(signalFilename, "r")) {
+        fclose(gotoSignal);
+        remove(signalFilename);
+        wxString fname = "/usr/local/goto/input/guide-scope-image.fits";
+        m_pCurrentImage->Save(fname);
+    }  
+
     try
     {
         Debug.Write(wxString::Format("UpdateGuideState(): m_state=%d\n", m_state));

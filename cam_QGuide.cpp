@@ -39,6 +39,8 @@
 #include "time.h"
 #include "image_math.h"
 
+#include "<iostream>"
+
 #include <wx/stdpaths.h>
 #include <wx/textfile.h>
 //wxTextFile *qglogfile;
@@ -73,6 +75,7 @@ bool Camera_QGuiderClass::Connect(const wxString& camId)
 {
 // returns true on error
 //  CameraReset();
+
     if (!openUSB(0)) {
         wxMessageBox(_T("No camera"));
         return true;
@@ -91,6 +94,8 @@ bool Camera_QGuiderClass::ST4PulseGuideScope(int direction, int duration)
 {
     int reg = 0;
     int dur = duration / 10;
+
+
 
     //qglogfile->AddLine(wxString::Format("Sending guide dur %d",dur)); //qglogfile->Write();
     if (dur >= 255) dur = 254; // Max guide pulse is 2.54s -- 255 keeps it on always

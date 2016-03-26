@@ -30,6 +30,8 @@
 
 cmake_minimum_required(VERSION 2.8.11)
 
+# Added by AD for debugging
+# set(CMAKE_VERBOSE_MAKEFILE 1)
 
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
@@ -45,8 +47,8 @@ set(VERSION_PATCH 0)
 if(APPLE)
   # should be done *before* declaring project.
   set(CMAKE_OSX_ARCHITECTURES i386 CACHE STRING "build architecture for OSX" FORCE)
-  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -m32"   CACHE STRING "Flags used by the compiler during all build types")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32" CACHE STRING "Flags used by the compiler during all build types")
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -m32 "   CACHE STRING "Flags used by the compiler during all build types")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 " CACHE STRING "Flags used by the compiler during all build types")
   set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
@@ -111,7 +113,7 @@ else()
     check_cxx_compiler_flag(-stdlib=libc++ HAS_LIBCXX11_FLAG)
     
     if(HAS_LIBCXX11_FLAG)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lusb -lopenssag -stdlib=libc++")
     endif()
   endif()
 endif()
@@ -512,7 +514,8 @@ endif()
 
 source_group(src FILES ${phd2_SRC})
 
-
+include_directories(${phd_src_dir}/openssag/src)
+include_directories(${phd_src_dir}/openssag/)
 include_directories(${phd_src_dir}/cam_KWIQGuider/)
 include_directories(${phd_src_dir}/cameras/)
 
@@ -652,7 +655,7 @@ elseif(WIN32)
     phd2 
     PROPERTIES 
       OUTPUT_NAME phd2  # lower case on Win32
-      LINK_FLAGS "/DELAYLOAD:sbigudrv.dll /NODEFAULTLIB:libcmt.lib" #  /NODEFAULTLIB:libcmtd.lib
+      LINK_FLAGS "/DELAYLOAD:sbigudrv.dll /NODEFAULTLIB:libcmt.lib -lopenssag" #  /NODEFAULTLIB:libcmtd.lib
       LINK_FLAGS_DEBUG "/NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrt.lib"
     )
   # Delayed load for all DLLs below in the original project. Now using delay load only for the necessary stuff

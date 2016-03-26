@@ -268,7 +268,7 @@ set_target_properties(cfitsio PROPERTIES
 # indicating the link and include directives to the main project.
 # already done by the directive target_include_directories(cfitsio PUBLIC
 # include_directories(${libcfitsio_root})
-set(PHD_LINK_EXTERNAL ${PHD_LINK_EXTERNAL} cfitsio)
+set(PHD_LINK_EXTERNAL ${PHD_LINK_EXTERNAL} cfitsio openssag)
 
 
 

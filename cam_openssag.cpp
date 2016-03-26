@@ -32,8 +32,6 @@
  *
  */
 
-
-
 #include "phd.h"
 
 #ifdef OPENSSAG
@@ -41,7 +39,7 @@
 #include "image_math.h"
 #include "cam_openssag.h"
 
-#include <openssag.h>
+#include "openssag.h"
 #include <libusb.h>
 
 using namespace OpenSSAG;

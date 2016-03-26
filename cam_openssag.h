@@ -36,7 +36,8 @@
 #ifndef CAM_OPENSSAG_H_INCLUDED
 #define CAM_OPENSSAG_H_INCLUDED
 
-#include <openssag.h>
+// Todo - not hand code this if it ever works at all
+#include "openssag.h"
 
 class Camera_OpenSSAGClass : public GuideCamera
 {
