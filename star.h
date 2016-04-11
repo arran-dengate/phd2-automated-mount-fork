@@ -76,6 +76,7 @@ public:
     bool Find(const usImage *pImg, int searchRegion, FindMode mode);
     bool Find(const usImage *pImg, int searchRegion, int X, int Y, FindMode mode);
     bool AutoFind(const usImage& image, int edgeAllowance, int searchRegion);
+    bool GetMeanRotation(const usImage& image, int edgeAllowance, int searchRegion);
 
     bool WasFound(FindResult result);
     bool WasFound(void);

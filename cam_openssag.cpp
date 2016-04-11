@@ -39,6 +39,8 @@
 #include "image_math.h"
 #include "cam_openssag.h"
 
+#include <iostream>
+#include <fstream>
 #include "openssag.h"
 #include <libusb.h>
 
@@ -120,6 +122,12 @@ bool Camera_OpenSSAGClass::Connect(const wxString& camId)
 
 bool Camera_OpenSSAGClass::ST4PulseGuideScope(int direction, int duration)
 {
+    // Added by AD
+    ofstream pulse_output;
+    pulse_output.open ("pulse.txt", ios::out | ios::app);
+    pulse_output << direction << std::endl;
+    pulse_output << duration  << std::endl;
+
     switch (direction) {
         case WEST:
             ssag->Guide(guide_west, duration);

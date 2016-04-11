@@ -264,6 +264,7 @@ public:
     void OnTarget(wxCommandEvent& evt);
     void OnRestoreWindows(wxCommandEvent& evt);
     void OnAutoStar(wxCommandEvent& evt);
+    void OnSpecialMethod(wxCommandEvent& evt);
     void OnBookmarksShow(wxCommandEvent& evt);
     void OnBookmarksSetAtLockPos(wxCommandEvent& evt);
     void OnBookmarksSetAtCurPos(wxCommandEvent& evt);
@@ -523,6 +524,7 @@ enum {
     MENU_RESTORE_WINDOWS,
     MENU_TARGET,
     MENU_AUTOSTAR,
+    MENU_SPECIALMETHOD,
     MENU_DRIFTTOOL,
     MENU_COMETTOOL,
     MENU_GUIDING_ASSISTANT,

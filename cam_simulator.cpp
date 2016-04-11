@@ -1164,6 +1164,7 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
+
     double d = (SimCamParams::guide_rate * duration / 1000.0) * SimCamParams::inverse_imagescale;
 
     if (SimCamParams::pier_side == PIER_SIDE_WEST && SimCamParams::reverse_dec_pulse_on_west_side)

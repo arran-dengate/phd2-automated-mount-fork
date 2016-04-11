@@ -153,7 +153,7 @@ bool Camera_QHY5Class::ST4PulseGuideScope(int direction, int duration)
 
     duration /= 10;
 
-    // This block added by Arran
+    // This block added by AD
     ofstream pulse_output;
     pulse_output.open ("pulse.txt", ios::out | ios::app);
 

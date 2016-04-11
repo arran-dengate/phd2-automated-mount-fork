@@ -374,6 +374,84 @@ static wxString StarStatus(const Star& star)
     return status;
 }
 
+// ===============================================================================
+// AD testing - new method to determine rotation
+// Just a copy of autoselect code so far.
+// ===============================================================================
+
+bool GuiderOneStar::SpecialMethod(void) 
+{
+    pFrame->SetStatusText(wxString::Format("It works!"));
+    Debug.AddLine("It works!");
+
+    bool bError = false;
+
+    usImage *pImage = CurrentImage();
+
+    try
+    {
+        if (!pImage || !pImage->ImageData)
+        {
+            throw ERROR_INFO("No Current Image");
+        }
+
+        // If mount is not calibrated, we need to chose a star a bit farther
+        // from the egde to allow for the motion of the star during
+        // calibration
+        //
+        int edgeAllowance = 0;
+        if (pMount && pMount->IsConnected() && !pMount->IsCalibrated())
+            edgeAllowance = wxMax(edgeAllowance, pMount->CalibrationTotDistance());
+        if (pSecondaryMount && pSecondaryMount->IsConnected() && !pSecondaryMount->IsCalibrated())
+            edgeAllowance = wxMax(edgeAllowance, pSecondaryMount->CalibrationTotDistance());
+
+        Star newStar;
+        if (!newStar.GetMeanRotation(*pImage, edgeAllowance, m_searchRegion))
+        {
+            throw ERROR_INFO("Unable to AutoFind");
+        }
+
+        m_massChecker->Reset();
+
+        if (!m_star.Find(pImage, m_searchRegion, newStar.X, newStar.Y, Star::FIND_CENTROID))
+        {
+            throw ERROR_INFO("Unable to find");
+        }
+
+        if (SetLockPosition(m_star))
+        {
+            throw ERROR_INFO("Unable to set Lock Position");
+        }
+
+        if (GetState() == STATE_SELECTING)
+        {
+            // immediately advance the state machine now, rather than waiting for
+            // the next exposure to complete. Socket server clients are going to
+            // try to start guiding after selecting the star, but guiding will fail
+            // to start if state is still STATE_SELECTING
+            Debug.AddLine("AutoSelect: state = %d, call UpdateGuideState", GetState());
+            UpdateGuideState(NULL, false);
+        }
+
+        UpdateImageDisplay();
+        pFrame->SetStatusText(wxString::Format(_("Auto-selected star at (%.1f, %.1f)"), m_star.X, m_star.Y), 1);
+        pFrame->SetStatusText(StarStatus(m_star));
+        pFrame->pProfile->UpdateData(pImage, m_star.X, m_star.Y);
+    }
+    catch (const wxString& Msg)
+    {
+        if (pImage && pImage->ImageData)
+        {
+            SaveAutoSelectFailedImg(pImage);
+        }
+
+        POSSIBLY_UNUSED(Msg);
+        bError = true;
+    }
+
+    return bError;
+}
+
 bool GuiderOneStar::AutoSelect(void)
 {
     bool bError = false;
@@ -728,6 +806,13 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
         }
         // PaintHelper drew the image and any overlays
         // now decorate the image to show the selection
+
+        // AD testing
+
+        wxColour original = dc.GetTextForeground();
+        dc.SetTextForeground(wxColour(255, 255, 255));
+        dc.DrawText(wxT("Testing"), 40, 60);
+        dc.SetTextForeground(original);
 
         // display bookmarks
         if (m_showBookmarks && m_bookmarks.size() > 0)

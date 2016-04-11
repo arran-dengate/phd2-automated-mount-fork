@@ -280,6 +280,7 @@ public:
 
     virtual bool IsLocked(void) = 0;
     virtual bool AutoSelect(void) = 0;
+    virtual bool SpecialMethod(void) = 0;
 
     virtual const PHD_Point& CurrentPosition(void) = 0;
     virtual wxRect GetBoundingBox(void) = 0;

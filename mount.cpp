@@ -37,7 +37,17 @@
 #include "backlash_comp.h"
 #include "guiding_assistant.h"
 
+#include <fstream>
+#include <iostream>
+
 #include <wx/tokenzr.h>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <iostream>
+#include <stdio.h>
 
 // enable dec compensation when calibration declination is less than this
 const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
@@ -727,8 +737,25 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             xDistance = mountVectorEndpoint.X;
             yDistance = mountVectorEndpoint.Y;
 
+            // Added by AD 
+            // When it's time to move the mount, write the vector to a named pipe.
+            // This will be read and acted upon by the Python program.
+            // It is synchronous communication but non-blocking from this end.
+        
+            int fd;
+            char myfifo[] = "/var/tmp/guide_vector";
+
+            char format[] = "%4.10f, %4.10f";
+            char guideVector[100] = {0};
+            sprintf(guideVector,format,xDistance, yDistance);
+                    
+            mkfifo(myfifo, 0666);
+            fd = open(myfifo, O_WRONLY | O_NONBLOCK);
+            write(fd, guideVector, sizeof(guideVector));
+            close(fd);
+
             Debug.Write(wxString::Format("Moving (%.2f, %.2f) raw xDistance=%.2f yDistance=%.2f\n",
-                cameraVectorEndpoint.X, cameraVectorEndpoint.Y, xDistance, yDistance));
+                        cameraVectorEndpoint.X, cameraVectorEndpoint.Y, xDistance, yDistance));
 
             if (moveType == MOVETYPE_ALGO)
             {

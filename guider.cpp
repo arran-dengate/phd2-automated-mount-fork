@@ -1052,8 +1052,9 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
 {
     wxString statusMessage;
 
-    // Added by Arran
+    // Added by AD
     // Save the image so astrometry can have a look at it.
+    // Only triggered if there's a special file present (as a signal.)
 
     char signalFilename[] = "/usr/local/goto/signal/signal.txt";
 

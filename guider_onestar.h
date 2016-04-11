@@ -102,6 +102,7 @@ public:
 
     bool IsLocked(void);
     bool AutoSelect(void);
+    bool SpecialMethod(void);
     const PHD_Point& CurrentPosition(void);
     wxRect GetBoundingBox(void);
     int GetMaxMovePixels(void);
