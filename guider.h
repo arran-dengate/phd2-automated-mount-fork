@@ -150,6 +150,7 @@ class Guider : public wxWindow
     PHD_Point m_polarAlignCircleCenter;
     PauseType m_paused;
     ShiftPoint m_lockPosition;
+    ShiftPoint m_altLockPosition; // The second star for determining rotation
     PHD_Point m_ditherRecenterStep;
     wxPoint m_ditherRecenterDir;
     PHD_Point m_ditherRecenterRemaining;

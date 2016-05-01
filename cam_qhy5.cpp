@@ -153,38 +153,28 @@ bool Camera_QHY5Class::ST4PulseGuideScope(int direction, int duration)
 
     duration /= 10;
 
-    // This block added by AD
-    ofstream pulse_output;
-    pulse_output.open ("pulse.txt", ios::out | ios::app);
-
     if (duration >= 255) duration = 254; // Max guide pulse is 2.54s -- 255 keeps it on always
     switch (direction)
     {
     case WEST:
         reg = 0x80;
         dur[0] = duration;
-        pulse_output << "West for " << duration << "\n";
         break;   // 0111 0000
     case NORTH:
         reg = 0x40;
         dur[1] = duration;
-        pulse_output << "North for " << duration << "\n";
         break;  // 1011 0000
     case SOUTH:
         reg = 0x20;
         dur[1] = duration;
-        pulse_output << "South for " << duration << "\n";
         break;  // 1101 0000
     case EAST:
         reg = 0x10;
         dur[0] = duration;
-        pulse_output << "East for " << duration << "\n";
         break;  // 1110 0000
     default:
         return true; // bad direction passed in
     }
-    
-    pulse_output.close();
 
     result = libusb_control_transfer(m_handle, 0x42, 0x10, 0, reg, (unsigned char *)dur, sizeof(dur), 5000);
     wxMilliSleep(duration + 10);

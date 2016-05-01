@@ -645,8 +645,18 @@ static void RemoveItems(std::set<Peak>& stars, const std::set<int>& to_erase)
     }
 }
 
-bool Star::AutoFind(const usImage& image, int extraEdgeAllowance, int searchRegion)
+bool Star::AutoFind(const usImage& image, int extraEdgeAllowance, int searchRegion,
+                    Star& exclude)
 {
+    // If a valid star is passed in for the 'exclude' argument, this will be excluded
+    // from the results.
+
+    if (exclude.IsValid()) {
+        Debug.AddLine("Excluding a star");
+    } else {
+        Debug.AddLine("Allowing any star");
+    }
+
     if (!image.Subframe.IsEmpty())
     {
         Debug.AddLine("Autofind called on subframe, returning error");
@@ -878,7 +888,7 @@ bool Star::AutoFind(const usImage& image, int extraEdgeAllowance, int searchRegi
     }
     else
     {
-        // no staurated stars found, can't make any assumption about whether the max val is saturated
+        // no saturated stars found, can't make any assumption about whether the max val is saturated
 
         Debug.Write(wxString::Format("AutoSelect: using saturation level from BPP %u and pedestal %hu\n",
             image.BitsPerPixel, image.Pedestal));
@@ -908,317 +918,22 @@ bool Star::AutoFind(const usImage& image, int extraEdgeAllowance, int searchRegi
         {
             Star tmp;
             tmp.Find(&image, searchRegion, it->x, it->y, FIND_CENTROID);
-            if (tmp.WasFound())
-            {
-                if (pass == 1)
-                {
-                    if (tmp.PeakVal > sat_thresh)
-                    {
-                        Debug.Write(wxString::Format("Autofind: near-saturated [%d, %d] %.1f Mass %.f SNR %.1f Peak %hu\n", it->x, it->y, it->val, tmp.Mass, tmp.SNR, tmp.PeakVal));
-                        continue;
-                    }
-                    if (tmp.GetError() == STAR_SATURATED || tmp.SNR < 6.0)
-                        continue;
-                }
-                else if (pass == 2)
-                {
-                    if (tmp.GetError() == STAR_SATURATED)
-                    {
-                        Debug.Write(wxString::Format("Autofind: star saturated [%d, %d] %.1f Mass %.f SNR %.1f\n", it->x, it->y, it->val, tmp.Mass, tmp.SNR));
-                        continue;
-                    }
-                }
-
-                // star accepted
-                SetXY(it->x, it->y);
-                Debug.Write(wxString::Format("Autofind returns star at [%d, %d] %.1f Mass %.f SNR %.1f\n", it->x, it->y, it->val, tmp.Mass, tmp.SNR));
-                return true;
-            }
-        }
-
-        if (pass == 1)
-            Debug.Write("AutoFind: could not find a star on Pass 1\n");
-        else if (pass == 2)
-            Debug.Write("AutoFind: could not find a non-saturated star!\n");
-    }
-
-    Debug.Write("Autofind: no star found\n");
-    return false;
-}
-
-bool Star::GetMeanRotation(const usImage& image, int extraEdgeAllowance, int searchRegion)
-{
-
-    if (!image.Subframe.IsEmpty())
-    {
-        Debug.AddLine("GetMeanRotation called on subframe, returning error");
-        return false; // not found
-    }
-
-    wxBusyCursor busy;
-
-    Debug.AddLine(wxString::Format("Star::GetMeanRotation called with edgeAllowance = %d searchRegion = %d", extraEdgeAllowance, searchRegion));
-
-    // run a 3x3 median first to eliminate hot pixels
-    usImage smoothed;
-    smoothed.CopyFrom(image);
-    Median3(smoothed);
-
-    // convert to floating point
-    FloatImg conv(smoothed);
-
-    // downsample the source image
-    const int downsample = 1;
-    if (downsample > 1)
-    {
-        FloatImg tmp;
-        Downsample(tmp, conv, downsample);
-        conv.Swap(tmp);
-    }
-
-    // run the PSF convolution
-    {
-        FloatImg tmp;
-        psf_conv(tmp, conv);
-        conv.Swap(tmp);
-    }
-
-    enum { CONV_RADIUS = 4 };
-    int dw = conv.Size.GetWidth();      // width of the downsampled image
-    int dh = conv.Size.GetHeight();     // height of the downsampled image
-    wxRect convRect(CONV_RADIUS, CONV_RADIUS, dw - 2 * CONV_RADIUS, dh - 2 * CONV_RADIUS);  // region containing valid data
-
-    SaveImage(conv, "PHD2_AutoFind.fit");
-
-    enum { TOP_N = 100 };  // keep track of the brightest stars
-    std::set<Peak> stars;  // sorted by ascending intensity
-
-    double global_mean, global_stdev;
-    GetStats(&global_mean, &global_stdev, conv, convRect);
-
-    Debug.AddLine("AutoFind: global mean = %.1f, stdev %.1f", global_mean, global_stdev);
-
-    const double threshold = 0.1;
-    Debug.AddLine("AutoFind: using threshold = %.1f", threshold);
-
-    // find each local maximum
-    int srch = 4;
-    for (int y = convRect.GetTop() + srch; y <= convRect.GetBottom() - srch; y++)
-    {
-        for (int x = convRect.GetLeft() + srch; x <= convRect.GetRight() - srch; x++)
-        {
-            float val = conv.px[dw * y + x];
-            bool ismax = false;
-            if (val > 0.0)
-            {
-                ismax = true;
-                for (int j = -srch; j <= srch; j++)
-                {
-                    for (int i = -srch; i <= srch; i++)
-                    {
-                        if (i == 0 && j == 0)
-                            continue;
-                        if (conv.px[dw * (y + j) + (x + i)] > val)
-                        {
-                            ismax = false;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!ismax)
+            
+            Debug.AddLine("Autoselect: does exclude %f, %f equal tmp %f, %f", 
+                          exclude.X, exclude.Y, tmp.X, tmp.Y);            
+            // If the position matches the star to exclude, skip this one!
+            // Arran TODO - replace magic number 5 with a sensible constant.
+            // Maybe searchregion, even... (YES, further away alt is good.)
+            // Maybe even more than searchregion. 
+            if ( exclude.IsValid() && 
+                 exclude.X + 5 > tmp.X &&
+                 exclude.X - 5 < tmp.X &&
+                 exclude.Y + 5 > tmp.Y &&
+                 exclude.Y - 5 < tmp.Y ) {
+                Debug.AddLine("Skipped a star on purpose!");
                 continue;
+            } 
 
-            // compare local maximum to mean value of surrounding pixels
-            const int local = 7;
-            double local_mean, local_stdev;
-            wxRect localRect(x - local, y - local, 2 * local + 1, 2 * local + 1);
-            localRect.Intersect(convRect);
-            GetStats(&local_mean, &local_stdev, conv, localRect);
-
-            // this is our measure of star intensity
-            double h = (val - local_mean) / global_stdev;
-
-            if (h < threshold)
-            {
-                //  Debug.AddLine(wxString::Format("AG: local max REJECT [%d, %d] PSF %.1f SNR %.1f", imgx, imgy, val, SNR));
-                continue;
-            }
-
-            // coordinates on the original image
-            int imgx = x * downsample + downsample / 2;
-            int imgy = y * downsample + downsample / 2;
-
-            stars.insert(Peak(imgx, imgy, h));
-            if (stars.size() > TOP_N)
-                stars.erase(stars.begin());
-        }
-    }
-
-    for (std::set<Peak>::const_reverse_iterator it = stars.rbegin(); it != stars.rend(); ++it)
-        Debug.Write(wxString::Format("AutoFind: local max [%d, %d] %.1f\n", it->x, it->y, it->val));
-
-    // merge stars that are very close into a single star
-    {
-        const int minlimitsq = 5 * 5;
-    repeat:
-        for (std::set<Peak>::const_iterator a = stars.begin(); a != stars.end(); ++a)
-        {
-            std::set<Peak>::const_iterator b = a;
-            ++b;
-            for (; b != stars.end(); ++b)
-            {
-                int dx = a->x - b->x;
-                int dy = a->y - b->y;
-                int d2 = dx * dx + dy * dy;
-                if (d2 < minlimitsq)
-                {
-                    // very close, treat as single star
-                    Debug.Write(wxString::Format("AutoFind: merge [%d, %d] %.1f - [%d, %d] %.1f\n", a->x, a->y, a->val, b->x, b->y, b->val));
-                    // erase the dimmer one
-                    stars.erase(a);
-                    goto repeat;
-                }
-            }
-        }
-    }
-
-    // exclude stars that would fit within a single searchRegion box
-    {
-        // build a list of stars to be excluded
-        std::set<int> to_erase;
-        const int extra = 5; // extra safety margin
-        const int fullw = searchRegion + extra;
-        for (std::set<Peak>::const_iterator a = stars.begin(); a != stars.end(); ++a)
-        {
-            std::set<Peak>::const_iterator b = a;
-            ++b;
-            for (; b != stars.end(); ++b)
-            {
-                int dx = abs(a->x - b->x);
-                int dy = abs(a->y - b->y);
-                if (dx <= fullw && dy <= fullw)
-                {
-                    // stars closer than search region, exclude them both
-                    // but do not let a very dim star eliminate a very bright star
-                    if (b->val / a->val >= 5.0)
-                    {
-                        Debug.Write(wxString::Format("AutoFind: close dim-bright [%d, %d] %.1f - [%d, %d] %.1f\n", a->x, a->y, a->val, b->x, b->y, b->val));
-                    }
-                    else
-                    {
-                        Debug.Write(wxString::Format("AutoFind: too close [%d, %d] %.1f - [%d, %d] %.1f\n", a->x, a->y, a->val, b->x, b->y, b->val));
-                        to_erase.insert(std::distance(stars.begin(), a));
-                        to_erase.insert(std::distance(stars.begin(), b));
-                    }
-                }
-            }
-        }
-        RemoveItems(stars, to_erase);
-    }
-
-    // exclude stars too close to the edge
-    {
-        enum { MIN_EDGE_DIST = 40 };
-        int edgeDist = MIN_EDGE_DIST + extraEdgeAllowance;
-
-        std::set<Peak>::iterator it = stars.begin();
-        while (it != stars.end())
-        {
-            std::set<Peak>::iterator next = it;
-            ++next;
-            if (it->x <= edgeDist || it->x >= image.Size.GetWidth() - edgeDist ||
-                it->y <= edgeDist || it->y >= image.Size.GetHeight() - edgeDist)
-            {
-                Debug.Write(wxString::Format("AutoFind: too close to edge [%d, %d] %.1f\n", it->x, it->y, it->val));
-                stars.erase(it);
-            }
-            it = next;
-        }
-    }
-
-    // Added by AD
-    // Return a list of all the stars.
-
-    std::ofstream outfile ("output.txt");
-    for (std::set<Peak>::reverse_iterator it = stars.rbegin(); it != stars.rend(); ++it) {
-        outfile << "Star at: " << it->x << " " << it->y << std::endl;
-    }
-    outfile.close();
-
-    // At first I tried running Star::Find on the survivors to find the best
-    // star. This had the unfortunate effect of locating hot pixels which
-    // the psf convolution so nicely avoids. So, don't do that!  -ag
-
-    // try to identify the saturation point
-
-    //  first, find the peak pixel overall
-    unsigned short maxVal = 0;
-    for (unsigned int i = 0; i < image.NPixels; i++)
-        if (image.ImageData[i] > maxVal)
-            maxVal = image.ImageData[i];
-
-    // next see if any of the stars has a flat-top
-    bool foundSaturated = false;
-    for (std::set<Peak>::reverse_iterator it = stars.rbegin(); it != stars.rend(); ++it)
-    {
-        Star tmp;
-        tmp.Find(&image, searchRegion, it->x, it->y, FIND_CENTROID);
-        if (tmp.WasFound() && tmp.GetError() == STAR_SATURATED)
-        {
-            if ((maxVal - tmp.PeakVal) * 255U > maxVal)
-            {
-                // false positive saturation, flat top but below maxVal
-                Debug.Write(wxString::Format("AutoSelect: false positive saturation peak = %hu, max = %hu\n", tmp.PeakVal, maxVal));
-            }
-            else
-            {
-                // a saturated star was found
-                foundSaturated = true;
-                break;
-            }
-        }
-    }
-
-    unsigned int sat_level; // saturation level, including pedestal
-    if (foundSaturated)
-    {
-        // use the peak overall pixel value as the saturation limit
-        Debug.Write(wxString::Format("AutoSelect: using saturation level peakVal = %hu\n", maxVal));
-        sat_level = maxVal; // includes pedestal
-    }
-    else
-    {
-        // no staurated stars found, can't make any assumption about whether the max val is saturated
-
-        Debug.Write(wxString::Format("AutoSelect: using saturation level from BPP %u and pedestal %hu\n",
-            image.BitsPerPixel, image.Pedestal));
-
-        sat_level = ((1U << image.BitsPerPixel) - 1) + image.Pedestal;
-        if (sat_level > 65535)
-            sat_level = 65535;
-    }
-    unsigned int diff = sat_level > image.Pedestal ? sat_level - image.Pedestal : 0U;
-    // "near-saturation" threshold at 90% saturation
-    unsigned short sat_thresh = (unsigned short)((unsigned int) image.Pedestal + 9 * diff / 10);
-
-    Debug.Write(wxString::Format("AutoSelect: BPP = %u, saturation at %u, pedestal %hu, thresh = %hu\n",
-        image.BitsPerPixel, sat_level, image.Pedestal, sat_thresh));
-
-    // Final star selection
-    //   pass 1: find brightest star with peak value < 90% saturation AND SNR > 6
-    //           this pass will reject saturated and nearly-saturated stars
-    //   pass 2: find brightest non-saturated star
-    //   pass 3: find brightest star, even if saturated
-
-    for (int pass = 1; pass <= 3; pass++)
-    {
-        Debug.AddLine("AutoSelect: finding best star pass %d", pass);
-
-        for (std::set<Peak>::reverse_iterator it = stars.rbegin(); it != stars.rend(); ++it)
-        {
-            Star tmp;
-            tmp.Find(&image, searchRegion, it->x, it->y, FIND_CENTROID);
             if (tmp.WasFound())
             {
                 if (pass == 1)

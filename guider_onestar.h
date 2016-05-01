@@ -65,6 +65,7 @@ class GuiderOneStar : public Guider
 {
 private:
     Star m_star;
+    Star m_altStar;
     MassChecker *m_massChecker;
 
     // parameters
@@ -104,6 +105,7 @@ public:
     bool AutoSelect(void);
     bool SpecialMethod(void);
     const PHD_Point& CurrentPosition(void);
+    const PHD_Point& CurrentPositionAltStar(void);
     wxRect GetBoundingBox(void);
     int GetMaxMovePixels(void);
     double StarMass(void);
