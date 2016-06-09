@@ -281,12 +281,12 @@ public:
 
     virtual bool IsLocked(void) = 0;
     virtual bool AutoSelect(void) = 0;
-    virtual bool SpecialMethod(void) = 0;
 
     virtual const PHD_Point& CurrentPosition(void) = 0;
     virtual wxRect GetBoundingBox(void) = 0;
     virtual int GetMaxMovePixels(void) = 0;
     virtual double StarMass(void) = 0;
+    virtual double RotationAngleDelta(void) = 0;
     virtual double SNR(void) = 0;
     virtual double HFD(void) = 0;
     virtual int StarError(void) = 0;

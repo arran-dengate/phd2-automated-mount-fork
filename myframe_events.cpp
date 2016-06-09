@@ -744,11 +744,6 @@ void MyFrame::OnAutoStar(wxCommandEvent& WXUNUSED(evt))
     pFrame->pGuider->AutoSelect();
 }
 
-void MyFrame::OnSpecialMethod(wxCommandEvent& WXUNUSED(evt))
-{
-    pFrame->pGuider->SpecialMethod();
-}
-
 void MyFrame::OnSetupCamera(wxCommandEvent& WXUNUSED(event))
 {
     if (pCamera &&

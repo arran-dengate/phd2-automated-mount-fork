@@ -67,10 +67,12 @@ private:
     Star m_star;
     Star m_altStar;
     MassChecker *m_massChecker;
+    MassChecker *m_altMassChecker;
 
     // parameters
     bool m_massChangeThresholdEnabled;
     double m_massChangeThreshold;
+    double m_originalRotationAngle;
 
 public:
     class GuiderOneStarConfigDialogPane : public GuiderConfigDialogPane
@@ -103,7 +105,6 @@ public:
 
     bool IsLocked(void);
     bool AutoSelect(void);
-    bool SpecialMethod(void);
     const PHD_Point& CurrentPosition(void);
     const PHD_Point& CurrentPositionAltStar(void);
     wxRect GetBoundingBox(void);
@@ -111,6 +112,8 @@ public:
     double StarMass(void);
     double SNR(void);
     double HFD(void);
+    double RotationAngle(void);
+    double RotationAngleDelta(void);
     int StarError(void);
     wxString GetSettingsSummary();
 

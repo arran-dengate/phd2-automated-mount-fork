@@ -119,7 +119,6 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(MENU_STARPROFILE, MyFrame::OnStarProfile)
     EVT_MENU(MENU_RESTORE_WINDOWS, MyFrame::OnRestoreWindows)
     EVT_MENU(MENU_AUTOSTAR,MyFrame::OnAutoStar)
-    EVT_MENU(MENU_SPECIALMETHOD,MyFrame::OnSpecialMethod)
     EVT_TOOL(BUTTON_GEAR,MyFrame::OnSelectGear)
     EVT_MENU(BUTTON_GEAR,MyFrame::OnSelectGear) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_LOOP, MyFrame::OnLoopExposure)
@@ -426,7 +425,6 @@ void MyFrame::SetupMenuBar(void)
     tools_menu = new wxMenu;
     tools_menu->Append(MENU_MANGUIDE, _("&Manual Guide"), _("Manual / test guide dialog"));
     tools_menu->Append(MENU_AUTOSTAR, _("&Auto-select Star\tAlt-S"), _("Automatically select star"));
-    tools_menu->Append(MENU_SPECIALMETHOD, _("&Test special method"), _("Run special method"));
     tools_menu->Append(EEGG_REVIEWCAL, _("&Review Calibration Data\tAlt-C"), _("Review calibration data from last successful calibration"));
 
     wxMenu *calib_menu = new wxMenu;

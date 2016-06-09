@@ -39,6 +39,8 @@
 #include "phd.h"
 #include <wx/dir.h>
 #include <algorithm>
+#include <cmath>
+#include <string>
 
 #if ((wxMAJOR_VERSION < 3) && (wxMINOR_VERSION < 9))
 #define wxPENSTYLE_DOT wxDOT
@@ -155,7 +157,8 @@ END_EVENT_TABLE()
 // Define a constructor for the guide canvas
 GuiderOneStar::GuiderOneStar(wxWindow *parent)
     : Guider(parent, XWinSize, YWinSize),
-      m_massChecker(new MassChecker())
+      m_massChecker(new MassChecker()),
+      m_altMassChecker(new MassChecker())
 {
     SetState(STATE_UNINITIALIZED);
 }
@@ -163,6 +166,7 @@ GuiderOneStar::GuiderOneStar(wxWindow *parent)
 GuiderOneStar::~GuiderOneStar()
 {
     delete m_massChecker;
+    delete m_altMassChecker;
 }
 
 void GuiderOneStar::LoadProfileSettings(void)
@@ -278,6 +282,7 @@ bool GuiderOneStar::SetCurrentPosition(usImage *pImage, const PHD_Point& positio
         }
 
         m_massChecker->Reset();
+        m_altMassChecker->Reset();
         bError = !m_star.Find(pImage, m_searchRegion, x, y, pFrame->GetStarFindMode());
     }
     catch (const wxString& Msg)
@@ -353,6 +358,7 @@ static wxString StarStatusStr(const Star& star)
 
 static wxString StarStatus(const Star& star)
 {
+
     wxString status = wxString::Format(_("m=%.0f SNR=%.1f"), star.Mass, star.SNR);
 
     if (star.GetError() == Star::STAR_SATURATED)
@@ -372,85 +378,6 @@ static wxString StarStatus(const Star& star)
     }
 
     return status;
-}
-
-// ===============================================================================
-// AD testing - generated this on the assumption that I would need a new method
-// for debugging, but it's not needed.
-// ===============================================================================
-
-bool GuiderOneStar::SpecialMethod(void) 
-{
-    pFrame->SetStatusText(wxString::Format("It works!"));
-    Debug.AddLine("It works!");
-
-    bool bError = false;
-
-    usImage *pImage = CurrentImage();
-
-    try
-    {
-        if (!pImage || !pImage->ImageData)
-        {
-            throw ERROR_INFO("No Current Image");
-        }
-
-        // If mount is not calibrated, we need to chose a star a bit farther
-        // from the egde to allow for the motion of the star during
-        // calibration
-        //
-        int edgeAllowance = 0;
-        if (pMount && pMount->IsConnected() && !pMount->IsCalibrated())
-            edgeAllowance = wxMax(edgeAllowance, pMount->CalibrationTotDistance());
-        if (pSecondaryMount && pSecondaryMount->IsConnected() && !pSecondaryMount->IsCalibrated())
-            edgeAllowance = wxMax(edgeAllowance, pSecondaryMount->CalibrationTotDistance());
-
-        Star newStar;
-        Star empty;
-        if (!newStar.AutoFind(*pImage, edgeAllowance, m_searchRegion, empty))
-        {
-            throw ERROR_INFO("Unable to AutoFind");
-        }
-
-        m_massChecker->Reset();
-
-        if (!m_star.Find(pImage, m_searchRegion, newStar.X, newStar.Y, Star::FIND_CENTROID))
-        {
-            throw ERROR_INFO("Unable to find");
-        }
-
-        if (SetLockPosition(m_star))
-        {
-            throw ERROR_INFO("Unable to set Lock Position");
-        }
-
-        if (GetState() == STATE_SELECTING)
-        {
-            // immediately advance the state machine now, rather than waiting for
-            // the next exposure to complete. Socket server clients are going to
-            // try to start guiding after selecting the star, but guiding will fail
-            // to start if state is still STATE_SELECTING
-            Debug.AddLine("AutoSelect: state = %d, call UpdateGuideState", GetState());
-            UpdateGuideState(NULL, false);
-        }
-
-        UpdateImageDisplay();
-        pFrame->SetStatusText(wxString::Format(_("Auto-selected star at (%.1f, %.1f)"), m_star.X, m_star.Y), 1);
-        pFrame->SetStatusText(StarStatus(m_star));
-        pFrame->pProfile->UpdateData(pImage, m_star.X, m_star.Y);
-    }
-    catch (const wxString& Msg)
-    {
-        if (pImage && pImage->ImageData)
-        {
-            SaveAutoSelectFailedImg(pImage);
-        }
-
-        POSSIBLY_UNUSED(Msg);
-        bError = true;
-    }
-
-    return bError;
 }
 
 bool GuiderOneStar::AutoSelect(void)
@@ -475,9 +402,6 @@ bool GuiderOneStar::AutoSelect(void)
             edgeAllowance = wxMax(edgeAllowance, pMount->CalibrationTotDistance());
         if (pSecondaryMount && pSecondaryMount->IsConnected() && !pSecondaryMount->IsCalibrated())
             edgeAllowance = wxMax(edgeAllowance, pSecondaryMount->CalibrationTotDistance());
-
-        // Arran: Hey, here's where the star is declared! I'm going to add our secondary star here too.
-        // I'll call it altStar.
         
         Star newStar;
         Star empty;
@@ -508,7 +432,7 @@ bool GuiderOneStar::AutoSelect(void)
         }
         Debug.AddLine("Secondary star %f, %f", altStar.X, altStar.Y);
 
-        m_massChecker->Reset();
+        m_altMassChecker->Reset();
 
         if (m_altStar.Find(pImage, m_searchRegion, altStar.X, altStar.Y, Star::FIND_CENTROID))
         {
@@ -519,7 +443,6 @@ bool GuiderOneStar::AutoSelect(void)
         //{
         //    throw ERROR_INFO("Unable to set Lock Position");
         //}
-
 
         if (GetState() == STATE_SELECTING)
         {
@@ -546,6 +469,8 @@ bool GuiderOneStar::AutoSelect(void)
         POSSIBLY_UNUSED(Msg);
         bError = true;
     }
+    
+    m_originalRotationAngle = RotationAngle();
 
     return bError;
 }
@@ -636,6 +561,17 @@ double GuiderOneStar::SNR(void)
     return m_star.SNR;
 }
 
+double GuiderOneStar::RotationAngle(void) {
+    double angle = atan2(m_star.Y - m_altStar.Y, m_star.X - m_altStar.X);
+    angle = ( angle * 180 ) / 3.14159265; // Convert to degrees
+    return angle;    
+}
+
+double GuiderOneStar::RotationAngleDelta(void)
+{
+    return m_originalRotationAngle - RotationAngle();
+}
+
 double GuiderOneStar::HFD(void)
 {
     return m_star.HFD;
@@ -671,12 +607,14 @@ bool GuiderOneStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *err
 
     bool bError = false;
 
+    // Now that we want to lock two stars, we have two stars & masscheckers to update.
     Star lockStars[2] = {m_star, m_altStar};
+    MassChecker *massCheckers[2] = {m_massChecker, m_altMassChecker};
 
     for (int i = 0; i < 2; i++) {
         try
         {
-            Star newStar(m_star);
+            Star newStar(lockStars[i]);
 
             if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode()))
             {
@@ -684,32 +622,38 @@ bool GuiderOneStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *err
                 errorInfo->starMass = 0.0;
                 errorInfo->starSNR = 0.0;
                 errorInfo->status = StarStatusStr(newStar);
-                m_star.SetError(newStar.GetError());
+                lockStars[i].SetError(newStar.GetError());
                 throw ERROR_INFO("UpdateCurrentPosition():newStar not found");
             }
 
             // check to see if it seems like the star we just found was the
             // same as the original star.  We do this by comparing the
             // mass
-            m_massChecker->SetExposure(pFrame->RequestedExposureDuration());
+            massCheckers[i]->SetExposure(pFrame->RequestedExposureDuration());
             double limits[3];
             if (m_massChangeThresholdEnabled &&
-                m_massChecker->CheckMass(newStar.Mass, m_massChangeThreshold, limits))
+                massCheckers[i]->CheckMass(newStar.Mass, m_massChangeThreshold, limits))
             {
-                m_star.SetError(Star::STAR_MASSCHANGE);
+                lockStars[i].SetError(Star::STAR_MASSCHANGE);
                 errorInfo->starError = Star::STAR_MASSCHANGE;
                 errorInfo->starMass = newStar.Mass;
                 errorInfo->starSNR = newStar.SNR;
-                errorInfo->status = StarStatusStr(m_star);
+                errorInfo->status = StarStatusStr(lockStars[i]);
                 pFrame->SetStatusText(wxString::Format(_("Mass: %.0f vs %.0f"), newStar.Mass, limits[1]), 1);
                 Debug.Write(wxString::Format("UpdateGuideState(): star mass new=%.1f exp=%.1f thresh=%.0f%% range=(%.1f, %.1f)\n", newStar.Mass, limits[1], m_massChangeThreshold * 100, limits[0], limits[2]));
-                m_massChecker->AppendData(newStar.Mass);
+                massCheckers[i]->AppendData(newStar.Mass);
                 throw THROW_INFO("massChangeThreshold error");
             }
 
             // update the star position, mass, etc.
-            m_star = newStar;
-            m_massChecker->AppendData(newStar.Mass);
+            // Arran: Make this cleaner if there's time.
+            if (i==0) {
+                m_star = newStar;
+            } else {
+                m_altStar = newStar;
+            }
+            
+            massCheckers[i]->AppendData(newStar.Mass);
 
             const PHD_Point& lockPos = LockPosition();
             if (lockPos.IsValid())
@@ -718,11 +662,11 @@ bool GuiderOneStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *err
                 UpdateCurrentDistance(distance);
             }
 
-            pFrame->pProfile->UpdateData(pImage, m_star.X, m_star.Y);
+            pFrame->pProfile->UpdateData(pImage, lockStars[i].X, lockStars[i].Y);
 
-            pFrame->AdjustAutoExposure(m_star.SNR);
+            pFrame->AdjustAutoExposure(lockStars[i].SNR);
 
-            errorInfo->status = StarStatus(m_star);
+            errorInfo->status = StarStatus(lockStars[i]);
         }
         catch (const wxString& Msg)
         {
@@ -847,12 +791,19 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
         // PaintHelper drew the image and any overlays
         // now decorate the image to show the selection
 
-        // AD testing
+        // Arran: This is how to draw something on the screen!
+        
+        //double angle = atan2(m_star.Y - m_altStar.Y, m_star.X - m_altStar.X);
+        //angle = ( angle * 180 ) / 3.14159265; // Convert to degrees
+        wxString strAngle = wxString::Format(wxT("%f"),RotationAngleDelta());
 
         wxColour original = dc.GetTextForeground();
         dc.SetTextForeground(wxColour(255, 255, 255));
-        dc.DrawText(wxT("Testing"), 40, 60);
+        //dc.DrawText(wxT(angleStatus), 40, 60);
+        dc.DrawText(strAngle, 40, 60);
         dc.SetTextForeground(original);
+        
+
 
         // display bookmarks
         if (m_showBookmarks && m_bookmarks.size() > 0)

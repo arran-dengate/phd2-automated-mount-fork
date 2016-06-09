@@ -737,17 +737,20 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             xDistance = mountVectorEndpoint.X;
             yDistance = mountVectorEndpoint.Y;
 
-            // Added by AD 
+            // Added by Arran 
             // When it's time to move the mount, write the vector to a named pipe.
             // This will be read and acted upon by the Python program.
             // It is synchronous communication but non-blocking from this end.
-        
+            // Note, I think we're missing out on dead-reckoning moves (above.)
+            
+            double rotationAngleDelta = pFrame->pGuider->RotationAngleDelta();
+
             int fd;
             char myfifo[] = "/var/tmp/guide_vector";
 
-            char format[] = "%4.10f, %4.10f";
+            char format[] = "%4.6f, %4.6f, %3.6f";
             char guideVector[100] = {0};
-            sprintf(guideVector,format,xDistance, yDistance);
+            sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
                     
             mkfifo(myfifo, 0666);
             fd = open(myfifo, O_WRONLY | O_NONBLOCK);
