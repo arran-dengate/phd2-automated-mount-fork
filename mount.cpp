@@ -52,8 +52,10 @@
 // enable dec compensation when calibration declination is less than this
 const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
 
-const char TEMP_FILE_PATH[]   = "/var/tmp/phd2/phd2_guide_tmp";
-const char OUTPUT_FILE_PATH[] = "/var/tmp/phd2/output/phd2_guide_output";
+const char GUIDE_DIRECTORY[]         = "/dev/shm/phd2/";
+const char GUIDE_OUTPUT_DIRECTORY [] = "/dev/shm/phd2/output";
+const char TEMP_FILE_PATH[]          = "/dev/shm/phd2/temp_guide_pulse";
+const char OUTPUT_FILE_PATH[]        = "/dev/shm/phd2/output/guide_pulse";
 
 inline static bool
 IsOppositeSide(PierSide a, PierSide b)
@@ -770,10 +772,11 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             //xDistance = std::max(MAX_MOVE_DISTANCE * -1, std::min(xDistance, MAX_MOVE_DISTANCE));
             //yDistance = std::max(MAX_MOVE_DISTANCE * -1, std::min(yDistance, MAX_MOVE_DISTANCE));
 
-            const int BUFFER_SIZE = 35;
             char format[] = "%4.5f, %4.5f, %4.5f";
             char guideVector[100] = {0};
 
+            mkdir(GUIDE_DIRECTORY, 0755);
+            mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
 
             Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xDistance, yDistance, rotationAngleDelta));
             sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
@@ -794,7 +797,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                 fd = open(myfifo, O_WRONLY);
                 //fd = open(myfifo, O_WRONLY | O_NONBLOCK);
                 write(fd, guideVector, sizeof(guideVector));
-                close(fd);    
+                close(fd);
             }
             */
             Debug.Write(wxString::Format("Moving (%.2f, %.2f) raw xDistance=%.2f yDistance=%.2f\n",
