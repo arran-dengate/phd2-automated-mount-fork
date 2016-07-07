@@ -52,6 +52,9 @@
 // enable dec compensation when calibration declination is less than this
 const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
 
+const char TEMP_FILE_PATH[]   = "/var/tmp/phd2/phd2_guide_tmp";
+const char OUTPUT_FILE_PATH[] = "/var/tmp/phd2/output/phd2_guide_output";
+
 inline static bool
 IsOppositeSide(PierSide a, PierSide b)
 {
@@ -742,21 +745,58 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             // This will be read and acted upon by the Python program.
             // It is synchronous communication but non-blocking from this end.
             // Note, I think we're missing out on dead-reckoning moves (above.)
-            
+
             double rotationAngleDelta = pFrame->pGuider->RotationAngleDelta();
+            // Temporarily disabling this for debugging purposes
+            rotationAngleDelta *= 0;
 
-            int fd;
-            char myfifo[] = "/var/tmp/guide_vector";
+            // Convert pixels to radians
+            // For Starshoot Autoguide, this is...
+            // 2.1701 x 1.73582 degrees
+            // 1280 x 1024 pixels
+            xDistance *= 0.001695391 * 3.1416 / 180; // Also convert to radians
+            yDistance *= 0.001695137 * 3.1416 / 180; // Also convert to radians
 
-            char format[] = "%4.6f, %4.6f, %3.6f";
+            // Roll is reversed.
+            xDistance *= -1;
+
+             // If we want to scale the movements up or down... (0.005 kinda works)
+            const double MOVE_SCALE_FACTOR = 1;
+            xDistance *= MOVE_SCALE_FACTOR;
+            yDistance *= MOVE_SCALE_FACTOR;
+
+            // Uncomment this to clamp the maximum move distance.
+            //const double MAX_MOVE_DISTANCE = 0.0006;
+            //xDistance = std::max(MAX_MOVE_DISTANCE * -1, std::min(xDistance, MAX_MOVE_DISTANCE));
+            //yDistance = std::max(MAX_MOVE_DISTANCE * -1, std::min(yDistance, MAX_MOVE_DISTANCE));
+
+            const int BUFFER_SIZE = 35;
+            char format[] = "%4.5f, %4.5f, %4.5f";
             char guideVector[100] = {0};
-            sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
-                    
-            mkfifo(myfifo, 0666);
-            fd = open(myfifo, O_WRONLY | O_NONBLOCK);
-            write(fd, guideVector, sizeof(guideVector));
-            close(fd);
 
+
+            Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xDistance, yDistance, rotationAngleDelta));
+            sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
+            ofstream pulse_output;
+            pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
+            pulse_output << guideVector;
+            pulse_output.close();
+            rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
+
+            /* Old code for named pipes.
+            if ( ( xDistance != 0 ) || ( yDistance != 0 ) ) {
+                int fd;
+                char myfifo[] = "/var/tmp/guide_vector";
+                char format[] = "%+10.8f,%+10.8f,%+10.8f";
+                char guideVector[BUFFER_SIZE] = {0};
+                sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
+                mkfifo(myfifo, 0666);
+                fd = open(myfifo, O_WRONLY);
+                //fd = open(myfifo, O_WRONLY | O_NONBLOCK);
+                write(fd, guideVector, sizeof(guideVector));
+                close(fd);    
+            }
+            */
             Debug.Write(wxString::Format("Moving (%.2f, %.2f) raw xDistance=%.2f yDistance=%.2f\n",
                         cameraVectorEndpoint.X, cameraVectorEndpoint.Y, xDistance, yDistance));
 
