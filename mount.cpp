@@ -782,8 +782,13 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             sprintf(guideVector,format,xDistance, yDistance, rotationAngleDelta);
             ofstream pulse_output;
             pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
-            pulse_output << guideVector;
-            pulse_output.close();
+            if (pulse_output.fail()) {
+                Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
+                exit(1);
+            } else {
+                pulse_output << guideVector;
+                pulse_output.close();
+            }
             rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
             /* Old code for named pipes.
