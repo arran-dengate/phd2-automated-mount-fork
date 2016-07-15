@@ -713,6 +713,7 @@ void Mount::LogGuideStepInfo()
 
 Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType)
 {
+
     MOVE_RESULT result = MOVE_OK;
 
     try

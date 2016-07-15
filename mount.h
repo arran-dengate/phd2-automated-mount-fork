@@ -95,6 +95,7 @@ struct CalibrationDetails
     double decGuideSpeed;
     double orthoError;
     double origBinning;
+    double cameraCorrectionAngle;
     std::vector <wxRealPoint> raSteps;
     std::vector <wxRealPoint> decSteps;
     int raStepCount;

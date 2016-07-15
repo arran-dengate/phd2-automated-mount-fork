@@ -76,7 +76,13 @@ class Scope : public Mount
     GUIDE_DIRECTION m_decLimitReachedDirection;
     int m_decLimitReachedCount;
 
-    // Calibration variables
+    // New calibration variables
+    int m_calibrationStepsRemaining;
+    const int M_INITIAL_CALIBRATION_STEPS = 7;
+    PHD_Point m_calibrationNorthLocation;
+    PHD_Point m_calibrationNorthReturnLocation;
+
+    // Old calibration variables (some still used)
     int m_calibrationSteps;
     int m_recenterRemaining;
     int m_recenterDuration;
@@ -115,7 +121,7 @@ class Scope : public Mount
         CALIBRATION_STATE_GO_EAST,
         CALIBRATION_STATE_CLEAR_BACKLASH,
         CALIBRATION_STATE_GO_NORTH,
-        CALIBRATION_STATE_GO_SOUTH,
+        CALIBRATION_STATE_RETURN_FROM_NORTH,
         CALIBRATION_STATE_NUDGE_SOUTH,
         CALIBRATION_STATE_COMPLETE
     } m_calibrationState;
