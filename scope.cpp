@@ -975,8 +975,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
     //                                      /| \
     //                                     / |  \
     //                                    /  |   \
-    //                                   /   |_   \
-    // m_calibrationStartingLocation -> 1____|_|___3 <- m_calibrationNorthReturnLocation;
+    //                                   /   |    \
+    // m_calibrationStartingLocation -> 1____|_____3 <- m_calibrationNorthReturnLocation;
     //                                       ^4, midpoint
 
 
@@ -1071,15 +1071,16 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 double deltaX = m_calibrationNorthLocation.X - midPointX;
                 double deltaY = m_calibrationNorthLocation.Y - midPointY;
-                double cameraCorrectionAngle = std::atan2(deltaX, deltaY) * 180 / PI;
-                cameraCorrectionAngle -= 180;
-                if ( cameraCorrectionAngle < -360 ) { 
-                    cameraCorrectionAngle += 360; 
-                } else if ( cameraCorrectionAngle > 360 ) {
-                    cameraCorrectionAngle -= 360;
+                double cameraAngle = std::atan2(deltaX, deltaY) * 180 / PI;
+                cameraAngle -= 180;
+                if ( cameraAngle < -360 ) { 
+                    cameraAngle += 360; 
+                } else if ( cameraAngle > 360 ) {
+                    cameraAngle -= 360;
                 }
+                cameraAngle *= -1;
                 
-                Debug.AddLine(wxString::Format("desh: angle %f", cameraCorrectionAngle));
+                Debug.AddLine(wxString::Format("desh: angle %f", cameraAngle));
 
                 GetLastCalibrationParams(&m_prevCalibrationParams);
                 GetCalibrationDetails(&m_prevCalibrationDetails);
@@ -1091,7 +1092,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 SetCalibration(cal);
                 m_calibrationDetails.raStepCount = m_raSteps;
                 m_calibrationDetails.decStepCount = m_decSteps;
-                m_calibrationDetails.cameraCorrectionAngle = cameraCorrectionAngle;
+                m_calibrationDetails.cameraAngle = cameraAngle;
                 SetCalibrationDetails(m_calibrationDetails, m_calibration.xAngle, m_calibration.yAngle, pCamera->Binning);
                 if (SANITY_CHECKING_ACTIVE)
                     SanityCheckCalibration(m_prevCalibrationParams, m_prevCalibrationDetails);  // method gets "new" info itself

@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <stdio.h>
+#include <cmath>
 
 // enable dec compensation when calibration declination is less than this
 const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
@@ -780,7 +781,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             mkdir(GUIDE_DIRECTORY, 0755);
             mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
 
-            Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationAngleDelta));
+            Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationAngleDelta));
             sprintf(guideVector,format,xVector, yVector, rotationAngleDelta);
             ofstream pulse_output;
             pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
@@ -961,23 +962,26 @@ bool Mount::TransformCameraCoordinatesToMountCoordinates(const PHD_Point& camera
         double hyp   = cameraVectorEndpoint.Distance();
         double cameraTheta = cameraVectorEndpoint.Angle();
 
-        double xAngle = cameraTheta - m_cal.xAngle;
-        double yAngle = cameraTheta - (m_cal.xAngle + m_yAngleError);
+        CalibrationDetails calDetails; 
+        Mount::GetCalibrationDetails(&calDetails);
+        double cameraAngleRad = calDetails.cameraAngle * 3.14159 / 180;
+        Debug.AddLine(wxString::Format("desh: transform angle deg %f", calDetails.cameraAngle));
+        Debug.AddLine(wxString::Format("desh: cameraVectorEndpoint %f %f", 
+                                       cameraVectorEndpoint.X, cameraVectorEndpoint.Y));
+        double camCos = cos(cameraAngleRad);
+        double camSin = sin(cameraAngleRad);
+        double x = cameraVectorEndpoint.X;
+        double y = cameraVectorEndpoint.Y;
+        double px = x * camCos - y * camSin;
+        double py = x * camSin + y * camCos;
+        Debug.AddLine(wxString::Format("desh: mountVectorEndpoint %f %f", 
+                                       px, py));
+
 
         // Convert theta and hyp into X and Y
 
-        mountVectorEndpoint.SetXY(
-            cos(xAngle) * hyp,
-            sin(yAngle) * hyp
-            );
+        mountVectorEndpoint.SetXY(px, py);
 
-        Debug.AddLine("CameraToMount -- cameraTheta (%.2f) - m_xAngle (%.2f) = xAngle (%.2f = %.2f)",
-                cameraTheta, m_cal.xAngle, xAngle, norm_angle(xAngle));
-        Debug.AddLine("CameraToMount -- cameraTheta (%.2f) - (m_xAngle (%.2f) + m_yAngleError (%.2f)) = yAngle (%.2f = %.2f)",
-                cameraTheta, m_cal.xAngle, m_yAngleError, yAngle, norm_angle(yAngle));
-        Debug.AddLine("CameraToMount -- cameraX=%.2f cameraY=%.2f hyp=%.2f cameraTheta=%.2f mountX=%.2f mountY=%.2f, mountTheta=%.2f",
-                cameraVectorEndpoint.X, cameraVectorEndpoint.Y, hyp, cameraTheta, mountVectorEndpoint.X, mountVectorEndpoint.Y,
-                mountVectorEndpoint.Angle());
     }
     catch (const wxString& Msg)
     {
@@ -1298,6 +1302,7 @@ void Mount::SetCalibrationDetails(const CalibrationDetails& calDetails)
     pConfig->Profile.SetDouble(prefix + "ortho_error", calDetails.orthoError);
     pConfig->Profile.SetDouble(prefix + "orig_binning", calDetails.origBinning);
     pConfig->Profile.SetString(prefix + "orig_timestamp", calDetails.origTimestamp);
+    pConfig->Profile.SetDouble(prefix + "camera_angle", calDetails.cameraAngle);
 
     for (std::vector<wxRealPoint>::const_iterator it = calDetails.raSteps.begin(); it != calDetails.raSteps.end(); ++it)
     {
@@ -1366,6 +1371,7 @@ void Mount::GetCalibrationDetails(CalibrationDetails *details)
     details->origBinning = pConfig->Profile.GetDouble(prefix + "orig_binning", 1.0);
     details->lastIssue = (CalibrationIssueType) pConfig->Profile.GetInt(prefix + "last_issue", 0);
     details->origTimestamp = pConfig->Profile.GetString(prefix + "orig_timestamp", "Unknown");
+    details->cameraAngle = pConfig->Profile.GetDouble(prefix + "camera_angle", 0.0);
     // Populate raSteps
     stepStr = pConfig->Profile.GetString(prefix + "ra_steps", "");
     tok.SetString(stepStr, "},", wxTOKEN_STRTOK);

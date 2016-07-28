@@ -562,8 +562,8 @@ double GuiderOneStar::SNR(void)
 }
 
 double GuiderOneStar::RotationAngle(void) {
+    // Return angle in radians
     double angle = atan2(m_star.Y - m_altStar.Y, m_star.X - m_altStar.X);
-    angle = ( angle * 180 ) / 3.14159265; // Convert to degrees
     return angle;    
 }
 
