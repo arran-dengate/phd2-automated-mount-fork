@@ -281,7 +281,7 @@ void PhdController::UpdateControllerState(void)
             bool error = pFrame->pGuider->AutoSelect();
             if (error)
             {
-                Debug.AddLine("auto find star failed, attempts remaining = %d", ctrl.autoFindAttemptsRemaining);
+                Debug.AddLine("desh: auto find star failed, attempts remaining = %d", ctrl.autoFindAttemptsRemaining);
                 if (--ctrl.autoFindAttemptsRemaining == 0)
                 {
                     do_fail(_T("failed to find a suitable guide star"));

@@ -434,7 +434,7 @@ bool GuiderOneStar::AutoSelect(void)
 
         m_altMassChecker->Reset();
 
-        if (m_altStar.Find(pImage, m_searchRegion, altStar.X, altStar.Y, Star::FIND_CENTROID))
+        if (!m_altStar.Find(pImage, m_searchRegion, altStar.X, altStar.Y, Star::FIND_CENTROID))
         {
             throw ERROR_INFO("Unable to find");
         }
@@ -465,7 +465,7 @@ bool GuiderOneStar::AutoSelect(void)
         {
             SaveAutoSelectFailedImg(pImage);
         }
-
+        Debug.AddLine(wxString::Format("desh: %s", Msg));
         POSSIBLY_UNUSED(Msg);
         bError = true;
     }

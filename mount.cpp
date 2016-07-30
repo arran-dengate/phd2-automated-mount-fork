@@ -712,6 +712,33 @@ void Mount::LogGuideStepInfo()
     m_lastStep.frameNumber = -1; // invalidate
 }
 
+void Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
+    double xVector = xyVector.X;
+    double yVector = xyVector.Y;
+    char format[] = "%4.5f, %4.5f, %4.5f";
+    char guideVector[100] = {0};
+
+    mkdir(GUIDE_DIRECTORY, 0755);
+    mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
+
+    Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
+    sprintf(guideVector,format,xVector, yVector, rotationVector);
+    ofstream pulse_output;
+    pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
+    if (pulse_output.fail()) {
+        Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
+        exit(1);
+    } else {
+        pulse_output << guideVector;
+        pulse_output.close();
+    }
+    rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
+
+    Debug.Write(wxString::Format("Moving raw xVector=%.2f yVector=%.2f\n",
+                xVector, yVector));
+
+}
+
 Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType)
 {
 
@@ -730,9 +757,9 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                 return result;
             mountVectorEndpoint.X = xDistance;
             mountVectorEndpoint.Y = yDistance;
-
+            
             Debug.Write(wxString::Format("Dead-reckoning move xDistance=%.2f yDistance=%.2f\n",
-                xDistance, yDistance));
+                xDistance, yDistance));               
         }
         else
         {
@@ -750,9 +777,9 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             // It is synchronous communication but non-blocking from this end.
             // Note, I think we're missing out on dead-reckoning moves (above.)
 
-            double rotationAngleDelta = pFrame->pGuider->RotationAngleDelta();
+            double rotationVector = pFrame->pGuider->RotationAngleDelta();
             // Temporarily disabling this for debugging purposes
-            rotationAngleDelta *= 0;
+            rotationVector *= 0;
 
             // Convert pixels to radians
             // For Starshoot Autoguide, this is...
@@ -775,41 +802,8 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             //xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
             //yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
 
-            char format[] = "%4.5f, %4.5f, %4.5f";
-            char guideVector[100] = {0};
-
-            mkdir(GUIDE_DIRECTORY, 0755);
-            mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
-
-            Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationAngleDelta));
-            sprintf(guideVector,format,xVector, yVector, rotationAngleDelta);
-            ofstream pulse_output;
-            pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
-            if (pulse_output.fail()) {
-                Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
-                exit(1);
-            } else {
-                pulse_output << guideVector;
-                pulse_output.close();
-            }
-            rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
-
-            /* Old code for named pipes.
-            if ( ( xVector != 0 ) || ( yVector != 0 ) ) {
-                int fd;
-                char myfifo[] = "/var/tmp/guide_vector";
-                char format[] = "%+10.8f,%+10.8f,%+10.8f";
-                char guideVector[BUFFER_SIZE] = {0};
-                sprintf(guideVector,format,xVector, yVector, rotationAngleDelta);
-                mkfifo(myfifo, 0666);
-                fd = open(myfifo, O_WRONLY);
-                //fd = open(myfifo, O_WRONLY | O_NONBLOCK);
-                write(fd, guideVector, sizeof(guideVector));
-                close(fd);
-            }
-            */
-            Debug.Write(wxString::Format("Moving (%.2f, %.2f) raw xVector=%.2f yVector=%.2f\n",
-                        cameraVectorEndpoint.X, cameraVectorEndpoint.Y, xVector, yVector));
+            PHD_Point moveVector(xVector, yVector);
+            HexMove(moveVector, rotationVector);
 
             if (moveType == MOVETYPE_ALGO)
             {

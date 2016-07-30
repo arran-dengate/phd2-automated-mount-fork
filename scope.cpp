@@ -572,10 +572,12 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
 
+    Debug.Write(wxString::Format("desh: Scope move(%d, %d, %d)\n", direction, duration, moveType));
+    PHD_Point movePoint(2,2);
+    pMount->HexMove(movePoint, 0);
+    
     try
     {
-        Debug.Write(wxString::Format("Move(%d, %d, %d)\n", direction, duration, moveType));
-
         if (!m_guidingEnabled)
         {
             throw THROW_INFO("Guiding disabled");
@@ -678,7 +680,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         moveResult->amountMoved = duration;
         moveResult->limited = limitReached;
     }
-
+    
     return result;
 }
 

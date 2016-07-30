@@ -227,6 +227,7 @@ public:
     void SetGuidingEnabled(bool guidingEnabled);
 
     virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType);
+    void HexMove(const PHD_Point& xyVector, double rotationVector);
     bool TransformCameraCoordinatesToMountCoordinates(const PHD_Point& cameraVectorEndpoint,
                                                       PHD_Point& mountVectorEndpoint);
 
