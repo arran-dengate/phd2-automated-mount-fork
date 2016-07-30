@@ -37,9 +37,9 @@
 #include <wx/cmdline.h>
 #include <wx/snglinst.h>
 
-#ifdef  __LINUX__
+#ifdef  __linux__
     #include <X11/Xlib.h>
-#endif // __LINUX__
+#endif // __linux__
 
 //#define DEVBUILD
 
@@ -91,9 +91,9 @@ PhdApp::PhdApp(void)
 {
     m_resetConfig = false;
     m_instanceNumber = 1;
-#ifdef  __LINUX__
+#ifdef  __linux__
     XInitThreads();
-#endif // __LINUX__
+#endif // __linux__
 };
 
 bool PhdApp::OnInit()
@@ -120,6 +120,12 @@ bool PhdApp::OnInit()
 #endif
 
     SetVendorName(_T("StarkLabs"));
+    // use SetAppName() to ensure the local data directory is found even if the name of the executable is changed
+#ifdef __APPLE__
+    SetAppName(_T("PHD2"));
+#else
+    SetAppName(_T("phd2"));
+#endif
     pConfig = new PhdConfig(_T("PHDGuidingV2"), m_instanceNumber);
 
     Debug.Init("debug", true);
@@ -134,7 +140,7 @@ bool PhdApp::OnInit()
 
 #if defined(__WINDOWS__)
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-    Debug.AddLine("CoInitializeEx returns %x", hr);
+    Debug.Write(wxString::Format("CoInitializeEx returns %x\n", hr));
 #endif
 
     DisableOSXAppNap();

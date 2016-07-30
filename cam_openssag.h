@@ -52,6 +52,7 @@ public:
     bool HasNonGuiCapture(void) { return true; }
     bool ST4HasNonGuiMove(void) { return true; }
     wxByte BitsPerPixel();
+    bool GetDevicePixelSize(double *devPixelSize);
 };
 
 #endif // CAM_OPENSSAG_H_INCLUDED

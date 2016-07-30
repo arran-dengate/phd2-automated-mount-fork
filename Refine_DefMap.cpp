@@ -35,7 +35,6 @@
 #include "phd.h"
 #include "Refine_DefMap.h"
 #include "darks_dialog.h"
-#include "wx/busyinfo.h"
 
 enum {
     ID_PREVIEW = 10001,
@@ -98,36 +97,36 @@ RefineDefMap::RefineDefMap(wxWindow *parent) :
 
     int col = 0;
     int row = 0;
-    pInfoGrid->SetCellValue(_("Time:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Time:"));
     createTimeLoc.Set(row, col++);
-    pInfoGrid->SetCellValue(_("Camera:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Camera:"));
     cameraLoc.Set(row, col++);
 
     StartRow(row, col);
-    pInfoGrid->SetCellValue(_("Master Dark Exposure Time:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Master Dark Exposure Time:"));
     expTimeLoc.Set(row, col++);
-    pInfoGrid->SetCellValue(_("Master Dark Exposure Count:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Master Dark Exposure Count:"));
     expCntLoc.Set(row, col++);
     // Not convenient to use AutoSize() method because some columns are populated later
-    pInfoGrid->SetColumnWidth(0, StringWidth(this, _("Master Dark Exposure Time:")) + 5);
-    pInfoGrid->SetColumnWidth(2, StringWidth(this, _("Master Dark Exposure Count:")) + 5);
+    pInfoGrid->SetColSize(0, StringWidth(this, _("Master Dark Exposure Time:")) + 5);
+    pInfoGrid->SetColSize(2, StringWidth(this, _("Master Dark Exposure Count:")) + 5);
 
     StartRow(row, col);
-    pInfoGrid->SetCellValue(_("Aggressiveness, hot pixels:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Aggressiveness, hot pixels:"));
     hotFactorLoc.Set(row, col++);
-    pInfoGrid->SetCellValue(_("Aggressiveness, cold pixels:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Aggressiveness, cold pixels:"));
     coldFactorLoc.Set(row, col++);
 
     StartRow(row, col);
-    pInfoGrid->SetCellValue(_("Mean:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Mean:"));
     meanLoc.Set(row, col++);
-    pInfoGrid->SetCellValue(_("Standard Deviation:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Standard Deviation:"));
     stdevLoc.Set(row, col++);
 
     StartRow(row, col);
-    pInfoGrid->SetCellValue(_("Median:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Median:"));
     medianLoc.Set(row, col++);
-    pInfoGrid->SetCellValue(_("Median Absolute Deviation:"), row, col++);
+    pInfoGrid->SetCellValue(row, col++, _("Median Absolute Deviation:"));
     madLoc.Set(row, col++);
 
     pInfoGroup->Add(pInfoGrid);
@@ -144,13 +143,13 @@ RefineDefMap::RefineDefMap(wxWindow *parent) :
 
     row = 0;
     col = 0;
-    pStatsGrid->SetCellValue(_("Hot pixel count:"), row, col++);
+    pStatsGrid->SetCellValue(row, col++, _("Hot pixel count:"));
     hotPixelLoc.Set(row, col++);
-    pStatsGrid->SetCellValue(_("Cold pixel count:"), row, col++);
+    pStatsGrid->SetCellValue(row, col++, _("Cold pixel count:"));
     coldPixelLoc.Set(row, col++);
 
     StartRow(row, col);
-    pStatsGrid->SetCellValue(_("Manually added pixels"), row, col++);
+    pStatsGrid->SetCellValue(row, col++, _("Manually added pixels"));
     manualPixelLoc.Set(row, col++);
     pStatsGroup->Add(pStatsGrid);
     pVSizer->Add(pStatsGroup, wxSizerFlags(0).Border(wxALL, 10));
@@ -260,7 +259,8 @@ bool RefineDefMap::InitUI()
 void RefineDefMap::LoadFromProfile()
 {
     // Let the user know this might take some time...
-    wxBusyInfo busyMsg(_("Please wait while image statistics are being computed..."), this);
+    ShowStatus(_("Please wait while image statistics are being computed..."), false);
+    
 
     m_darks.LoadDarks();
     m_builder.Init(m_darks);
@@ -294,8 +294,9 @@ void RefineDefMap::LoadFromProfile()
     pInfoGrid->SetCellValue(madLoc, wxString::Format("%d", stats.mad));
 
     GetBadPxCounts();
-
+    ShowStatus(_("Statistics completed..."), false);
     LoadPreview();
+
 }
 
 bool RefineDefMap::RebuildMasterDarks()
@@ -326,6 +327,7 @@ void RefineDefMap::ShowStatus(const wxString& msg, bool appending)
         pStatusBar->SetStatusText(msg);
         preamble = msg;
     }
+    pStatusBar->Update();
 }
 
 // Build a new defect map based on current aggressiveness params; load it and update the UI
@@ -361,6 +363,7 @@ void RefineDefMap::OnGenerate(wxCommandEvent& evt)
         if (RebuildMasterDarks())
         {
             pRebuildDarks->SetValue(false);
+            LoadFromProfile();
         }
         else
         {

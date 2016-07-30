@@ -68,7 +68,7 @@
 #include <stdarg.h>
 
 #define APPNAME _T("PHD2 Guiding")
-#define PHDVERSION _T("2.6.1")
+#define PHDVERSION _T("2.6.2")
 #define PHDSUBVER _T("")
 #define FULLVER PHDVERSION PHDSUBVER
 
@@ -101,6 +101,8 @@ WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 #define PATHSEPSTR _T("/")
 #endif
 
+#define DEGREES_SYMBOL "\u00B0"
+
 //#define TEST_TRANSFORMS
 
 #define ROUND(x) (int) floor((x) + 0.5)
@@ -108,6 +110,7 @@ WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 
 /* eliminate warnings for unused variables */
 #define POSSIBLY_UNUSED(x) (void)(x)
+//#define POSSIBLY_UNUSED(x) printf(x)
 
 // these macros are used for building messages for thrown exceptions
 // It is surprisingly hard to get the line number into a string...
@@ -133,7 +136,7 @@ WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 #define PHD_MESSAGES_CATALOG "messages"
 #endif
 
-#if defined (__LINUX__)
+#if defined (__linux__)
 // On Linux the messages catalogs for all the applications are in the same directory
 // in /usr/share/locale, so the catalog name must be the application name.
 #define PHD_MESSAGES_CATALOG "phd2"

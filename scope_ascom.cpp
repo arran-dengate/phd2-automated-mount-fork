@@ -107,9 +107,6 @@ wxArrayString ScopeASCOM::EnumAscomScopes()
         if (!ilist.GetProp(&vcnt, L"Count"))
             throw ERROR_INFO("ASCOM Scope: could not query registered telescopes: " + ExcepMsg(ilist.Excep()));
 
-        // if we made it this far ASCOM is installed and apprears sane, so add the chooser
-        list.Add(_T("ASCOM Telescope Chooser"));
-
         unsigned int const count = vcnt.intVal;
         DispatchClass kvpair_class;
 
@@ -139,64 +136,6 @@ wxArrayString ScopeASCOM::EnumAscomScopes()
     return list;
 }
 
-static bool ChooseASCOMScope(BSTR *res)
-{
-    DispatchObj chooser;
-    if (!chooser.Create(L"DriverHelper.Chooser"))
-    {
-        Debug.AddLine("Chooser instantiate failed: " + ExcepMsg(chooser.Excep()));
-        wxMessageBox(_("Failed to find the ASCOM Chooser. Make sure it is installed"), _("Error"), wxOK | wxICON_ERROR);
-        return false;
-    }
-
-    if (!chooser.PutProp(L"DeviceType", L"Telescope"))
-    {
-        Debug.AddLine("Chooser put prop failed: " + ExcepMsg(chooser.Excep()));
-        wxMessageBox(_("Failed to set the Chooser's type to Telescope. Something is wrong with ASCOM"), _("Error"), wxOK | wxICON_ERROR);
-        return false;
-    }
-
-    // Look in Registry to see if there is a default
-    wxString wx_ProgID = pConfig->Global.GetString("/scope/ascom/ScopeID", _T(""));
-    BSTR bstr_ProgID = wxBasicString(wx_ProgID).Get();
-
-    Variant vchoice;
-    if (!chooser.InvokeMethod(&vchoice, L"Choose", bstr_ProgID))
-    {
-        wxMessageBox(_("Failed to run the Telescope Chooser. Something is wrong with ASCOM"), _("Error"), wxOK | wxICON_ERROR);
-        return false;
-    }
-
-    if (SysStringLen(vchoice.bstrVal) == 0)
-        return false; // use hit cancel
-
-    // Save name of scope
-    pConfig->Global.SetString("/scope/ascom/ScopeID", vchoice.bstrVal);
-
-    *res = vchoice.bstrVal;
-    return true;
-}
-
-static bool IsChooser(const wxString& choice)
-{
-    return choice.Find(_T("Chooser")) != wxNOT_FOUND;
-}
-
-static bool GetDriverProgId(BSTR *progid, const wxString& choice)
-{
-    if (IsChooser(choice))
-    {
-        if (!ChooseASCOMScope(progid))
-            return false;
-    }
-    else
-    {
-        wxString progidstr = s_progid[choice];
-        *progid = wxBasicString(progidstr).Get();
-    }
-    return true;
-}
-
 bool ScopeASCOM::Create(DispatchObj& obj)
 {
     try
@@ -209,18 +148,14 @@ bool ScopeASCOM::Create(DispatchObj& obj)
             return true;
         }
 
-        BSTR bstr_progid;
-        if (!GetDriverProgId(&bstr_progid, m_choice))
+        wxBasicString progid(s_progid[m_choice]);
+
+        if (!obj.Create(progid))
         {
-            throw ERROR_INFO("ASCOM Scope: Chooser returned an error");
+            throw ERROR_INFO("Could not establish instance of " + wxString(progid));
         }
 
-        if (!obj.Create(bstr_progid))
-        {
-            throw ERROR_INFO("Could not establish instance of " + wxString(bstr_progid));
-        }
-
-        Debug.AddLine(wxString::Format("pScopeDriver = 0x%p", obj.IDisp()));
+        Debug.Write(wxString::Format("pScopeDriver = 0x%p\n", obj.IDisp()));
 
         // store the driver interface in the global table for access by other threads
         m_gitEntry.Register(obj);
@@ -236,7 +171,7 @@ bool ScopeASCOM::Create(DispatchObj& obj)
 
 bool ScopeASCOM::HasSetupDialog(void) const
 {
-    return !IsChooser(m_choice);
+    return true;
 }
 
 void ScopeASCOM::SetupDialog(void)
@@ -259,7 +194,7 @@ bool ScopeASCOM::Connect(void)
 
     try
     {
-        Debug.AddLine("Connecting");
+        Debug.Write("Connecting\n");
 
         if (IsConnected())
         {
@@ -289,7 +224,7 @@ bool ScopeASCOM::Connect(void)
         if (!pScopeDriver.GetDispatchId(&dispid_ispulseguiding, L"IsPulseGuiding"))
         {
             m_canCheckPulseGuiding = false;
-            Debug.AddLine("cannot get dispid_ispulseguiding");
+            Debug.Write("cannot get dispid_ispulseguiding\n");
             // don't fail if we can't get the status on this - can live without it as it's really a safety net for us
         }
 
@@ -312,33 +247,33 @@ bool ScopeASCOM::Connect(void)
         if (!pScopeDriver.GetDispatchId(&dispid_declination, L"Declination"))
         {
             m_canGetCoordinates = false;
-            Debug.AddLine("cannot get dispid_declination");
+            Debug.Write("cannot get dispid_declination\n");
         }
         else if (!pScopeDriver.GetDispatchId(&dispid_rightascension, L"RightAscension"))
         {
-            Debug.AddLine("cannot get dispid_rightascension");
+            Debug.Write("cannot get dispid_rightascension\n");
             m_canGetCoordinates = false;
         }
         else if (!pScopeDriver.GetDispatchId(&dispid_siderealtime, L"SiderealTime"))
         {
-            Debug.AddLine("cannot get dispid_siderealtime");
+            Debug.Write("cannot get dispid_siderealtime\n");
             m_canGetCoordinates = false;
         }
 
         if (!pScopeDriver.GetDispatchId(&dispid_sitelatitude, L"SiteLatitude"))
         {
-            Debug.AddLine("cannot get dispid_sitelatitude");
+            Debug.Write("cannot get dispid_sitelatitude\n");
         }
         if (!pScopeDriver.GetDispatchId(&dispid_sitelongitude, L"SiteLongitude"))
         {
-            Debug.AddLine("cannot get dispid_sitelongitude");
+            Debug.Write("cannot get dispid_sitelongitude\n");
         }
 
         m_canSlew = true;
         if (!pScopeDriver.GetDispatchId(&dispid_slewtocoordinates, L"SlewToCoordinates"))
         {
             m_canSlew = false;
-            Debug.AddLine("cannot get dispid_slewtocoordinates");
+            Debug.Write("cannot get dispid_slewtocoordinates\n");
         }
 
         // ... get the dispatch IDs for the two guide rate properties - if we can't get them, no sweat, doesn't matter for actual guiding
@@ -346,26 +281,26 @@ bool ScopeASCOM::Connect(void)
         m_canGetGuideRates = true;         // Likely case, required for any ASCOM driver at V2 or later
         if (!pScopeDriver.GetDispatchId(&dispid_decguiderate, L"GuideRateDeclination"))
         {
-            Debug.AddLine("cannot get dispid_decguiderate");
+            Debug.Write("cannot get dispid_decguiderate\n");
             m_canGetGuideRates = false;
             // don't throw if we can't get this one
         }
         else if (!pScopeDriver.GetDispatchId(&dispid_raguiderate, L"GuideRateRightAscension"))
         {
-            Debug.AddLine("cannot get dispid_raguiderate");
+            Debug.Write("cannot get dispid_raguiderate\n");
             m_canGetGuideRates = false;
             // don't throw if we can't get this one
         }
 
         if (!pScopeDriver.GetDispatchId(&dispid_sideofpier, L"SideOfPier"))
         {
-            Debug.AddLine("cannot get dispid_sideofpier");
+            Debug.Write("cannot get dispid_sideofpier\n");
             dispid_sideofpier = DISPID_UNKNOWN;
         }
 
         if (!pScopeDriver.GetDispatchId(&dispid_abortslew, L"AbortSlew"))
         {
-            Debug.AddLine("cannot get dispid_abortslew");
+            Debug.Write("cannot get dispid_abortslew\n");
             dispid_abortslew = DISPID_UNKNOWN;
         }
 
@@ -405,7 +340,7 @@ bool ScopeASCOM::Connect(void)
 
         m_Name = vRes.bstrVal;
 
-        Debug.AddLine("Scope reports its name as " + m_Name);
+        Debug.Write(wxString::Format("Scope reports its name as %s\n", m_Name));
 
         m_abortSlewWhenGuidingStuck = false;
 
@@ -415,7 +350,7 @@ bool ScopeASCOM::Connect(void)
             // bug where a pulse guide command can fail to complete, with the Guiding property
             // returning true forever. The firmware developer suggests that PHD2 should issue an
             // AbortSlew when this condition is detected.
-            Debug.AddLine("ASCOM scope: enabling stuck guide pulse workaround");
+            Debug.Write("ASCOM scope: enabling stuck guide pulse workaround\n");
             m_abortSlewWhenGuidingStuck = true;
         }
 
@@ -423,7 +358,7 @@ bool ScopeASCOM::Connect(void)
         m_canPulseGuide = true;
         if (!pScopeDriver.GetProp(&vRes, L"CanPulseGuide") || vRes.boolVal != VARIANT_TRUE)
         {
-            Debug.AddLine("Connecting to ASCOM scope that does not support PulseGuide");
+            Debug.Write("Connecting to ASCOM scope that does not support PulseGuide\n");
             m_canPulseGuide = false;
         }
 
@@ -433,23 +368,24 @@ bool ScopeASCOM::Connect(void)
         {
             if (!pScopeDriver.GetProp(&vRes, L"CanSlew"))
             {
-                Debug.AddLine("ASCOM scope got error invoking CanSlew: " + ExcepMsg(pScopeDriver.Excep()));
+                Debug.Write(wxString::Format("ASCOM scope got error invoking CanSlew: %s\n", ExcepMsg(pScopeDriver.Excep())));
                 m_canSlew = false;
             }
             else if (vRes.boolVal != VARIANT_TRUE)
             {
-                Debug.AddLine("ASCOM scope reports CanSlew = false");
+                Debug.Write("ASCOM scope reports CanSlew = false\n");
                 m_canSlew = false;
             }
 
             m_canSlewAsync = pScopeDriver.GetProp(&vRes, L"CanSlewAsync") && vRes.boolVal == VARIANT_TRUE;
-            Debug.AddLine(wxString::Format("ASCOM scope CanSlewAsync is %s", m_canSlewAsync ? "true" : "false"));
+            Debug.Write(wxString::Format("ASCOM scope CanSlewAsync is %s\n", m_canSlewAsync ? "true" : "false"));
         }
 
-        pFrame->SetStatusText(Name()+_(" connected"));
+        Debug.Write(wxString::Format("%s connected\n", Name()));
+
         Scope::Connect();
 
-        Debug.AddLine("Connect success");
+        Debug.Write("Connect success\n");
     }
     catch (const wxString& Msg)
     {
@@ -466,7 +402,7 @@ bool ScopeASCOM::Disconnect(void)
 
     try
     {
-        Debug.AddLine("Disconnecting");
+        Debug.Write("Disconnecting\n");
 
         if (!IsConnected())
         {
@@ -483,14 +419,14 @@ bool ScopeASCOM::Disconnect(void)
             // Set the Connected property to false
             if (!scope.PutProp(dispid_connected, false))
             {
-                pFrame->Alert(_("ASCOM driver problem during disconnect"));
+                pFrame->Alert(_("ASCOM driver problem during disconnect, check the debug log for more information"));
                 throw ERROR_INFO("ASCOM Scope: Could not set Connected property to false: " + ExcepMsg(scope.Excep()));
             }
         }
 
         m_gitEntry.Unregister();
 
-        Debug.AddLine("Disconnected Successfully");
+        Debug.Write("Disconnected Successfully\n");
     }
     catch (const wxString& Msg)
     {
@@ -520,7 +456,8 @@ static wxString SlewWarningEnabledKey()
 
 static void SuppressSlewAlert(long)
 {
-    pConfig->Global.SetBoolean(SlewWarningEnabledKey(), false);
+    //If the user doesn't want to see these, we shouldn't be checking for the condition
+    TheScope()->EnableStopGuidingWhenSlewing(false);
 }
 
 static wxString PulseGuideFailedAlertEnabledKey()
@@ -540,7 +477,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
     try
     {
-        Debug.AddLine("Guiding  Dir = %d, Dur = %d", direction, duration);
+        Debug.Write(wxString::Format("Guiding  Dir = %d, Dur = %d\n", direction, duration));
 
         if (!IsConnected())
         {
@@ -550,7 +487,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
         if (!m_canPulseGuide)
         {
             // Could happen if move command is issued on the Aux mount or CanPulseGuide property got changed on the fly
-            pFrame->Alert(_("ASCOM driver does not support PulseGuide"));
+            pFrame->Alert(_("ASCOM driver does not support PulseGuide. Check your ASCOM driver settings."));
             throw ERROR_INFO("ASCOM scope: guide command issued but PulseGuide not supported");
         }
 
@@ -562,7 +499,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
         if (IsGuiding(&scope))
         {
-            Debug.AddLine("Entered PulseGuideScope while moving");
+            Debug.Write("Entered PulseGuideScope while moving\n");
             int i;
             for (i = 0; i < 20; i++)
             {
@@ -573,16 +510,16 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
                 if (!IsGuiding(&scope))
                     break;
 
-                Debug.AddLine("Still moving");
+                Debug.Write("Still moving\n");
             }
             if (i == 20)
             {
-                Debug.AddLine("Still moving after 1s - aborting");
+                Debug.Write("Still moving after 1s - aborting\n");
                 throw ERROR_INFO("ASCOM Scope: scope is still moving after 1 second");
             }
             else
             {
-                Debug.AddLine("Movement stopped - continuing");
+                Debug.Write("Movement stopped - continuing\n");
             }
         }
 
@@ -609,12 +546,12 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
         if (FAILED(hr = scope.IDisp()->Invoke(dispid_pulseguide, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD,
             &dispParms, &vRes, &excep, NULL)))
         {
-            Debug.AddLine(wxString::Format("pulseguide: [%x] %s", hr, _com_error(hr).ErrorMessage()));
+            Debug.Write(wxString::Format("pulseguide: [%x] %s\n", hr, _com_error(hr).ErrorMessage()));
 
             // Make sure nothing got by us and the mount can really handle pulse guide - HIGHLY unlikely
             if (scope.GetProp(&vRes, L"CanPulseGuide") && vRes.boolVal != VARIANT_TRUE)
             {
-                Debug.AddLine("Tried to guide mount that has no PulseGuide support");
+                Debug.Write("Tried to guide mount that has no PulseGuide support\n");
                 // This will trigger a nice alert the next time through Guide
                 m_canPulseGuide = false;
             }
@@ -626,7 +563,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
         {
             unsigned long rem = (unsigned long)((long)duration - elapsed);
 
-            Debug.AddLine("PulseGuide returned control before completion, sleep %lu", rem + 10);
+            Debug.Write(wxString::Format("PulseGuide returned control before completion, sleep %lu\n", rem + 10));
 
             if (WorkerThread::MilliSleep(rem + 10))
                 throw ERROR_INFO("ASCOM Scope: thread terminate requested");
@@ -634,7 +571,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
         if (IsGuiding(&scope))
         {
-            Debug.AddLine("scope still moving after pulse duration time elapsed");
+            Debug.Write("scope still moving after pulse duration time elapsed\n");
 
             // try waiting a little longer. If scope does not stop moving after 1 second, try doing AbortSlew
             // if it still does not stop after 2 seconds, bail out with an error
@@ -656,7 +593,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
                 if (!IsGuiding(&scope))
                 {
-                    Debug.AddLine("scope move finished after %ld + %ld ms", (long)duration, swatch.Time() - (long)duration);
+                    Debug.Write(wxString::Format("scope move finished after %ld + %ld ms\n", (long)duration, swatch.Time() - (long)duration));
                     break;
                 }
 
@@ -664,7 +601,7 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
                 if (!didAbortSlew && now > duration + GRACE_PERIOD_MS && m_abortSlewWhenGuidingStuck)
                 {
-                    Debug.AddLine("scope still moving after %ld + %ld ms, try aborting slew", (long)duration, now - (long)duration);
+                    Debug.Write(wxString::Format("scope still moving after %ld + %ld ms, try aborting slew\n", (long)duration, now - (long)duration));
                     AbortSlew(&scope);
                     didAbortSlew = true;
                     continue;
@@ -693,22 +630,16 @@ Mount::MOVE_RESULT ScopeASCOM::Guide(GUIDE_DIRECTION direction, int duration)
 
             if (!WorkerThread::InterruptRequested())
             {
-                if (pConfig->Global.GetBoolean(PulseGuideFailedAlertEnabledKey(), true))
-                {
-                    pFrame->Alert(_("PulseGuide command to mount has failed - guiding is likely to be ineffective."),
-                        _("Don't show\nthis again"), SuppressPulseGuideFailedAlert, 0);
-                }
+                pFrame->SuppressableAlert(PulseGuideFailedAlertEnabledKey(), _("PulseGuide command to mount has failed - guiding is likely to be ineffective."),
+                    SuppressPulseGuideFailedAlert, 0);
             }
         }
     }
 
     if (result == MOVE_STOP_GUIDING)
     {
-        if (pConfig->Global.GetBoolean(SlewWarningEnabledKey(), true))
-        {
-            pFrame->Alert(_("Guiding stopped: the scope started slewing."), 
-                _("Don't show\nthis again"), SuppressSlewAlert, 0);
-        }
+        pFrame->SuppressableAlert(SlewWarningEnabledKey(), _("Guiding stopped: the scope started slewing."),
+            SuppressSlewAlert, 0);
     }
 
     return result;
@@ -731,7 +662,7 @@ bool ScopeASCOM::IsGuiding(DispatchObj *scope)
         Variant vRes;
         if (!scope->GetProp(&vRes, dispid_ispulseguiding))
         {
-            pFrame->Alert(_("ASCOM driver failed checking IsPulseGuiding"));
+            pFrame->Alert(_("ASCOM driver failed checking IsPulseGuiding. See the debug log for more information."));
             throw ERROR_INFO("ASCOM Scope: IsGuiding - IsPulseGuiding failed: " + ExcepMsg(scope->Excep()));
         }
 
@@ -743,7 +674,7 @@ bool ScopeASCOM::IsGuiding(DispatchObj *scope)
         bReturn = false;
     }
 
-    Debug.AddLine("IsGuiding returns %d", bReturn);
+    Debug.Write(wxString::Format("IsGuiding returns %d\n", bReturn));
 
     return bReturn;
 }
@@ -753,25 +684,25 @@ bool ScopeASCOM::IsSlewing(DispatchObj *scope)
     Variant vRes;
     if (!scope->GetProp(&vRes, dispid_isslewing))
     {
-        Debug.AddLine("ScopeASCOM::IsSlewing failed: " + ExcepMsg(scope->Excep()));
-        pFrame->Alert(_("ASCOM driver failed checking Slewing"));
+        Debug.Write(wxString::Format("ScopeASCOM::IsSlewing failed: %s\n", ExcepMsg(scope->Excep())));
+        pFrame->Alert(_("ASCOM driver failed checking for slewing, see the debug log for more information."));
         return false;
     }
 
     bool result = vRes.boolVal == VARIANT_TRUE;
 
-    Debug.AddLine("IsSlewing returns %d", result);
+    Debug.Write(wxString::Format("IsSlewing returns %d\n", result));
 
     return result;
 }
 
 void ScopeASCOM::AbortSlew(DispatchObj *scope)
 {
-    Debug.AddLine("ScopeASCOM: AbortSlew");
+    Debug.Write("ScopeASCOM: AbortSlew\n");
     Variant vRes;
     if (!scope->InvokeMethod(&vRes, dispid_abortslew))
     {
-        pFrame->Alert(_("ASCOM driver failed calling AbortSlew"));
+        pFrame->Alert(_("ASCOM driver failed calling AbortSlew, see the debug log for more information."));
     }
 }
 
@@ -808,11 +739,10 @@ bool ScopeASCOM::HasNonGuiMove(void)
     return true;
 }
 
-// Special purpose function to return the guiding declination (radians) - either the actual scope position or the
-// default values defined in mount.cpp.  Doesn't throw exceptions to callers.
-double ScopeASCOM::GetGuidingDeclination(void)
+// return the declination in radians, or UNKNOWN_DECLINATION
+double ScopeASCOM::GetDeclination(void)
 {
-    double dReturn = Scope::GetDefGuidingDeclination();
+    double dReturn = UNKNOWN_DECLINATION;
 
     try
     {
@@ -842,7 +772,7 @@ double ScopeASCOM::GetGuidingDeclination(void)
         m_canGetCoordinates = false;
     }
 
-    Debug.AddLine("ScopeASCOM::GetDeclination() returns %.1f", degrees(dReturn));
+    Debug.Write(wxString::Format("ScopeASCOM::GetDeclination() returns %s\n", DeclinationStr(dReturn)));
 
     return dReturn;
 }
@@ -889,8 +819,8 @@ bool ScopeASCOM::GetGuideRates(double *pRAGuideRate, double *pDecGuideRate)
         POSSIBLY_UNUSED(Msg);
     }
 
-    Debug.AddLine("ScopeASCOM::GetGuideRates() returns %u %.4f %.4f", bError,
-        bError ? 0.0 : *pDecGuideRate, bError ? 0.0 : *pRAGuideRate);
+    Debug.Write(wxString::Format("ScopeASCOM::GetGuideRates returns %u %.3f %.3f a-s/sec\n", bError,
+        bError ? 0.0 : *pDecGuideRate * 3600., bError ? 0.0 : *pRAGuideRate * 3600.));
 
     return bError;
 }
@@ -1145,7 +1075,7 @@ PierSide ScopeASCOM::SideOfPier(void)
         POSSIBLY_UNUSED(Msg);
     }
 
-    Debug.AddLine("ScopeASCOM::SideOfPier() returns %d", pierSide);
+    Debug.Write(wxString::Format("ScopeASCOM::SideOfPier() returns %d\n", pierSide));
 
     return pierSide;
 }

@@ -261,6 +261,8 @@ elseif(UNIX AND (NOT APPLE))
       
       ${phd_src_dir}/cam_qhy5.h
       ${phd_src_dir}/cam_qhy5.cpp
+      ${phd_src_dir}/cameras/SXMacLib.h
+      ${phd_src_dir}/cameras/SXMacLib.c
      )
 elseif(APPLE)
   set(cam_SRC
@@ -289,6 +291,8 @@ set(scopes_SRC
   ${phd_src_dir}/scope_gpint.h
   ${phd_src_dir}/scope_gpusb.cpp
   ${phd_src_dir}/scope_gpusb.h
+  ${phd_src_dir}/scope_manual_pointing.cpp
+  ${phd_src_dir}/scope_manual_pointing.h
   ${phd_src_dir}/scope_onboard_st4.cpp
   ${phd_src_dir}/scope_onboard_st4.h
   ${phd_src_dir}/scope_oncamera.cpp
@@ -303,6 +307,8 @@ set(scopes_SRC
   ${phd_src_dir}/stepguider_simulator.h
   ${phd_src_dir}/stepguider_sxao.cpp
   ${phd_src_dir}/stepguider_sxao.h
+  ${phd_src_dir}/stepguider_sxao_INDI.cpp
+  ${phd_src_dir}/stepguider_sxao_INDI.h
   ${phd_src_dir}/stepguider.cpp
   ${phd_src_dir}/stepguider.h
   ${phd_src_dir}/stepguiders.h
@@ -354,6 +360,8 @@ set(phd2_SRC
   ${phd_src_dir}/about_dialog.h
   ${phd_src_dir}/advanced_dialog.cpp
   ${phd_src_dir}/advanced_dialog.h
+  ${phd_src_dir}/aui_controls.cpp
+  ${phd_src_dir}/aui_controls.h
 
   ${phd_src_dir}/calreview_dialog.cpp
   ${phd_src_dir}/calreview_dialog.h
@@ -455,6 +463,8 @@ set(phd2_SRC
   ${phd_src_dir}/serialport_mac.h
   ${phd_src_dir}/serialport_win32.cpp
   ${phd_src_dir}/serialport_win32.h
+  ${phd_src_dir}/serialport_posix.cpp
+  ${phd_src_dir}/serialport_posix.h
   ${phd_src_dir}/serialports.h
   ${phd_src_dir}/socket_server.cpp
   ${phd_src_dir}/socket_server.h

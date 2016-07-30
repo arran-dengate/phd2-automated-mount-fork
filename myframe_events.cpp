@@ -38,6 +38,7 @@
 #include "darks_dialog.h"
 #include "Refine_DefMap.h"
 #include "camcal_import_dialog.h"
+#include "aui_controls.h"
 
 #include <wx/spinctrl.h>
 #include <wx/textfile.h>
@@ -56,7 +57,7 @@ void MyFrame::OnExposureDurationSelected(wxCommandEvent& WXUNUSED(evt))
     int duration = ExposureDurationFromSelection(sel);
     if (duration > 0)
     {
-        Debug.AddLine("OnExposureDurationSelected: duration = %d", duration);
+        Debug.Write(wxString::Format("OnExposureDurationSelected: duration = %d\n", duration));
 
         m_exposureDuration = duration;
         m_autoExp.enabled = false;
@@ -96,12 +97,12 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnInstructions(wxCommandEvent& WXUNUSED(event))
 {
     wxMessageBox(wxString::Format(_("Welcome to PHD2 (Push Here Dummy, Gen2) Guiding\n\n \
-Operation is quite simple (hence the 'PHD')\n\n \
-  1) Press the 'Camera' button, select your camera and mount, click on 'Connect All'\n \
+Basic operation is quite simple (hence the 'PHD')\n\n \
+  1) Press the green 'USB' button, select your camera and mount, click on 'Connect All'\n \
   2) Pick an exposure duration from the drop-down list\n \
   3) Hit the 'Loop' button, adjust your focus if necessary\n \
   4) Click on a star away from the edge or use Alt-S to auto-select a star\n \
-  5) Press the PHD (archery target) icon\n\n \
+  5) Press the guide (green target) icon\n\n \
 PHD2 will then calibrate itself and begin guiding.  That's it!\n\n \
 To stop guiding, simply press the 'Loop' or 'Stop' buttons. If you need to \n \
 tweak any options, click on the 'Brain' button to bring up the 'Advanced' \n \
@@ -255,16 +256,12 @@ void MyFrame::OnSave(wxCommandEvent& WXUNUSED(event))
     }
     else
     {
-        pFrame->SetStatusText(wxString::Format(_("%s saved"), wxFileName(fname).GetFullName()));
+        pFrame->StatusMsg(wxString::Format(_("%s saved"), wxFileName(fname).GetFullName()));
     }
 }
 
 void MyFrame::OnIdle(wxIdleEvent& WXUNUSED(event))
 {
-/*  if (ASCOM_IsMoving())
-        SetStatusText(_T("Moving"),2);
-    else
-        SetStatusText(_T("Still"),2);*/
 }
 
 void MyFrame::OnLoopExposure(wxCommandEvent& WXUNUSED(event))
@@ -284,7 +281,7 @@ void MyFrame::OnLoopExposure(wxCommandEvent& WXUNUSED(event))
 
         StartLooping();
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
     }
@@ -292,13 +289,14 @@ void MyFrame::OnLoopExposure(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::FinishStop(void)
 {
+    assert(!CaptureActive);
+    EvtServer.NotifyLoopingStopped();
     // when looping resumes, start with at least one full frame. This enables applications
     // controlling PHD to auto-select a new star if the star is lost while looping was stopped.
-    assert(!CaptureActive);
     pGuider->ForceFullFrame();
     ResetAutoExposure();
     UpdateButtonsStatus();
-    SetStatusText(_("Stopped."));
+    StatusMsg(_("Stopped."));
     PhdController::AbortController("Stopped capturing");
 }
 
@@ -316,11 +314,8 @@ static void WarnRawImageMode(void)
 {
     if (pCamera->FullSize != pCamera->DarkFrameSize())
     {
-        if (pConfig->Global.GetBoolean(RawModeWarningKey(), true))
-        {
-            pFrame->Alert(_("For refining the Bad-pixel Map PHD2 is now displaying raw camera data frames, which are a different size from ordinary guide frames for this camera."),
-                _("Don't show\nthis again"), SuppressRawModeWarning, 0);
-        }
+        pFrame->SuppressableAlert(RawModeWarningKey(), _("For refining the Bad-pixel Map PHD2 is now displaying raw camera data frames, which are a different size from ordinary guide frames for this camera."),
+            SuppressRawModeWarning, 0);
     }
 }
 
@@ -340,7 +335,7 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
 {
     try
     {
-        Debug.Write("Processing an image\n");
+        Debug.Write("OnExposeComplete: enter\n");
 
         m_exposurePending = false;
 
@@ -353,25 +348,27 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
 
         if (err)
         {
-            Debug.Write("OnExposeComplete(): Capture Error reported\n");
+            Debug.Write("OnExposeComplete: Capture Error reported\n");
 
             delete pNewFrame;
 
+            bool stopping = !m_continueCapturing;
             StopCapturing();
             if (pGuider->IsCalibratingOrGuiding())
             {
                 pGuider->StopGuiding();
                 pGuider->UpdateImageDisplay();
             }
+            EvtServer.NotifyLoopingStopped();
             pGuider->Reset(false);
             CaptureActive = m_continueCapturing;
             UpdateButtonsStatus();
-            PhdController::AbortController("Error reported capturing image");
-            SetStatusText(_("Stopped."));
+            PhdController::AbortController(stopping ? "Image capture stopped" : "Error reported capturing image");
+            StatusMsg(_("Stopped."));
 
             // some camera drivers disconnect the camera on error
             if (!pCamera->Connected)
-                SetStatusText(wxEmptyString, 2);
+                m_statusbar->UpdateStates();
 
             throw ERROR_INFO("Error reported capturing image");
         }
@@ -394,7 +391,7 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
 
         PhdController::UpdateControllerState();
 
-        Debug.Write(wxString::Format("OnExposeCompete: CaptureActive=%d m_continueCapturing=%d\n",
+        Debug.Write(wxString::Format("OnExposeComplete: CaptureActive=%d m_continueCapturing=%d\n",
             CaptureActive, m_continueCapturing));
 
         CaptureActive = m_continueCapturing;
@@ -408,7 +405,7 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
             FinishStop();
         }
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         UpdateButtonsStatus();
@@ -426,16 +423,27 @@ void MyFrame::OnMoveComplete(wxThreadEvent& event)
 {
     try
     {
-        Mount *pThisMount = event.GetPayload<Mount *>();
-        assert(pThisMount->IsBusy());
-        pThisMount->DecrementRequestCount();
+        Mount *mount = event.GetPayload<Mount *>();
+        assert(mount->IsBusy());
+        mount->DecrementRequestCount();
 
         Mount::MOVE_RESULT moveResult = static_cast<Mount::MOVE_RESULT>(event.GetInt());
 
-        pMount->LogGuideStepInfo();
+        mount->LogGuideStepInfo();
+
+        // deliver the outstanding GuidingStopped notification if this is a late-arriving
+        // move completion event
+        if (!pGuider->IsCalibratingOrGuiding() &&
+            (!pMount || !pMount->IsBusy()) &&
+            (!pSecondaryMount || !pSecondaryMount->IsBusy()))
+        {
+            pFrame->NotifyGuidingStopped();
+        }
 
         if (moveResult != Mount::MOVE_OK)
         {
+            mount->IncrementErrorCount();
+
             if (moveResult == Mount::MOVE_STOP_GUIDING)
             {
                 Debug.Write("mount move error indicates guiding should stop\n");
@@ -445,7 +453,7 @@ void MyFrame::OnMoveComplete(wxThreadEvent& event)
             throw ERROR_INFO("Error reported moving");
         }
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
     }
@@ -511,7 +519,7 @@ bool MyFrame::LoadDarkHandler(bool checkIt)
         }
         pCamera->ClearDarks();
         m_useDarksMenuItem->Check(false);
-        SetStatusText(_("Dark library unloaded"));
+        StatusMsg(_("Dark library unloaded"));
         return true;
     }
 }
@@ -519,6 +527,7 @@ bool MyFrame::LoadDarkHandler(bool checkIt)
 void MyFrame::OnLoadDark(wxCommandEvent& evt)
 {
     LoadDarkHandler(evt.IsChecked());
+    pFrame->UpdateStateLabels();
 }
 
 // Outside event handler because loading a defect map will automatically unload a dark library
@@ -541,11 +550,11 @@ void MyFrame::LoadDefectMapHandler(bool checkIt)
             pCamera->SetDefectMap(defectMap);
             m_useDarksMenuItem->Check(false);
             m_useDefectMapMenuItem->Check(true);
-            SetStatusText(_("Defect map loaded"));
+            StatusMsg(_("Defect map loaded"));
         }
         else
         {
-            SetStatusText(_("Defect map not loaded"));
+            StatusMsg(_("Defect map not loaded"));
         }
     }
     else
@@ -557,13 +566,14 @@ void MyFrame::LoadDefectMapHandler(bool checkIt)
         }
         pCamera->ClearDefectMap();
         m_useDefectMapMenuItem->Check(false);
-        SetStatusText(_("Bad-pixel map unloaded"));
+        StatusMsg(_("Bad-pixel map unloaded"));
     }
 }
 
 void MyFrame::OnLoadDefectMap(wxCommandEvent& evt)
 {
     LoadDefectMapHandler(evt.IsChecked());
+    pFrame->UpdateStateLabels();
 }
 
 void MyFrame::OnRefineDefMap(wxCommandEvent& evt)
@@ -577,7 +587,7 @@ void MyFrame::OnRefineDefMap(wxCommandEvent& evt)
     if (!pRefineDefMap)
         pRefineDefMap = new RefineDefMap(this);
 
-    if (pRefineDefMap->InitUI())                    // UI ready go, user wants to proceed
+    if (pRefineDefMap->InitUI())                    // Required data present, UI built and ready to go
     {
         pRefineDefMap->Show();
 
@@ -592,6 +602,12 @@ void MyFrame::OnRefineDefMap(wxCommandEvent& evt)
 
 void MyFrame::OnImportCamCal(wxCommandEvent& evt)
 {
+    if (!pCamera)
+    {
+        wxMessageBox(_("Please connect a camera first."));
+        return;
+    }
+
     CamCalImportDialog dlg(this);
 
     dlg.ShowModal();
@@ -698,6 +714,8 @@ void MyFrame::OnRestoreWindows(wxCommandEvent& evt)
     for (int i = 0; i < lim; i++)
     {
         panes.Item(i).Dock();                       // Already docked, shown or not, doesn't matter
+        if (panes.Item(i).name == _("Guider"))
+            panes.Item(i).Show(true);
     }
     m_mgr.Update();
 
@@ -713,12 +731,10 @@ void MyFrame::OnRestoreWindows(wxCommandEvent& evt)
 
 void MyFrame::OnLog(wxCommandEvent& evt)
 {
-
     if (evt.GetId() == MENU_LOGIMAGES)
     {
         pFrame->EnableImageLogging(evt.IsChecked());
     }
-
 }
 
 bool MyFrame::FlipRACal()
@@ -788,17 +804,14 @@ static void ValidateDarksLoaded(void)
 {
     if (!pCamera->CurrentDarkFrame && !pCamera->CurrentDefectMap)
     {
-        if (pConfig->Global.GetBoolean(DarksWarningEnabledKey(), true))
-        {
-            pFrame->Alert(_("For best results, use a Dark Library or a Bad-pixel Map "
-                "while guiding. This will help prevent PHD from locking on to a hot pixel. "
-                "Use the Darks menu to build a Dark Library or Bad-pixel Map."),
-                _("Don't show\nthis again"), SuppressDarksAlert, 0);
-        }
+        pFrame->SuppressableAlert(DarksWarningEnabledKey(),
+            _("For best results, use a Dark Library or a Bad-pixel Map "
+            "while guiding. This will help prevent PHD from locking on to a hot pixel. "
+            "Use the Darks menu to build a Dark Library or Bad-pixel Map."), SuppressDarksAlert, 0);
     }
 }
 
-void MyFrame::OnGuide(wxCommandEvent& WXUNUSED(event))
+void MyFrame::GuideButtonClick(bool interactive)
 {
     try
     {
@@ -842,22 +855,45 @@ void MyFrame::OnGuide(wxCommandEvent& WXUNUSED(event))
             }
         }
 
+        if (interactive && pPointingSource && pPointingSource->IsConnected() && pPointingSource->CanReportPosition())
+        {
+            bool proceed = true;
+            bool error = pPointingSource->PreparePositionInteractive();
+
+            if (!error && fabs(pPointingSource->GetDeclination()) > Scope::DEC_COMP_LIMIT && !TheScope()->IsCalibrated() )
+            {
+                proceed = ConfirmDialog::Confirm(
+                    _("Calibration this far from the celestial equator will be error-prone.  For best results, calibrate at a declination of -20 to +20."),
+                    "/highdec_calibration_ok", _("Confirm Calibration at Large Declination")
+                    );
+            }
+            if (error || !proceed)
+                return;
+        }
+
         StartGuiding();
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         pGuider->Reset(false);
     }
-    return;
+}
+
+void MyFrame::OnGuide(wxCommandEvent& WXUNUSED(event))
+{
+    GuideButtonClick(true);
 }
 
 void MyFrame::OnTestGuide(wxCommandEvent& WXUNUSED(evt))
 {
     if (!pMount || !pMount->IsConnected())
     {
-        wxMessageBox(_("Please connect a mount first."), _("Manual Guide"));
-        return;
+        if (!pSecondaryMount || !pSecondaryMount->IsConnected())
+        {
+            wxMessageBox(_("Please connect a mount first."), _("Manual Guide"));
+            return;
+        }
     }
 
     if (!pManualGuide)
@@ -924,7 +960,7 @@ void MyFrame::OnSelectGear(wxCommandEvent& evt)
 
         pGearDialog->ShowGearDialog(wxGetKeyState(WXK_SHIFT));
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
     }

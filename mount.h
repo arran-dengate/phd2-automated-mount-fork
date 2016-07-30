@@ -61,7 +61,15 @@ enum PierSide
     PIER_SIDE_WEST = 1,
 };
 
-#define INVALID_DECLINATION  999.0
+enum GuideParity
+{
+    GUIDE_PARITY_EVEN = 1,      // Guide(NORTH) moves scope north
+    GUIDE_PARITY_ODD = -1,      // Guide(NORTH) moves scope south
+    GUIDE_PARITY_UNKNOWN = 0,   // we don't know or care
+    GUIDE_PARITY_UNCHANGED = -5, // special case for SetCalibration, leave value unchanged
+};
+
+#define UNKNOWN_DECLINATION 997.0
 
 struct Calibration
 {
@@ -69,11 +77,16 @@ struct Calibration
     double yRate;
     double xAngle;
     double yAngle;
-    double declination;
-    PierSide pierSide;
+    double declination; // radians, or UNKNOWN_DECLINATION
     double rotatorAngle;
     unsigned short binning;
+    PierSide pierSide;
+    GuideParity raGuideParity;
+    GuideParity decGuideParity;
+    bool isValid;
     wxString timestamp;
+
+    Calibration() : isValid(false) { }
 };
 
 enum CalibrationIssueType
@@ -136,17 +149,15 @@ class Mount : public wxMessageBoxProxy
 {
     bool m_connected;
     int m_requestCount;
+    int m_errorCount;
 
     bool m_calibrated;
     Calibration m_cal;
     double m_xRate;         // rate adjusted for declination
     double m_yAngleError;
 
-    double m_currentDeclination;
-
 protected:
     bool m_guidingEnabled;
-    bool m_useDecCompensation;
 
     GuideAlgorithm *m_pXGuideAlgorithm;
     GuideAlgorithm *m_pYGuideAlgorithm;
@@ -171,6 +182,8 @@ public:
         wxStaticBoxSizer* m_pAlgoBox;
         wxStaticBoxSizer* m_pRABox;
         wxStaticBoxSizer* m_pDecBox;
+        wxButton* m_pResetRAParams;
+        wxButton* m_pResetDecParams;
 
     public:
         MountConfigDialogPane(wxWindow *pParent, const wxString& title, Mount *pMount);
@@ -184,6 +197,8 @@ public:
 
         void OnXAlgorithmSelected(wxCommandEvent& evt);
         void OnYAlgorithmSelected(wxCommandEvent& evt);
+        void OnResetRAParams(wxCommandEvent& evt);
+        void OnResetDecParams(wxCommandEvent& evt);
     };
 
     GUIDE_ALGORITHM GetXGuideAlgorithmSelection(void);
@@ -212,15 +227,14 @@ public:
     Mount(void);
     virtual ~Mount(void);
 
-    static const double DEC_COMP_LIMIT; // declination compensation limit
     static const wxString& GetIssueString(CalibrationIssueType issue) { return CalibrationIssueString[issue]; };
 
-    double yAngle(void);
-    double yRate(void);
-    double xAngle(void);
-    double xRate(void);
-    bool DecCompensationActive(void) const;
-    bool DecCompensationEnabled();
+    double yAngle(void) const;
+    double yRate(void) const;
+    double xAngle(void) const;
+    double xRate(void) const;
+    GuideParity RAParity(void) const;
+    GuideParity DecParity(void) const;
 
     bool FlipCalibration(void);
     bool GetGuidingEnabled(void);
@@ -240,9 +254,19 @@ public:
     GraphControlPane *GetYGuideAlgorithmControlPane(wxWindow *pParent);
     virtual GraphControlPane *GetGraphControlPane(wxWindow *pParent, const wxString& label);
 
+    virtual bool DecCompensationEnabled(void) const;
     virtual void AdjustCalibrationForScopePointing(void);
 
+    static wxString DeclinationStr(double dec, const wxString& numFormatStr = "%.1f");
     static wxString PierSideStr(PierSide side);
+
+    bool IsBusy(void) const;
+    void IncrementRequestCount(void);
+    void DecrementRequestCount(void);
+
+    int ErrorCount(void) const;
+    void IncrementErrorCount(void);
+    void ResetErrorCount(void);
 
     // pure virtual functions -- these MUST be overridden by a subclass
 public:
@@ -256,27 +280,28 @@ public:
     virtual bool BeginCalibration(const PHD_Point &currentLocation) = 0;
     virtual bool UpdateCalibrationState(const PHD_Point &currentLocation) = 0;
 
-    virtual bool GuidingCeases(void) = 0;
+    virtual void NotifyGuidingStopped(void);
+    virtual void NotifyGuidingPaused(void);
+    virtual void NotifyGuidingResumed(void);
+    virtual void NotifyGuidingDithered(double dx, double dy);
+    virtual void NotifyGuidingDitherSettleDone(bool success);
 
     virtual MountConfigDialogPane *GetConfigDialogPane(wxWindow *pParent) = 0;
     virtual MountConfigDialogCtrlSet *GetConfigDialogCtrlSet(wxWindow *pParent, Mount *pMount, AdvancedDialog *pAdvancedDialog, BrainCtrlIdMap& CtrlMap) = 0;
+    ConfigDialogCtrlSet* currConfigDialogCtrlSet;               // instance currently in-use by AD
 
     virtual wxString GetMountClassName() const = 0;
 
     GuideAlgorithm *GetXGuideAlgorithm(void) const;
     GuideAlgorithm *GetYGuideAlgorithm(void) const;
 
-    bool GetLastCalibrationParams(Calibration *params);
+    void GetLastCalibration(Calibration *cal);
     BacklashComp *GetBacklashComp() { return m_backlashComp; }
-    void FlagBacklashOverShoot(double pixelAmount, GuideAxis axis);
 
     // virtual functions -- these CAN be overridden by a subclass, which should
     // consider whether they need to call the base class functions as part of
     // their operation
 public:
-    virtual bool IsBusy(void);
-    virtual void IncrementRequestCount(void);
-    virtual void DecrementRequestCount(void);
 
     virtual bool HasNonGuiMove(void);
     virtual bool SynchronousOnly(void);
@@ -296,11 +321,9 @@ public:
     virtual void SetCalibrationDetails(const CalibrationDetails& calDetails);
     void GetCalibrationDetails(CalibrationDetails *calDetails);
 
-    virtual bool IsConnected(void);
+    virtual bool IsConnected(void) const;
     virtual bool Connect(void);
     virtual bool Disconnect(void);
-
-    virtual void ClearHistory(void);
 
     virtual wxString GetSettingsSummary();
     virtual wxString CalibrationSettingsSummary() { return wxEmptyString; }
@@ -316,9 +339,24 @@ protected:
     const Calibration& MountCal(void) const { return m_cal; }
 };
 
-inline bool Mount::DecCompensationActive(void) const
+inline bool Mount::IsBusy(void) const
 {
-    return (m_currentDeclination != m_cal.declination && m_useDecCompensation);
+    return m_requestCount > 0;
+}
+
+inline int Mount::ErrorCount(void) const
+{
+    return m_errorCount;
+}
+
+inline void Mount::IncrementErrorCount(void)
+{
+    ++m_errorCount;
+}
+
+inline void Mount::ResetErrorCount(void)
+{
+    m_errorCount = 0;
 }
 
 inline GuideAlgorithm *Mount::GetXGuideAlgorithm(void) const
@@ -329,6 +367,21 @@ inline GuideAlgorithm *Mount::GetXGuideAlgorithm(void) const
 inline GuideAlgorithm *Mount::GetYGuideAlgorithm(void) const
 {
     return m_pYGuideAlgorithm;
+}
+
+inline bool Mount::IsConnected() const
+{
+    return m_connected;
+}
+
+inline GuideParity Mount::RAParity(void) const
+{
+    return m_calibrated ? m_cal.raGuideParity : GUIDE_PARITY_UNKNOWN;
+}
+
+inline GuideParity Mount::DecParity(void) const
+{
+    return m_calibrated ? m_cal.decGuideParity : GUIDE_PARITY_UNKNOWN;
 }
 
 #endif /* MOUNT_H_INCLUDED */

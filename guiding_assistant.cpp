@@ -195,7 +195,6 @@ struct GuidingAsstWin : public wxDialog
     double m_lastTime;
     double maxRateRA; // arc-sec per second
     double alignmentError; // arc-minutes
-    double declination;
 
     bool m_guideOutputDisabled;
     bool m_savePrimaryMountEnabled;
@@ -224,7 +223,7 @@ struct GuidingAsstWin : public wxDialog
 
     wxStaticText *AddRecommendationEntry(const wxString& msg, wxObjectEventFunction handler, wxButton **ppButton);
     wxStaticText *AddRecommendationEntry(const wxString& msg);
-    void FillResultCell(wxGrid *pGrid, wxGridCellCoords loc, double pxVal, double asVal, wxString units1, wxString units2, wxString extraInfo = "");
+    void FillResultCell(wxGrid *pGrid, const wxGridCellCoords& loc, double pxVal, double asVal, const wxString& units1, const wxString& units2, const wxString& extraInfo = wxEmptyString);
     void UpdateInfo(const GuideStepInfo& info);
     void FillInstructions(DialogState eState);
     void MakeRecommendations();
@@ -286,21 +285,21 @@ GuidingAsstWin::GuidingAsstWin()
 
     int col = 0;
     int row = 0;
-    m_statusgrid->SetCellValue(_("Start time"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("Start time"));
     m_timestamp_loc.Set(row, col++);
-    m_statusgrid->SetCellValue(_("Exposure time"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("Exposure time"));
     m_exposuretime_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_statusgrid->SetCellValue(_("SNR"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("SNR"));
     m_snr_loc.Set(row, col++);
-    m_statusgrid->SetCellValue(_("Star mass"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("Star mass"));
     m_starmass_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_statusgrid->SetCellValue(_("Elapsed time"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("Elapsed time"));
     m_elapsedtime_loc.Set(row, col++);
-    m_statusgrid->SetCellValue(_("Sample count"), row, col++);
+    m_statusgrid->SetCellValue(row, col++, _("Sample count"));
     m_samplecount_loc.Set(row, col++);
 
     //StartRow(row, col);
@@ -323,15 +322,15 @@ GuidingAsstWin::GuidingAsstWin()
 
     row = 0;
     col = 0;
-    m_displacementgrid->SetCellValue(_("Right ascension, RMS"), row, col++);
+    m_displacementgrid->SetCellValue(row, col++, _("Right ascension, RMS"));
     m_ra_rms_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_displacementgrid->SetCellValue(_("Declination, RMS"), row, col++);
+    m_displacementgrid->SetCellValue(row, col++, _("Declination, RMS"));
     m_dec_rms_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_displacementgrid->SetCellValue(_("Total, RMS"), row, col++);
+    m_displacementgrid->SetCellValue(row, col++, _("Total, RMS"));
     m_total_rms_loc.Set(row, col++);
 
     displacement_group->Add(m_displacementgrid);
@@ -350,39 +349,39 @@ GuidingAsstWin::GuidingAsstWin()
 
     row = 0;
     col = 0;
-    m_othergrid->SetCellValue(_("Right ascension, Peak"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Right ascension, Peak"));
     m_ra_peak_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Declination, Peak"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Declination, Peak"));
     m_dec_peak_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Right ascension, Peak-Peak"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Right ascension, Peak-Peak"));
     m_ra_peakpeak_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Right ascension Drift Rate"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Right ascension Drift Rate"));
     m_ra_drift_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Right ascension Max Drift Rate"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Right ascension Max Drift Rate"));
     m_ra_peak_drift_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Drift-limiting exposure"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Drift-limiting exposure"));
     m_ra_drift_exp_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Declination Drift Rate"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Declination Drift Rate"));
     m_dec_drift_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Declination Backlash"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Declination Backlash"));
     m_backlash_loc.Set(row, col++);
 
     StartRow(row, col);
-    m_othergrid->SetCellValue(_("Polar Alignment Error"), row, col++);
+    m_othergrid->SetCellValue(row, col++, _("Polar Alignment Error"));
     m_pae_loc.Set(row, col++);
 
     other_group->Add(m_othergrid);
@@ -413,9 +412,18 @@ GuidingAsstWin::GuidingAsstWin()
 
     wxStaticBoxSizer *bl_group = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Dec Backlash"));
     m_backlashCB = new wxCheckBox(this, wxID_ANY, _("Measure Declination Backlash"));
-    m_backlashCB->SetValue(true);
     m_backlashCB->SetToolTip(_("PHD2 will move the guide star a considerable distance north, then south to measure backlash. Be sure the selected star has "
         "plenty of room to move in the north direction.  If the guide star is lost, increase the size of the search region to at least 20 px"));
+    if (!pMount->IsStepGuider())
+    {
+        m_backlashCB->SetValue(true);
+        m_backlashCB->Enable(true);
+    }
+    else
+    {
+        m_backlashCB->SetValue(false);
+        m_backlashCB->Enable(false);
+    }
     m_graphBtn = new wxButton(this, wxID_ANY, _("Show Graph"));
     m_graphBtn->SetToolTip(_("Show graph of backlash measurement points"));
     bl_group->Add(m_backlashCB, wxSizerFlags(0).Border(wxALL, 8));
@@ -647,10 +655,10 @@ void GuidingAsstWin::OnDecMinMove(wxCommandEvent& event)
 
 void GuidingAsstWin::OnDecBacklash(wxCommandEvent& event)
 {
-    BacklashComp *pComp = pMount->GetBacklashComp();
+    BacklashComp *pComp = TheScope()->GetBacklashComp();
 
     pComp->SetBacklashPulse(m_backlashTool->GetBacklashResultMs());
-    pComp->EnableBacklashComp(true);
+    pComp->EnableBacklashComp(!pMount->IsStepGuider());
     m_decBacklashButton->Enable(false);
 }
 
@@ -779,7 +787,7 @@ void GuidingAsstWin::MakeRecommendations()
         m_max_exp_rec = m_min_exp_rec + min_rec_range;
 
     // Always make a recommendation on exposure times
-    wxString msg = SizedMsg(wxString::Format("Try to keep your exposure times in the range of %.1fs to %.1fs", m_min_exp_rec, m_max_exp_rec));
+    wxString msg = SizedMsg(wxString::Format(_("Try to keep your exposure times in the range of %.1fs to %.1fs"), m_min_exp_rec, m_max_exp_rec));
     if (!m_exposure_msg)
         m_exposure_msg = AddRecommendationEntry(msg);
     else
@@ -1070,12 +1078,10 @@ void GuidingAsstWin::OnClose(wxCloseEvent& evt)
     Destroy();
 }
 
-void GuidingAsstWin::FillResultCell(wxGrid *pGrid, wxGridCellCoords loc, double pxVal, double asVal, wxString units1, wxString units2, 
-    wxString extraInfo)
+void GuidingAsstWin::FillResultCell(wxGrid *pGrid, const wxGridCellCoords& loc, double pxVal, double asVal, const wxString& units1, const wxString& units2,
+    const wxString& extraInfo)
 {
-    pGrid->SetCellValue(loc,
-        wxString::Format("%6.2f %s (%6.2f %s %s)", pxVal, units1, asVal, units2, extraInfo)
-        );
+    pGrid->SetCellValue(loc, wxString::Format("%6.2f %s (%6.2f %s %s)", pxVal, units1, asVal, units2, extraInfo));
 }
 
 void GuidingAsstWin::UpdateInfo(const GuideStepInfo& info)
@@ -1131,10 +1137,15 @@ void GuidingAsstWin::UpdateInfo(const GuideStepInfo& info)
 
     double raDriftRate = driftRA / elapsed * 60.0;
     double decDriftRate = driftDec / elapsed * 60.0;
-    declination = pPointingSource->GetGuidingDeclination();
+    double declination = pPointingSource->GetDeclination();
+    double cosdec;
+    if (declination == UNKNOWN_DECLINATION)
+        cosdec = 1.0; // assume declination 0
+    else
+        cosdec = cos(declination);
     // polar alignment error from Barrett:
     // http://celestialwonders.com/articles/polaralignment/PolarAlignmentAccuracy.pdf
-    alignmentError = 3.8197 * fabs(decDriftRate) * pxscale / cos(declination);
+    alignmentError = 3.8197 * fabs(decDriftRate) * pxscale / cosdec;
 
     wxString SEC(_("s"));
     wxString PX(_("px"));
@@ -1162,10 +1173,10 @@ void GuidingAsstWin::UpdateInfo(const GuideStepInfo& info)
     FillResultCell(m_othergrid, m_ra_peakpeak_loc, rangeRA, rangeRA * pxscale, PX, ARCSEC);
     FillResultCell(m_othergrid, m_ra_drift_loc, raDriftRate, raDriftRate * pxscale, PXPERMIN, ARCSECPERMIN);
     FillResultCell(m_othergrid, m_ra_peak_drift_loc, maxRateRA, maxRateRA * pxscale, PXPERSEC, ARCSECPERSEC);
-    m_othergrid->SetCellValue(m_ra_drift_exp_loc, maxRateRA <= 0.0 ? " " : 
+    m_othergrid->SetCellValue(m_ra_drift_exp_loc, maxRateRA <= 0.0 ? _(" ") :
         wxString::Format("%6.1f %s ",  1.3 * rarms / maxRateRA, SEC));
     FillResultCell(m_othergrid, m_dec_drift_loc, decDriftRate, decDriftRate * pxscale, PXPERMIN, ARCSECPERMIN);
-    m_othergrid->SetCellValue(m_pae_loc, wxString::Format("%s %.1f %s", declination == 0.0 ? "> " : "", alignmentError, ARCMIN));
+    m_othergrid->SetCellValue(m_pae_loc, wxString::Format("%s %.1f %s", declination == UNKNOWN_DECLINATION ? "> " : "", alignmentError, ARCMIN));
 }
 
 wxWindow *GuidingAssistant::CreateDialogBox()

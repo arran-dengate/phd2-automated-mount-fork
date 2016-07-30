@@ -8,7 +8,7 @@
   <a href="#Drift_Align">Drift Alignment</a><br>
   <a href="#Lock_Positions">Lock Positions</a><br>
   <a href="#Comet_Tracking">Comet Tracking</a><br><a href="#Guiding_Assistant">Guiding Assistant</a><br>
-  <a href="#Managing_Equipment_Profiles">Equipment Profiles</a><br>
+  <a href="#Managing_Equipment_Profiles">Equipment Profiles</a><br><a href="#Ask_for_coordinates_aux_mount">Ask for Connections Aux Mount</a><br>
   <a href="#Advanced_Settings_for_the_Simulators">Simulator Parameters</a><br><a href="#Multiple_Executions">Multiple Program Instances</a><br><a href="#Keyboard_Shortcuts">Keyboard Shortcuts</a><br>
 
 <h3><a name="Manual_Guide"></a>Manual Guide</h3><br>
@@ -73,7 +73,7 @@ sub-par results. &nbsp;You can use the&nbsp;<a href="Visualization.htm#Star_Prof
 to examine the properties of the selected star, however it was chosen. &nbsp;If you want to use Auto-Select, you should
 definitely use either a bad-pixel map or dark library to reduce the
 likelihood of PHD2 mistakenly choosing a hot pixel.
-<h3><a name="Calibration_Details"></a>Calibration&nbsp;Details</h3>Most of the calibration-related windows, including calibration sanity-checks, will open a window that looks something like this:<br><br><img style="width: 728px; height: 377px;" alt="" src="Calib_Review.png"><br><br>The
+<h3><a name="Calibration_Details"></a>Calibration&nbsp;Details</h3>Most of the calibration-related windows, including calibration sanity-checks, will open a window that looks something like this:<br><br><img style="width: 747px; height: 369px;" alt="" src="Calib_Review.png"><br><br>The
 first thing to look at is the graph to the left, which shows what star
 movements resulted from the guide pulses that PHD2 sent during
 calibration. &nbsp;The lines represent the RA and Dec guide rates that
@@ -108,16 +108,18 @@ it is good to check.<br><br><span style="font-weight: bold;"><a name="Declinatio
 backlash, which is present to some degree in most geared mounts.
 &nbsp;With some mounts, however, the problem can be&nbsp;severe and
 can lead to poor calibration and guiding results. &nbsp;Consider the following
-calibration review dialog: <br><br><img style="width: 727px; height: 382px;" alt="" src="Calib_Review_Backlash.png"><br><br>The
-first clue to the problem is found by comparing the declination and
-right ascension guide rates. &nbsp;In this case, the declination rate
-is barely 1/2 of the RA rate, something that should never occur.
-&nbsp;In fact, this would have triggered a calibration alert dialog.
-&nbsp;Now look at the graph of the declination points, in blue, and
-notice the clumping of points near the zero-point of the graph.
-&nbsp;Although a total of 16 steps were taken in declination, only the
-last 9 were actually moving the mount in a consistent way - the first 7
-basically accomplished nothing because of backlash. &nbsp; There are
+calibration review dialog: <br><br><img style="width: 767px; height: 399px;" alt="" src="Calib_Review_Backlash.png"><br><br>The
+first clue to the problem is found by comparing the number of steps
+required for calibration on the two axes - 10 for RA but 42 for Dec.
+&nbsp;This shows&nbsp;the mount was not moving consistently in
+declination, probably&nbsp;because the backlash had not been
+effectively cleared. &nbsp;This also explains the "wandering" behavior
+of the declination points (light green) when the guide commands were
+reversed from north to south. Finally, the computed declination rate is
+much smaller than the RA rate even though the guide speed settings on
+the two axes were identical. &nbsp;In fact, this would have triggered a
+calibration alert dialog.
+&nbsp;There are
 actually two problems to be addressed here. &nbsp;First, the
 calibration result is poor and should be repeated in order to get a
 more accurate measure of the declination guide rate. &nbsp;Second, the
@@ -133,7 +135,7 @@ done, most of the declination backlash in your mount should have been
 overcome. &nbsp;You can then repeat the calibration procedure
 and&nbsp;probably get a declination guiding rate that is more
 reasonable.
-&nbsp;The second problem generally requires some mechanical adjustment
+&nbsp;The underlying backlash problem generally requires some mechanical adjustment
 to the mount. &nbsp;You can try using a backlash compensation setting,
 but this is not likely to work well&nbsp;if the backlash is large -
 more&nbsp; than 2-3 seconds, for example. &nbsp;If you can't correct
@@ -142,11 +144,17 @@ backlash or reduce
 it to manageable levels, you should consider choosing uni-directional
 guiding&nbsp;for declination. To do this, you&nbsp;determine
 which way the mount drifts due to polar alignment error, and tell PHD2
-to guide only in the opposite direction. &nbsp;For example, if the
+to guide only in the opposite direction. This is controlled by the 'Dec
+guide mode' control on the'Algorithms' tab of the Advanced Dialog.
+&nbsp;For example, if the
 mount tends to drift north overall, restrict guide commands to
-south-only. &nbsp;This is not an ideal solution, obviously, but you can
+south-only. This is not an ideal solution, obviously, but you can
 still use reasonably long exposures and achieve decent guiding results
-- and there are plenty of imagers out there who use this technique.<font style="color: rgb(0, 0, 3);" color="navy"><span style="font-size: 10pt;"></span></font><br><br><span style="font-weight: bold;">Other Calibration-Related Menu Options</span><br>
+- and there are plenty of imagers out there who use this technique
+effectively.<font style="color: rgb(0, 0, 3);" color="navy"><span style="font-size: 10pt;"></span></font>
+&nbsp;If you have an unusual circumstance, such as a mount with no
+declination control at all, you can set the 'Dec guide mode' choice to
+'Off'. &nbsp;<br><br><span style="font-weight: bold;">Other Calibration-Related Menu Options</span><br>
 Calibration data are saved automatically each time a calibration sequence completes
 successfully. &nbsp;The use of the calibration data has been described
 elsewhere (<a href="Basic_use.htm">Using PHD Guiding</a>),
@@ -652,8 +660,41 @@ than profiles are automatically updated anytime settings are changed
 during a <span style="font-style: italic;">PHD2</span> session. &nbsp;Finally, you can import and export
 profiles for purposes of debugging, backup, or even exchange with other
 <span style="font-style: italic;">PHD2</span> users.<br>
-<br>
-<h3><a name="Advanced_Settings_for_the_Simulators"></a>Advanced Settings for the Simulators</h3>
+<br><h3><a name="Ask_for_coordinates_aux_mount"></a>Aux-Mount Connection using "Ask for coordinates"</h3>If
+you can't connect to your mount using either ASCOM or INDI drivers, you
+still have a better-than-nothing alternative by using the&nbsp;"Ask for
+coordinates" aux-mount connection. &nbsp;With this option, you'll be asked
+to enter or confirm the scope position each time&nbsp;guiding is going
+to begin:: <br><br><img style="width: 212px; height: 248px;" alt="" src="Manual_mount.png"><br><br>If
+you enter your scope's current declination and side-of-pier values,
+&nbsp;PHD2 will automatically adjust the calibration to match&nbsp;that
+pointing position. &nbsp;You don't need to be&nbsp;precise, a
+Declination value that's within a few degrees will work. &nbsp;This
+means you won't need to recalibrate as you slew to different targets
+so long as you update these values each time. &nbsp;For
+example,&nbsp; you can do a calibration near Declination=0 then enter
+new position values when you've slewed to a high declination imaging
+target.
+&nbsp;This is likely to produce a better result than trying to
+calibrate at a near-pole position. &nbsp;This dialog will not be
+displayed if the start of guiding is the result of a dither operation
+or a server command from an imaging application. &nbsp;In order for the
+calibration adjustment to work correctly, your previous calibration <span style="font-weight: bold;">must </span>have been completed&nbsp;with correct positioning data available. &nbsp;<br><br>If you're using this option with the Drift Alignment tool, the dialog will look a bit different: <br><br><img style="width: 327px; height: 350px;" alt="" src="Manual_mount_drift.png"><br><br>If
+you enter the additional information for Right Ascension, latitude, and
+longitude, the Drift Alignment tool can more accurately adjust its
+magenta target circle. &nbsp;Otherwise, the circle will show only an
+upper-bound estimate of the pointing error during the 'adjustment'
+phases. &nbsp;<br><br>You
+can connect or disconnect&nbsp;the "Ask for
+coordinates" aux-mount&nbsp;without affecting the camera or mount
+connections. &nbsp;So you might decide to use the option for drift
+alignment or for an initial slew to your imaging target, then
+disconnect from it in order to avoid
+the repetitive dialog displays. &nbsp;Regardless of how you choose to
+use it, you're
+responsible for having the correct values in place, and you should
+remember that significantly wrong values can result in poor guiding
+results.<br><br><h3><a name="Advanced_Settings_for_the_Simulators"></a>Advanced Settings for the Simulators</h3>
 The device simulators were introduced in the <a href="Basic_use.htm">Basic Use</a>
 section as useful tools&nbsp;for you to experiment with <span style="font-style: italic;">PHD2</span> and become
 famliar with its features. &nbsp;Remember that you must choose

@@ -108,7 +108,7 @@ public:
     int GetBacklashResultMs() const { return m_backlashResultMs; }
     bool GetBacklashExempted() const { return m_backlashExemption; }
     wxString GetLastStatus() const { return m_lastStatus; }
-    void SetBacklashPulse(int amt) { m_pulseWidth = amt; }
+    void SetBacklashPulse(int amt);
     void ShowGraph(wxDialog *pGA);
     const std::vector<double>& GetNorthSteps() const { return m_northBLSteps; }
     const std::vector<double>& GetSouthSteps() const { return m_southBLSteps; }
@@ -119,19 +119,33 @@ class BacklashComp
     bool m_compActive;
     int m_lastDirection;
     bool m_justCompensated;
+    int m_adjustmentCeiling;
     int m_pulseWidth;
+    ArrayOfDbl m_residualOffsets;
     Mount *m_pMount;
+    Scope *m_pScope;
 
 public:
 
     BacklashComp(Mount *theMount);
     int GetBacklashPulse() const { return m_pulseWidth; }
+    int GetBacklashPulseLimit();
     void SetBacklashPulse(int ms);
     void EnableBacklashComp(bool enable);
     bool IsEnabled() const { return m_compActive; }
-    int GetBacklashComp(int dir, double yDist);
-    void HandleOverShoot(int pulseSize);
-    void Reset();
+    void ApplyBacklashComp(int dir, double yDist, int *yAmount);
+    void TrackBLCResults(double yDistance, double minMove, double yRate);
+    void ResetBaseline();
+
+private:
+    void _TrackBLCResults(double yDistance, double minMove, double yRate);
+    void SetCompValues(int requestSize, bool autoAdjust);
 };
+
+inline void BacklashComp::TrackBLCResults(double yDistance, double minMove, double yRate)
+{
+    if (m_justCompensated)
+        _TrackBLCResults(yDistance, minMove, yRate);
+}
 
 #endif

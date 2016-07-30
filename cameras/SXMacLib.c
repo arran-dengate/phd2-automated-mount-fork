@@ -39,7 +39,7 @@
  
  \***************************************************************************/
 
-#if defined (__APPLE__)
+#if defined (__APPLE__) || defined (__linux__)
 
 #include "SXMacLib.h"
 
@@ -119,8 +119,9 @@
 
 #define ENDPOINT_OUT 1
 #define ENDPOINT_IN 2
-#define TIMEOUT 0
 #define VENDOR_ID 0x1278
+
+static UInt32 ioTimeout = 0;
 
 static inline Boolean WriteFile(void* sxHandle,
                                 UInt8 *packet,
@@ -128,12 +129,15 @@ static inline Boolean WriteFile(void* sxHandle,
                                 UInt32 *transferred,
                                 void* ignored)
 {
-    return 0 == libusb_bulk_transfer(sxHandle,
+    int actualLength;
+    int ret = libusb_bulk_transfer(sxHandle,
                                      ENDPOINT_OUT | LIBUSB_ENDPOINT_OUT,
                                      packet,
                                      length,
-                                     (int *)transferred,
-                                     TIMEOUT);
+                                     &actualLength,
+                                     ioTimeout);
+   *transferred = actualLength;
+   return 0 == ret;
 }
 
 static inline Boolean ReadFile(void* sxHandle,
@@ -143,12 +147,15 @@ static inline Boolean ReadFile(void* sxHandle,
                                void* ignored)
 
 {
-    return 0 == libusb_bulk_transfer(sxHandle,
-                                     ENDPOINT_IN | LIBUSB_ENDPOINT_IN,
-                                     packet,
-                                     length,
-                                     (int *)transferred,
-                                     TIMEOUT);
+    int actualLength;
+    int ret = libusb_bulk_transfer(sxHandle,
+                                   ENDPOINT_IN | LIBUSB_ENDPOINT_IN,
+                                   packet,
+                                   length,
+                                   &actualLength,
+                                   ioTimeout);
+   *transferred = actualLength;
+   return 0 == ret;
 }
 
 Boolean sxReset(void* sxHandle)
@@ -272,11 +279,17 @@ Boolean sxExposePixelsGated(void* sxHandle, UInt16 flags, UInt16 camIndex, UInt1
 UInt32 sxReadPixels(void* sxHandle, UInt16 *pixels, UInt32 count)
 {
     UInt32 bytes_read;
+    const UInt32 byteCount = count * 2;
     
-    if (ReadFile(sxHandle, (UInt8 *)pixels, count * 2, &bytes_read, NULL)){
+    if (ReadFile(sxHandle, (UInt8 *)pixels, byteCount, &bytes_read, NULL)){
+        if (bytes_read != byteCount){
+            fprintf(stderr,"SXMacLib: Error reading pixels, expected %ld but got %ld\n",byteCount,bytes_read);
+        }
         return bytes_read;
     }
     
+    fprintf(stderr,"SXMacLib: Error reading pixels\n");
+
     return 0;
 }
 
@@ -354,38 +367,49 @@ Boolean sxSetCameraParams(void* sxHandle, UInt16 camIndex, struct sxccd_params_t
 
 Boolean sxGetCameraParams(void* sxHandle, UInt16 camIndex, struct sxccd_params_t *params)
 {
-    UInt8 setup_data[17];
     UInt32 bytes_rw, status;
     
-    setup_data[USB_REQ_TYPE    ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
-    setup_data[USB_REQ         ] = SXUSB_GET_CCD;
-    setup_data[USB_REQ_VALUE_L ] = 0;
-    setup_data[USB_REQ_VALUE_H ] = 0;
-    setup_data[USB_REQ_INDEX_L ] = (UInt8)camIndex;
-    setup_data[USB_REQ_INDEX_H ] = 0;
-    setup_data[USB_REQ_LENGTH_L] = 17;
-    setup_data[USB_REQ_LENGTH_H] = 0;
-    if(!WriteFile(sxHandle, setup_data, 8, &bytes_rw, NULL)){
-        printf("Error writing data in sxGetCameraParams, wrote %d bytes\r\n",(unsigned int)bytes_rw);
-        return 0;
+    UInt8 send_data[8];
+    memset(send_data, 0, sizeof(send_data));
+
+    UInt8 params_data[17];
+    memset(params_data, 0, sizeof(params_data));
+
+    send_data[USB_REQ_TYPE    ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
+    send_data[USB_REQ         ] = SXUSB_GET_CCD;
+    send_data[USB_REQ_VALUE_L ] = 0;
+    send_data[USB_REQ_VALUE_H ] = 0;
+    send_data[USB_REQ_INDEX_L ] = (UInt8)camIndex;
+    send_data[USB_REQ_INDEX_H ] = 0;
+    send_data[USB_REQ_LENGTH_L] = sizeof(params_data);
+    send_data[USB_REQ_LENGTH_H] = 0;
+    
+    status = WriteFile(sxHandle, send_data, sizeof(send_data), &bytes_rw, NULL);
+    if (!status || bytes_rw != sizeof(send_data)){
+        fprintf(stderr,"SXMacLib: Error writing data in sxGetCameraParams, wrote %d bytes\n",(unsigned int)bytes_rw);
+        return false;
     }
     
-    memset(setup_data, 0, 17);
+    status = ReadFile(sxHandle, params_data, sizeof(params_data), &bytes_rw, NULL);
+    if (!status || bytes_rw != sizeof(params_data)){
+        fprintf(stderr,"SXMacLib: Error reading data in sxGetCameraParams, read %d bytes\n",(unsigned int)bytes_rw);
+        return false;
+    }
     
-    status = ReadFile(sxHandle, setup_data, 17, &bytes_rw, NULL);
-    params->hfront_porch     = setup_data[0];
-    params->hback_porch      = setup_data[1];
-    params->width            = setup_data[2]   | (setup_data[3]  << 8);
-    params->vfront_porch     = setup_data[4];
-    params->vback_porch      = setup_data[5];
-    params->height           = setup_data[6]   | (setup_data[7]  << 8);
-    params->pix_width        = (float)((setup_data[8]  | (setup_data[9]  << 8)) / 256.0);
-    params->pix_height       = (float)((setup_data[10] | (setup_data[11] << 8)) / 256.0);
-    params->color_matrix     = setup_data[12]  | (setup_data[13] << 8);
-    params->bits_per_pixel   = setup_data[14];
-    params->num_serial_ports = setup_data[15];
-    params->extra_caps       = setup_data[16];
-    return (status);
+    params->hfront_porch     = params_data[0];
+    params->hback_porch      = params_data[1];
+    params->width            = params_data[2]   | (params_data[3]  << 8);
+    params->vfront_porch     = params_data[4];
+    params->vback_porch      = params_data[5];
+    params->height           = params_data[6]   | (params_data[7]  << 8);
+    params->pix_width        = (float)((params_data[8]  | (params_data[9]  << 8)) / 256.0);
+    params->pix_height       = (float)((params_data[10] | (params_data[11] << 8)) / 256.0);
+    params->color_matrix     = params_data[12]  | (params_data[13] << 8);
+    params->bits_per_pixel   = params_data[14];
+    params->num_serial_ports = params_data[15];
+    params->extra_caps       = params_data[16];
+
+    return true;
 }
 
 Boolean sxSetCooler(void* sxHandle, UInt8 SetStatus, UInt16 SetTemp, UInt8 *RetStatus, UInt16 *RetTemp )
@@ -567,10 +591,10 @@ UInt16 sxGetCameraModel(void* sxHandle)
     setup_data[USB_REQ_LENGTH_L] = 2;
     setup_data[USB_REQ_LENGTH_H] = 0;
     if(!WriteFile(sxHandle, setup_data, sizeof(setup_data), &bytes_rw, NULL)){
-        printf("Error writing in sxGetCameraModel, wrote %d bytes\r\n",(unsigned int)bytes_rw);
+        fprintf(stderr,"SXMacLib: Error writing in sxGetCameraModel, wrote %d bytes\n",(unsigned int)bytes_rw);
     }
     else if(!ReadFile(sxHandle, setup_data, 2, &bytes_rw, NULL)){
-        printf("Error reading in sxGetCameraModel, read %d bytes\r\n",(unsigned int)bytes_rw);
+        fprintf(stderr,"SXMacLib: Error reading in sxGetCameraModel, read %d bytes\n",(unsigned int)bytes_rw);
     }
     else {
         model = (setup_data[0] | (setup_data[1] << 8));
@@ -655,7 +679,11 @@ static Boolean isSXCamera(struct libusb_device_descriptor* desc)
 {
     if (desc){
         const sxDeviceInfo* info = sxLookupDeviceInfo(desc->idVendor,desc->idProduct);
-        return (info && info->type == sxDeviceTypeCamera);
+        if (info && info->type == sxDeviceTypeCamera) {
+            printf("SXMacLib: Found SX device Vendor/Product %04x/%04x\n", desc->idVendor, desc->idProduct);
+            return true;
+        }
+        printf("SXMacLib: Skip device Vendor/Product %04x/%04x\n", desc->idVendor, desc->idProduct);
     }
     return false;
 }
@@ -688,11 +716,35 @@ UInt32 sxOpen(void** sxHandles)
         }
         if (isSXCamera(&desc)) {
             libusb_device_handle* handle;
-            
+
             ret = libusb_open(device[i], &handle);
             if (0 == ret) {
+
+#if defined (__linux__)
+                if (libusb_kernel_driver_active(handle, 0) == 1) {
+                    ret = libusb_detach_kernel_driver(handle, 0);
+                    if (ret == 0) {
+                        printf("SXMacLib: Kernel driver detached.\n");
+                    } else {
+                        fprintf(stderr,"SXMacLib: Error detaching kernel driver.\n");
+                    }
+                }
+
+                struct libusb_config_descriptor *config;
+                ret = libusb_get_config_descriptor(device[i], 0, &config);
+                if (ret == 0) {
+                        printf("SXMacLib: Config descriptor read.\n");
+                    } else {
+                        fprintf(stderr,"SXMacLib: Error reading config descriptor.\n");
+                }
+                int interface = config->interface->altsetting->bInterfaceNumber;
+#else
+                // passing bInterfaceNumber doesn't work on a Mac so leave it as 0 as it was before.
+                // This is probably a off by one error and we should be passing in config->interface->altsetting->bInterfaceNumber - 1
+                const int interface = 0;
+#endif
                 
-                ret = libusb_claim_interface(handle, 0);
+                ret = libusb_claim_interface(handle, interface);
                 if (0 == ret) {
                     
                     const int model = sxGetCameraModel(handle);
@@ -705,6 +757,8 @@ UInt32 sxOpen(void** sxHandles)
                         sxHandles[count] = handle;
                         count++;
                     }
+                } else {
+                    fprintf(stderr,"SXMacLib: libusb_claim_interface error %s\n", libusb_error_name(ret));
                 }
             }
             
@@ -725,7 +779,9 @@ err_desc:
 
 void sxClose(void* sxHandle)
 {
-    libusb_close(sxHandle);
+    if (sxHandle){
+        libusb_close(sxHandle);
+    }
 }
 
 // SCT additions
@@ -733,6 +789,7 @@ void sxClose(void* sxHandle)
 static sxDeviceInfo infos[] = {
     {0x0507,"Lodestar",sxDeviceTypeCamera},
     {0x0509,"Superstar",sxDeviceTypeCamera},
+    {0x0517,"CoStar",sxDeviceTypeCamera},
     {0x0525,"Ultrastar",sxDeviceTypeCamera},
     {0x0398,"H814c",sxDeviceTypeCamera},
     {0x0198,"H814",sxDeviceTypeCamera},
@@ -921,6 +978,12 @@ void* sxOpenByModel(UInt16 nModelNumber)
     libusb_free_device_list(device, 1);
     
     return NULL;
+}
+
+void sxSetTimeoutMS(UInt32 timeoutMS)
+{
+    printf("SXMacLib: setting timeout to %ldms\n",timeoutMS);
+    ioTimeout = timeoutMS;
 }
 
 #endif // __APPLE__

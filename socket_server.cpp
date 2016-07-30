@@ -82,6 +82,14 @@ bool MyFrame::StartServer(bool state)
 {
     if (state)
     {
+        if (SocketServer)
+        {
+            Debug.AddLine("start server, server already running");
+            return false;
+        }
+
+        Debug.AddLine("starting server");
+
         // Create the SocketServer socket
         unsigned int port = 4300 + m_instanceNumber - 1;
         wxIPV4address sockServerAddr;
@@ -94,6 +102,7 @@ bool MyFrame::StartServer(bool state)
             Debug.AddLine(wxString::Format("Socket server failed to start - Could not listen at port %u", port));
             delete SocketServer;
             SocketServer = NULL;
+            StatusMsg(_("Server start failed"));
             return true;
         }
         SocketServer->SetEventHandler(*this, SOCK_SERVER_ID);
@@ -105,20 +114,27 @@ bool MyFrame::StartServer(bool state)
         {
             delete SocketServer;
             SocketServer = NULL;
+            StatusMsg(_("Server start failed"));
             return true;
         }
 
-        SetStatusText(_("Server started"));
         Debug.AddLine(wxString::Format("Server started, listening on port %u", port));
+        StatusMsg(_("Server started"));
     }
     else {
-        Debug.AddLine("Server stopped");
+        if (!SocketServer)
+        {
+            Debug.AddLine("stop server, server already stopped");
+            return false;
+        }
+
+        Debug.AddLine("stopping server");
         std::for_each(s_clients.begin(), s_clients.end(), std::mem_fun(&wxSocketBase::Destroy));
         s_clients.empty();
         EvtServer.EventServerStop();
         delete SocketServer;
         SocketServer = NULL;
-        SetStatusText(_("Server stopped"));
+        StatusMsg(_("Server stopped"));
     }
 
     return false;
@@ -142,7 +158,7 @@ void MyFrame::OnSockServerEvent(wxSocketEvent& event)
 
     if (client)
     {
-        pFrame->SetStatusText("New connection");
+        pFrame->StatusMsg("New connection");
         Debug.AddLine("SOCKSVR: New connection");
     }
     else
@@ -185,7 +201,7 @@ void MyFrame::HandleSockServerInput(wxSocketBase *sock)
 
         sock->Read(&c, 1);
 
-        Debug.AddLine("read socket command %d", c);
+        Debug.Write(wxString::Format("read socket command %d\n", c));
 
         switch (c)
         {
@@ -221,10 +237,11 @@ void MyFrame::HandleSockServerInput(wxSocketBase *sock)
 
                 double size = GetDitherAmount(ditherType);
 
-                bool error = Dither(size, m_ditherRaOnly);
-                if (error)
+                wxString errMsg;
+                bool ok = PhdController::DitherCompat(size, m_ditherRaOnly, &errMsg);
+                if (!ok)
                 {
-                    throw ERROR_INFO("dither failed");
+                    throw ERROR_INFO(+errMsg);
                 }
 
                 rval = RequestedExposureDuration() / 1000;
@@ -280,13 +297,13 @@ void MyFrame::HandleSockServerInput(wxSocketBase *sock)
 
                 if (!pFrame->pGuider->SetLockPosToStarAtPosition(PHD_Point(x,y)))
                 {
-                    Debug.AddLine("processing socket request SETLOCKPOSITION for (%d, %d) succeeded", x, y);
-                    pFrame->SetStatusText(wxString::Format("Lock set to %d,%d",x,y));
+                    Debug.Write(wxString::Format("processing socket request SETLOCKPOSITION for (%d, %d) succeeded\n", x, y));
+                    pFrame->StatusMsg(wxString::Format("Lock set to %d,%d", x, y));
                     GuideLog.NotifySetLockPosition(pGuider);
                 }
                 else
                 {
-                    Debug.AddLine("processing socket request SETLOCKPOSITION for (%d, %d) failed", x, y);
+                    Debug.Write(wxString::Format("processing socket request SETLOCKPOSITION for (%d, %d) failed\n", x, y));
                 }
                 break;
             }
@@ -378,7 +395,7 @@ void MyFrame::HandleSockServerInput(wxSocketBase *sock)
                 break;
 
             default:
-                Debug.AddLine(wxString::Format("SOCKSVR: Unknown command char received from client: %d"), (int) c);
+                Debug.AddLine(wxString::Format("SOCKSVR: Unknown command char received from client: %d\n", (int) c));
                 rval = 1;
                 break;
         }
@@ -388,7 +405,7 @@ void MyFrame::HandleSockServerInput(wxSocketBase *sock)
         POSSIBLY_UNUSED(Msg);
     }
 
-    Debug.AddLine("Sending socket response %d (0x%x)", rval, rval);
+    Debug.Write(wxString::Format("Sending socket response %d (0x%x)\n", rval, rval));
 
     // Send response
     sock->Write(&rval,1);
@@ -455,7 +472,7 @@ bool ServerSendGuideCommand (int direction, int duration) {
         ServerEndpoint->Write(&direction, sizeof(int));
         ServerEndpoint->Write(&duration, sizeof(int));
         ServerEndpoint->Read(&rval,1);
-        Debug.AddLine(_T("Sent guide command - returned %d"), (int) rval);
+        Debug.Write(wxString::Format("Sent guide command - returned %d\n", (int) rval));
     }
     return false;
 }
@@ -475,7 +492,7 @@ bool ServerSendCamConnect(int& xsize, int& ysize) {
     else {
 //      unsigned char c;
         ServerEndpoint->Read(&rval, 1);
-        Debug.AddLine(_T("Cmd done - returned %d"), (int) rval);
+        Debug.Write(wxString::Format("Cmd done - returned %d\n", (int) rval));
     }
     if (rval)
         return true;
@@ -483,7 +500,7 @@ bool ServerSendCamConnect(int& xsize, int& ysize) {
         // Should get x and y size back
         ServerEndpoint->Read(&xsize,sizeof(int));
         ServerEndpoint->Read(&ysize,sizeof(int));
-        Debug.AddLine(_T("Guide chip reported as %d x %d"),xsize,ysize);
+        Debug.Write(wxString::Format("Guide chip reported as %d x %d\n", xsize, ysize));
         return false;
     }
 }
@@ -504,7 +521,7 @@ bool ServerSendCamDisconnect() {
     else {
 //      unsigned char c;
         ServerEndpoint->Read(&rval, 1);
-        Debug.AddLine(_T("Cmd done - returned %d"), (int) rval);
+        Debug.Write(wxString::Format("Cmd done - returned %d\n", (int) rval));
     }
     if (rval)
         return true;
@@ -527,16 +544,16 @@ bool ServerReqFrame(int duration, usImage& img) {
     else {
 //      unsigned char c;
         ServerEndpoint->Read(&rval, 1);
-        Debug.AddLine(_T("Cmd done - returned %d"), (int) rval);
+        Debug.Write(wxString::Format("Cmd done - returned %d\n", (int) rval));
     }
     if (rval)
         return true;
     else { // grab frame data
         // Send duration request
         ServerEndpoint->Write(&duration,sizeof(int));
-        Debug.AddLine(_T("Starting %d ms frame"),duration);
+        Debug.Write(wxString::Format("Starting %d ms frame\n", duration));
         wxMilliSleep(duration); // might as well wait here nicely at least this long
-        Debug.AddLine(_T("Reading frame - looking for %d pixels (%d bytes)"),img.NPixels,img.NPixels*2);
+        Debug.Write(wxString::Format("Reading frame - looking for %d pixels (%d bytes)\n", img.NPixels, img.NPixels * 2));
         unsigned short *dataptr;
         dataptr = img.ImageData;
         unsigned short buffer[512];
@@ -549,8 +566,8 @@ bool ServerReqFrame(int duration, usImage& img) {
         while (pixels_left > 0) {
             ServerEndpoint->Read(&buffer,packet_size * 2);
             pixels_left -= packet_size;
-            if ((j%100) == 0)
-                Debug.AddLine(_T("%d left"),pixels_left);
+            if ((j % 100) == 0)
+                Debug.Write(wxString::Format("%d left\n", pixels_left));
             for (i=0; i<packet_size; i++, dataptr++)
                 *dataptr = buffer[i];
             if (pixels_left < 256)
@@ -565,10 +582,10 @@ bool ServerReqFrame(int duration, usImage& img) {
             if (*dataptr > max) max = (int) *dataptr;
             else if (*dataptr < min) min = (int) *dataptr;
         }
-        Debug.AddLine(_T("Frame received min=%d max=%d"),min,max);
+        Debug.Write(wxString::Format("Frame received min=%d max=%d\n", min, max));
 
 //      ServerEndpoint->ReadMsg(img.ImageData,(xsize * ysize * 2));
-        Debug.AddLine(_T("Frame read"));
+        Debug.AddLine("Frame read");
     }
 
     return false;

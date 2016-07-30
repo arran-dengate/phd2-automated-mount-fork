@@ -409,7 +409,7 @@ bool GuiderOneStar::AutoSelect(void)
         {
             throw ERROR_INFO("Unable to AutoFind");
         }
-        Debug.AddLine("Primary star %f, %f", newStar.X, newStar.Y);
+        Debug.AddLine(wxString::Format("Primary star %f, %f", newStar.X, newStar.Y));
 
         m_massChecker->Reset();
 
@@ -430,7 +430,7 @@ bool GuiderOneStar::AutoSelect(void)
         {
             throw ERROR_INFO("Unable to AutoFind second star");   
         }
-        Debug.AddLine("Secondary star %f, %f", altStar.X, altStar.Y);
+        Debug.AddLine(wxString::Format("Secondary star %f, %f", altStar.X, altStar.Y));
 
         m_altMassChecker->Reset();
 
@@ -450,13 +450,13 @@ bool GuiderOneStar::AutoSelect(void)
             // the next exposure to complete. Socket server clients are going to
             // try to start guiding after selecting the star, but guiding will fail
             // to start if state is still STATE_SELECTING
-            Debug.AddLine("AutoSelect: state = %d, call UpdateGuideState", GetState());
+            Debug.Write(wxString::Format("AutoSelect: state = %d, call UpdateGuideState\n", GetState()));
             UpdateGuideState(NULL, false);
         }
 
         UpdateImageDisplay();
-        pFrame->SetStatusText(wxString::Format(_("Auto-selected star at (%.1f, %.1f), alt at (%.1f %.1f)"), m_star.X, m_star.Y, m_altStar.X, m_altStar.Y), 1);
-        pFrame->SetStatusText(StarStatus(m_star));
+        pFrame->StatusMsg(wxString::Format(_("Auto-selected star at (%.1f, %.1f)"), m_star.X, m_star.Y));
+        pFrame->UpdateStarInfo(m_star.SNR, m_star.GetError() == Star::STAR_SATURATED);
         pFrame->pProfile->UpdateData(pImage, m_star.X, m_star.Y);
     }
     catch (const wxString& Msg)
@@ -554,6 +554,11 @@ int GuiderOneStar::GetMaxMovePixels(void)
 double GuiderOneStar::StarMass(void)
 {
     return m_star.Mass;
+}
+
+unsigned int GuiderOneStar::StarPeakADU(void)
+{
+    return m_star.IsValid() ? m_star.PeakVal : 0;
 }
 
 double GuiderOneStar::SNR(void)
@@ -665,7 +670,7 @@ bool GuiderOneStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *err
             pFrame->pProfile->UpdateData(pImage, lockStars[i].X, lockStars[i].Y);
 
             pFrame->AdjustAutoExposure(lockStars[i].SNR);
-
+            pFrame->UpdateStarInfo(lockStars[i].SNR, lockStars[i].GetError() == Star::STAR_SATURATED);
             errorInfo->status = StarStatus(lockStars[i]);
         }
         catch (const wxString& Msg)
@@ -674,6 +679,7 @@ bool GuiderOneStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *err
             bError = true;
             pFrame->ResetAutoExposure(); // use max exposure duration
         }    
+
     }
 
     
@@ -745,13 +751,13 @@ void GuiderOneStar::OnLClick(wxMouseEvent &mevent)
 
             if (!m_star.IsValid())
             {
-                pFrame->SetStatusText(wxString::Format(_("No star found")));
+                pFrame->StatusMsg(wxString::Format(_("No star found")));
             }
             else
             {
                 SetLockPosition(m_star);
-                pFrame->SetStatusText(wxString::Format(_("Selected star at (%.1f, %.1f)"), m_star.X, m_star.Y), 1);
-                pFrame->SetStatusText(StarStatus(m_star));
+                pFrame->StatusMsg(wxString::Format(_("Selected star at (%.1f, %.1f)"), m_star.X, m_star.Y));
+                pFrame->UpdateStarInfo(m_star.SNR, m_star.GetError() == Star::STAR_SATURATED);
                 EvtServer.NotifyStarSelected(CurrentPosition());
                 SetState(STATE_SELECTED);
                 pFrame->UpdateButtonsStatus();
@@ -768,7 +774,7 @@ void GuiderOneStar::OnLClick(wxMouseEvent &mevent)
     }
 }
 
-inline static void DrawBox(wxClientDC& dc, const PHD_Point& star, int halfW, double scale)
+inline static void DrawBox(wxDC& dc, const PHD_Point& star, int halfW, double scale)
 {
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     double w = ROUND((halfW * 2 + 1) * scale);
@@ -778,8 +784,7 @@ inline static void DrawBox(wxClientDC& dc, const PHD_Point& star, int halfW, dou
 // Define the repainting behaviour
 void GuiderOneStar::OnPaint(wxPaintEvent& event)
 {
-    //wxAutoBufferedPaintDC dc(this);
-    wxClientDC dc(this);
+    wxAutoBufferedPaintDC dc(this);
     wxMemoryDC memDC;
 
     try
@@ -872,11 +877,11 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
                 tmpMdc.SelectObject(SubBmp);
                 memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
                 memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
-                memDC.DrawLine(LockX*m_scaleFactor, 0, LockX*m_scaleFactor, YWinSize);
+                memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
     #ifdef __APPLEX__
                 tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
     #else
-                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
+                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
     #endif
                 //          tmpMdc.Blit(0,0,200,200,&Cdc,0,0,wxCOPY);
 

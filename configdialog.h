@@ -44,8 +44,7 @@ enum BRAIN_CTRL_IDS
     AD_szImageLoggingFormat,
     AD_szLanguage,
     AD_szLogFileInfo,
-    AD_szDitherRAOnly,
-    AD_szDitherScale,
+    AD_szDither,
     AD_GLOBAL_TAB_BOUNDARY,        //-----end of global tab controls
     AD_cbUseSubFrames,
     AD_szNoiseReduction,
@@ -57,6 +56,7 @@ enum BRAIN_CTRL_IDS
     AD_szDelay,
     AD_szPort,
     AD_binning,
+    AD_cooler,
     AD_CAMERA_TAB_BOUNDARY,        // ------ end of camera tab controls
     AD_cbScaleImages,
     AD_szFocalLength,
@@ -77,6 +77,7 @@ enum BRAIN_CTRL_IDS
     AD_szMaxDecAmt,
     AD_szDecGuideMode,
     AD_MOUNT_TAB_BOUNDARY,          // ----------- end of mount tab controls
+    AD_AOTravel,
     AD_szCalStepsPerIteration,
     AD_szSamplesToAverage,
     AD_szBumpPercentage,
@@ -86,7 +87,6 @@ enum BRAIN_CTRL_IDS
     AD_cbEnableAOGuiding,
     AD_cbRotatorReverse,
     AD_DEVICES_TAB_BOUNDARY         // ----------- end of devices tab controls
-
 };
 
 struct BrainCtrlInfo

@@ -181,6 +181,11 @@ extern "C" {
 
 const wxString GuideCamera::DEFAULT_CAMERA_ID = wxEmptyString;
 
+static double GetProfilePixelSize(void)
+{
+    return pConfig->Profile.GetDouble("/camera/pixelsize", DefaultPixelSize);
+}
+
 GuideCamera::GuideCamera(void)
 {
     Connected = false;
@@ -192,12 +197,13 @@ GuideCamera::GuideCamera(void)
     HasShutter = false;
     ShutterClosed = false;
     HasSubframes = false;
+    HasCooler = false;
     FullSize = UNDEFINED_FRAME_SIZE;
     UseSubframes = pConfig->Profile.GetBoolean("/camera/UseSubframes", DefaultUseSubframes);
     ReadDelay = pConfig->Profile.GetInt("/camera/ReadDelay", DefaultReadDelay);
     GuideCameraGain = pConfig->Profile.GetInt("/camera/gain", DefaultGuideCameraGain);
     m_timeoutMs = pConfig->Profile.GetInt("/camera/TimeoutMs", DefaultGuideCameraTimeoutMs);
-    PixelSize = pConfig->Profile.GetDouble("/camera/pixelsize", DefaultPixelSize);
+    m_pixelSize = GetProfilePixelSize();
     MaxBinning = 1;
     Binning = pConfig->Profile.GetInt("/camera/binning", 1);
     CurrentDarkFrame = NULL;
@@ -585,7 +591,7 @@ GuideCamera *GuideCamera::Factory(const wxString& choice)
             throw ERROR_INFO("CameraFactory: Unknown camera choice");
         }
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         if (pReturn)
@@ -630,7 +636,7 @@ bool GuideCamera::SetCameraGain(int cameraGain)
         }
         GuideCameraGain = cameraGain;
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         bError = true;
@@ -666,11 +672,6 @@ void GuideCamera::SetTimeoutMs(int ms)
     pConfig->Profile.SetInt("/camera/TimeoutMs", m_timeoutMs);
 }
 
-double GuideCamera::GetCameraPixelSize(void)
-{
-    return PixelSize;
-}
-
 bool GuideCamera::SetCameraPixelSize(double pixel_size)
 {
     bool bError = false;
@@ -681,18 +682,34 @@ bool GuideCamera::SetCameraPixelSize(double pixel_size)
         {
             throw ERROR_INFO("pixel_size <= 0");
         }
-        PixelSize = pixel_size;
+
+        m_pixelSize = pixel_size;
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         bError = true;
-        PixelSize = DefaultPixelSize;
+        m_pixelSize = DefaultPixelSize;
     }
 
-    pConfig->Profile.SetDouble("/camera/pixelsize", PixelSize);
+    pConfig->Profile.SetDouble("/camera/pixelsize", m_pixelSize);
 
     return bError;
+}
+
+bool GuideCamera::SetCoolerOn(bool on)
+{
+    return true; // error
+}
+
+bool GuideCamera::SetCoolerSetpoint(double temperature)
+{
+    return true; // error
+}
+
+bool GuideCamera::GetCoolerStatus(bool *on, double *setpoint, double *power, double *temperature)
+{
+    return true; // error
 }
 
 CameraConfigDialogPane *GuideCamera::GetConfigDialogPane(wxWindow *pParent)
@@ -753,6 +770,7 @@ void CameraConfigDialogPane::LayoutControls(GuideCamera *pCamera, BrainCtrlIdMap
         if (pCamera->HasDelayParam)  ++numItems;
         if (pCamera->HasPortNum)     ++numItems;
         if (pCamera->MaxBinning > 1) ++numItems;
+        if (pCamera->HasCooler)      ++numItems;
         wxFlexGridSizer *pDetailsSizer = new wxFlexGridSizer((numItems + 1) / 2, 3, 15, 15);
 
         wxSizerFlags spec_flags = wxSizerFlags(0).Border(wxALL, 10).Expand();
@@ -768,6 +786,8 @@ void CameraConfigDialogPane::LayoutControls(GuideCamera *pCamera, BrainCtrlIdMap
             pDetailsSizer->Add(GetSizerCtrl(CtrlMap, AD_binning));
         if (pCamera->HasSubframes)
             pDetailsSizer->Add(GetSingleCtrl(CtrlMap, AD_cbUseSubFrames));
+        if (pCamera->HasCooler)
+            pDetailsSizer->Add(GetSizerCtrl(CtrlMap, AD_cooler));
         pSpecGroup->Add(pDetailsSizer, spec_flags);
     }
     else
@@ -798,7 +818,7 @@ CameraConfigDialogCtrlSet::CameraConfigDialogCtrlSet(wxWindow *pParent, GuideCam
     if (m_pCamera->HasSubframes)
     {
         m_pUseSubframes = new wxCheckBox(GetParentWindow(AD_cbUseSubFrames), wxID_ANY, _("Use Subframes"));
-        AddCtrl(CtrlMap, AD_cbUseSubFrames, m_pUseSubframes, _("Check to only download subframes (ROIs) if your camera supports it"));
+        AddCtrl(CtrlMap, AD_cbUseSubFrames, m_pUseSubframes, _("Check to only download subframes (ROIs). Sub-frame size is equal to search region size."));
     }
 
     int numRows = (int)m_pCamera->HasGainControl + (int)m_pCamera->HasDelayParam + (int)m_pCamera->HasPortNum + 1;
@@ -806,15 +826,15 @@ CameraConfigDialogCtrlSet::CameraConfigDialogCtrlSet(wxWindow *pParent, GuideCam
     int width = StringWidth(_T("0000")) + 30;
     // Pixel size always
     m_pPixelSize = NewSpinnerDouble(GetParentWindow(AD_szPixelSize), width, m_pCamera->GetCameraPixelSize(), 0.0, 99.9, 0.1,
-        _("Guide camera pixel size in microns. Used with the guide telescope focal length to display guiding error in arc-seconds."));
-    AddLabeledCtrl(CtrlMap, AD_szPixelSize, _("Pixel size"), m_pPixelSize, _("Guide camera pixel size in microns. Used with the guide telescope focal length to display guiding error in arc-seconds."));
+        _("Guide camera un-binned pixel size in microns. Used with the guide telescope focal length to display guiding error in arc-seconds."));
+    AddLabeledCtrl(CtrlMap, AD_szPixelSize, _("Pixel size"), m_pPixelSize, "");
 
     // Gain control
     if (m_pCamera->HasGainControl)
     {
         int width = StringWidth(_T("0000")) + 30;
         m_pCameraGain = NewSpinnerInt(GetParentWindow(AD_szGain), width, 100, 0, 100, 1);
-        AddLabeledCtrl(CtrlMap, AD_szGain, _("Camera gain"), m_pCameraGain, _("Camera gain boost ? Default = 95 % , lower if you experience noise or wish to guide on a very bright star. Not available on all cameras."));
+        AddLabeledCtrl(CtrlMap, AD_szGain, _("Camera gain"), m_pCameraGain, _("Camera gain, default = 95 % , lower if you experience noise or wish to guide on a very bright star. Not available on all cameras."));
     }
 
     // Binning
@@ -850,6 +870,18 @@ CameraConfigDialogCtrlSet::CameraConfigDialogCtrlSet(wxWindow *pParent, GuideCam
         m_pPortNum = new wxChoice(GetParentWindow(AD_szPort), wxID_ANY, wxPoint(-1, -1),
             wxSize(width + 35, -1), WXSIZEOF(port_choices), port_choices);
         AddLabeledCtrl(CtrlMap, AD_szPort, _("LE Port"), m_pPortNum, _("Port number for long-exposure control"));
+    }
+
+    if (m_pCamera->HasCooler)
+    {
+        wxSizer *sz = new wxBoxSizer(wxHORIZONTAL);
+        m_coolerOn = new wxCheckBox(GetParentWindow(AD_cooler), wxID_ANY, _("Cooler On"));
+        m_coolerOn->SetToolTip(_("Turn camera cooler on or off"));
+        sz->Add(m_coolerOn, wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxRIGHT));
+        m_coolerSetpt = NewSpinnerInt(GetParentWindow(AD_szDelay), width, 5, -99, 99, 1);
+        wxSizer *szt = MakeLabeledControl(AD_cooler, _("Set Temperature"), m_coolerSetpt, _("Cooler setpoint temperature"));
+        sz->Add(szt, wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL));
+        AddGroup(CtrlMap, AD_cooler, sz);
     }
 
     // Watchdog timeout
@@ -957,8 +989,44 @@ void CameraConfigDialogCtrlSet::LoadValues()
         m_pPortNum->Enable(!pFrame->CaptureActive);
     }
 
-    m_pPixelSize->SetValue(m_pCamera->GetCameraPixelSize());
-    m_pPixelSize->Enable(!pFrame->CaptureActive);
+    double pxSize;
+    if (m_pCamera->GetDevicePixelSize(&pxSize))         // true=>error
+    {
+        pxSize = m_pCamera->GetCameraPixelSize();
+        m_pPixelSize->Enable(!pFrame->CaptureActive);
+    }
+    else
+        m_pPixelSize->Enable(false);                // Got a device-level pixel size, disable the control
+
+    m_pPixelSize->SetValue(pxSize);
+
+    if (m_pCamera->HasCooler)
+    {
+        bool ok = false;
+        bool on;
+        double setpt;
+
+        if (m_pCamera->Connected)
+        {
+            double power, temp;
+            bool err = m_pCamera->GetCoolerStatus(&on, &setpt, &power, &temp);
+            if (!err)
+                ok = true;
+        }
+
+        if (ok)
+        {
+            m_coolerOn->SetValue(on);
+            if (!on)
+            {
+                setpt = pConfig->Profile.GetDouble("/camera/CoolerSetpt", 10.0);
+            }
+            m_coolerSetpt->SetValue((int)floor(setpt));
+        }
+
+        m_coolerOn->Enable(ok);
+        m_coolerSetpt->Enable(ok);
+    }
 }
 
 void CameraConfigDialogCtrlSet::UnloadValues()
@@ -1018,9 +1086,18 @@ void CameraConfigDialogCtrlSet::UnloadValues()
         }
     }
 
-    double pixel_size;
-    pixel_size = m_pPixelSize->GetValue();
-    m_pCamera->SetCameraPixelSize(pixel_size);
+    m_pCamera->SetCameraPixelSize(m_pPixelSize->GetValue());
+
+    if (m_pCamera->HasCooler)
+    {
+        bool on = m_coolerOn->GetValue();
+        m_pCamera->SetCoolerOn(on);
+        double setpt = (double) m_coolerSetpt->GetValue();
+        m_pCamera->SetCoolerSetpoint(setpt);
+        pConfig->Profile.SetDouble("/camera/CoolerSetpt", setpt);
+    }
+
+    pFrame->pStatsWin->UpdateCooler();
 }
 
 double CameraConfigDialogCtrlSet::GetPixelSize()
@@ -1061,10 +1138,10 @@ wxString GuideCamera::GetSettingsSummary()
 
     // return a loggable summary of current camera settings
     wxString pixelSizeStr;
-    if (PixelSize == 0)
-        pixelSizeStr = "unspecified";
+    if (m_pixelSize == DefaultPixelSize)
+        pixelSizeStr = _("unspecified");
     else
-        pixelSizeStr = wxString::Format("%0.1f um", PixelSize);
+        pixelSizeStr = wxString::Format(_("%0.1f um"), m_pixelSize);
 
     return wxString::Format("Camera = %s, gain = %d%s%s, full size = %d x %d, %s, %s, pixel size = %s\n",
                             Name, GuideCameraGain,
@@ -1225,6 +1302,9 @@ void GuideCamera::DisconnectWithAlert(CaptureFailType type)
 void GuideCamera::DisconnectWithAlert(const wxString& msg, ReconnectType reconnect)
 {
     Disconnect();
+
+    pFrame->UpdateStateLabels();
+
     if (reconnect == RECONNECT)
     {
         pFrame->Alert(msg + "\n" + _("PHD will make several attempts to re-connect the camera."));

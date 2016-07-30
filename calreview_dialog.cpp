@@ -88,6 +88,7 @@ void CalReviewDialog::CreateControls()
 
     wxPanel* panelMount = new wxPanel(calibNotebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSUNKEN_BORDER | wxTAB_TRAVERSAL);
     CreatePanel(panelMount, false);
+    panelMount->SetBackgroundColour("BLACK");
 
     calibNotebook->AddPage(panelMount, _("Mount"));
 
@@ -96,6 +97,7 @@ void CalReviewDialog::CreateControls()
     {
         wxPanel* panelAO = new wxPanel(calibNotebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSUNKEN_BORDER | wxTAB_TRAVERSAL);
         CreatePanel(panelAO, true);
+        panelAO->SetBackgroundColour("BLACK");
         calibNotebook->AddPage(panelAO, _("AO"));
     }
 
@@ -130,55 +132,52 @@ void CalReviewDialog::CreatePanel(wxPanel* thisPanel, bool AO)
     panelGraphVSizer->Add(graphLegendGroup, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
 
     wxStaticText* labelRA = new wxStaticText(thisPanel, wxID_STATIC, _("Right Ascension"), wxDefaultPosition, wxDefaultSize, 0);
-    labelRA->SetForegroundColour("RED");
+    labelRA->SetForegroundColour(pFrame->pGraphLog->GetRaOrDxColor());
     if (AO)
         labelRA->SetLabelText(_("X"));
     else
         labelRA->SetLabelText(_("Right Ascension"));
-    graphLegendGroup->Add(labelRA, 0, wxALIGN_CENTER_VERTICAL | wxALL | wxADJUST_MINSIZE, 5);
+    graphLegendGroup->Add(labelRA, 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 
     wxStaticText* labelDec = new wxStaticText(thisPanel, wxID_STATIC, _("Declination"), wxDefaultPosition, wxDefaultSize, 0);
-    labelDec->SetForegroundColour("BLUE");
+    labelDec->SetForegroundColour(pFrame->pGraphLog->GetDecOrDyColor());
     if (AO)
         labelDec->SetLabelText(_("Y"));
     else
         labelDec->SetLabelText(_("Declination"));
-    graphLegendGroup->Add(labelDec, 0, wxALIGN_CENTER_VERTICAL | wxALL | wxADJUST_MINSIZE, 5);
+    graphLegendGroup->Add(labelDec, 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 
     // Done with left-hand side
     // Now put the data grid(s) on the right side
-
+    thisPanel->SetForegroundColour("WHITE");
     CreateDataGrids(thisPanel, panelHSizer, AO);                  // Virtual function
 }
 
 // Base class version builds data grids showing last calibration details and calibration "context"
 void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSizer, bool AO)
 {
+    const double siderealSecondPerSec = 0.9973;
+    const double siderealRate = 15.0 * siderealSecondPerSec;
+
     Calibration calBaseline;
     CalibrationDetails calDetails;
-    const double dSiderealSecondPerSec = 0.9973;
-    bool validDetails = false;
-    bool validAscomInfo = false;
-    double guideRaSiderealX = 0.0;
-    double guideDecSiderealX = 0.0;
-    double binningAdjustment = 1.0;
 
     if (!pSecondaryMount)
     {
         pMount->GetCalibrationDetails(&calDetails);                              // Normal case, no AO
-        pMount->GetLastCalibrationParams(&calBaseline);
+        pMount->GetLastCalibration(&calBaseline);
     }
     else
     {
         if (AO)
         {
             pMount->GetCalibrationDetails(&calDetails);                          // AO tab, use AO details
-            pMount->GetLastCalibrationParams(&calBaseline);
+            pMount->GetLastCalibration(&calBaseline);
         }
         else
         {
             pSecondaryMount->GetCalibrationDetails(&calDetails);                 // Mount tab, use mount details
-            pSecondaryMount->GetLastCalibrationParams(&calBaseline);
+            pSecondaryMount->GetLastCalibration(&calBaseline);
         }
     }
 
@@ -187,8 +186,8 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
 
     int row = 0;
     int col = 0;
-    validDetails = calDetails.raStepCount > 0;                                             // true for non-AO with pointing source info and "recent" calibration
-    validAscomInfo = calBaseline.declination != 0.0;
+    bool validDetails = calDetails.raStepCount > 0;                              // true for non-AO with pointing source info and "recent" calibration
+    bool validBaselineDeclination = calBaseline.declination != UNKNOWN_DECLINATION;
 
     // Build the upper frame and grid for data from the last calibration
     wxStaticBox* staticBoxLastCal = new wxStaticBox(parentPanel, wxID_ANY, _("Last Mount Calibration"));
@@ -203,35 +202,37 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
 
     calGrid->EnableEditing(false);
 
-    calGrid->SetCellValue(_("RA steps:"), row, col++);
+    calGrid->SetCellValue(row, col++, _("RA steps:"));
     if (validDetails)
-        calGrid->SetCellValue(wxString::Format("%d", calDetails.raStepCount), row, col++);
+        calGrid->SetCellValue(row, col++, wxString::Format("%d", calDetails.raStepCount));
     else
-        calGrid->SetCellValue(NA_STR, row, col++);
-    calGrid->SetCellValue(_("Dec steps:"), row, col++);
+        calGrid->SetCellValue(row, col++, NA_STR);
+    calGrid->SetCellValue(row, col++, _("Dec steps:"));
     if (validDetails)
-        calGrid->SetCellValue(wxString::Format("%d", calDetails.decStepCount), row, col++);
+        calGrid->SetCellValue(row, col++, wxString::Format("%d", calDetails.decStepCount));
     else
-        calGrid->SetCellValue(NA_STR, row, col++);
+        calGrid->SetCellValue(row, col++, NA_STR);
     row++;
     col = 0;
-    calGrid->SetCellValue(_("Camera angle:"), row, col++);
+    calGrid->SetCellValue(row, col++, _("Camera angle:"));
     double cam_angle = degrees(norm_angle(calBaseline.xAngle));
-    calGrid->SetCellValue(wxString::Format("%.1f", cam_angle), row, col++);
-    calGrid->SetCellValue(_("Orthogonality error:"), row, col++);
+    calGrid->SetCellValue(row, col++, wxString::Format("%.1f", cam_angle));
+    calGrid->SetCellValue(row, col++, _("Orthogonality error:"));
     if (validDetails)
-        calGrid->SetCellValue(wxString::Format("%0.1f", calDetails.orthoError), row, col++);
+        calGrid->SetCellValue(row, col++, wxString::Format("%0.1f", calDetails.orthoError));
     else
-        calGrid->SetCellValue(NA_STR, row, col++);
+        calGrid->SetCellValue(row, col++, NA_STR);
 
     row++;
     col = 0;
 
-    if (validDetails)
+    double guideRaSiderealX = -1.0;
+    double guideDecSiderealX = -1.0;
+
+    if (validDetails && calDetails.raGuideSpeed > 0.0)
     {
-        guideRaSiderealX = calDetails.raGuideSpeed * 3600.0 / (15.0 * dSiderealSecondPerSec);  // Degrees/sec to Degrees/hour, 15 degrees/hour is roughly sidereal rate
-        guideDecSiderealX = calDetails.decGuideSpeed * 3600.0 / (15.0 * dSiderealSecondPerSec);  // Degrees/sec to Degrees/hour, 15 degrees/hour is roughly sidereal rate
-        binningAdjustment = calBaseline.binning / calDetails.origBinning;
+        guideRaSiderealX = calDetails.raGuideSpeed * 3600.0 / siderealRate;  // Degrees/sec to Degrees/hour, 15 degrees/hour is roughly sidereal rate
+        guideDecSiderealX = calDetails.decGuideSpeed * 3600.0 / siderealRate;  // Degrees/sec to Degrees/hour, 15 degrees/hour is roughly sidereal rate
     }
 
     wxString ARCSECPERSEC(_("a-s/sec"));
@@ -240,29 +241,29 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
 
     if (!AO)
     {
-        calGrid->SetCellValue(_("RA rate:"), row, col++);
+        calGrid->SetCellValue(row, col++, _("RA rate:"));
     }
     else
-        calGrid->SetCellValue(_("X rate:"), row, col++);
+        calGrid->SetCellValue(row, col++, _("X rate:"));
     if (validDetails)
-        calGrid->SetCellValue(wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.xRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC, 
-            calBaseline.xRate * 1000, PXPERSEC), row, col++);
+        calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.xRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC,
+            calBaseline.xRate * 1000, PXPERSEC));
     else
-        calGrid->SetCellValue(wxString::Format("%0.3f %s", calBaseline.xRate * 1000, PXPERSEC), row, col++);      // just px/sec with no image scale data
+        calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s", calBaseline.xRate * 1000, PXPERSEC));      // just px/sec with no image scale data
     if (!AO)
-        calGrid->SetCellValue(_("Dec rate:"), row, col++);
+        calGrid->SetCellValue(row, col++, _("Dec rate:"));
     else
-        calGrid->SetCellValue(_("Y rate:"), row, col++);
+        calGrid->SetCellValue(row, col++, _("Y rate:"));
     if (calBaseline.yRate != CALIBRATION_RATE_UNCALIBRATED)
     {
         if (validDetails)
-            calGrid->SetCellValue(wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.yRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC, 
-                calBaseline.yRate * 1000, PXPERSEC), row, col++);
+            calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.yRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC,
+                calBaseline.yRate * 1000, PXPERSEC));
         else
-            calGrid->SetCellValue(wxString::Format("%0.3f %s", calBaseline.yRate * 1000, PXPERSEC), row, col++);      // just px/sec with no image scale data
+            calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s", calBaseline.yRate * 1000, PXPERSEC));      // just px/sec with no image scale data
     }
     else
-        calGrid->SetCellValue(NA_STR, row, col++);
+        calGrid->SetCellValue(row, col++, NA_STR);
 
 
     row++;
@@ -270,28 +271,32 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
 
     if (validDetails && calBaseline.yRate > 0)
     {
-        calGrid->SetCellValue(_("Expected RA rate:"), row, col++);
-        if (validAscomInfo && fabs(degrees(calBaseline.declination)) < 65.0)
+        calGrid->SetCellValue(row, col++, _("Expected RA rate:"));
+        if (validBaselineDeclination && guideRaSiderealX != -1.0 && fabs(degrees(calBaseline.declination)) < 65.0)
         {
             // Dec speed setting corrected for pointing position and then for any difference in RA guide speed setting
-            calGrid->SetCellValue(wxString::Format("%0.1f %s", guideDecSiderealX * 15.0 * dSiderealSecondPerSec * cos(calBaseline.declination) *
-                guideRaSiderealX / guideDecSiderealX, ARCSECPERSEC), row, col++);
+            double expectedRaRate = siderealRate * cos(calBaseline.declination) * guideRaSiderealX;
+            calGrid->SetCellValue(row, col++, wxString::Format("%0.1f %s", expectedRaRate, ARCSECPERSEC));
         }
         else
-            calGrid->SetCellValue(NA_STR, row, col++);
-        calGrid->SetCellValue(_("Expected Dec rate:"), row, col++);
-        if (validAscomInfo)
-            calGrid->SetCellValue(wxString::Format("%0.1f %s", guideDecSiderealX * 15.0 * dSiderealSecondPerSec, ARCSECPERSEC), row, col);
+            calGrid->SetCellValue(row, col++, NA_STR);
+
+        calGrid->SetCellValue(row, col++, _("Expected Dec rate:"));
+        if (guideRaSiderealX != -1.0)
+        {
+            double expectedDecRate = siderealRate * guideDecSiderealX;
+            calGrid->SetCellValue(row, col++, wxString::Format("%0.1f %s", expectedDecRate, ARCSECPERSEC));
+        }
         else
-            calGrid->SetCellValue(NA_STR, row, col++);
+            calGrid->SetCellValue(row, col++, NA_STR);
     }
 
     row++;
     col = 0;
-    calGrid->SetCellValue(_("Binning:"), row, col++);
-    calGrid->SetCellValue(wxString::Format("%d", (int)calBaseline.binning), row, col++);
-    calGrid->SetCellValue(_("Created:"), row, col++);
-    calGrid->SetCellValue(validDetails ? calDetails.origTimestamp : _("Unknown"), row, col);
+    calGrid->SetCellValue(row, col++, _("Binning:"));
+    calGrid->SetCellValue(row, col++, wxString::Format("%d", (int)calBaseline.binning));
+    calGrid->SetCellValue(row, col++, _("Created:"));
+    calGrid->SetCellValue(row, col++, validDetails ? calDetails.origTimestamp : _("Unknown"));
 
     calGrid->AutoSize();
     calibFrame->Add(calGrid, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
@@ -311,73 +316,75 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         cfgGrid->CreateGrid(4, 4);
         cfgGrid->EnableEditing(false);
 
-        cfgGrid->SetCellValue(_("Modified:"), row, col++);
-        cfgGrid->SetCellValue(calBaseline.timestamp, row, col++);
-        cfgGrid->SetCellValue(_("Focal length:"), row, col++);
+        cfgGrid->SetCellValue(row, col++, _("Modified:"));
+        cfgGrid->SetCellValue(row, col++, calBaseline.timestamp);
+        cfgGrid->SetCellValue(row, col++, _("Focal length:"));
         if (validDetails)
-            cfgGrid->SetCellValue(wxString::Format("%d mm", calDetails.focalLength), row, col++);
+            cfgGrid->SetCellValue(row, col++, wxString::Format(_("%d mm"), calDetails.focalLength));
         else
-            cfgGrid->SetCellValue(NA_STR, row, col++);
+            cfgGrid->SetCellValue(row, col++, NA_STR);
         row++;
         col = 0;
-        cfgGrid->SetCellValue(_("Image scale:"), row, col++);
+        cfgGrid->SetCellValue(row, col++, _("Image scale:"));
         if (validDetails)
         {
             wxString binning = wxString::Format(_("Binning: %d"), (int)calDetails.origBinning);      // Always binning used in actual calibration
-            cfgGrid->SetCellValue(wxString::Format("%0.2f %s\n%s", calDetails.imageScale, ARCSECPERPX, binning), row, col++);
+            cfgGrid->SetCellValue(row, col++, wxString::Format("%0.2f %s\n%s", calDetails.imageScale, ARCSECPERPX, binning));
         }
         else
-            cfgGrid->SetCellValue(NA_STR, row, col++);
-        cfgGrid->SetCellValue(_("Side-of-pier:"), row, col++);
+            cfgGrid->SetCellValue(row, col++, NA_STR);
+        cfgGrid->SetCellValue(row, col++, _("Side-of-pier:"));
         wxString sPierSide = calBaseline.pierSide == PIER_SIDE_EAST ? _("East") :
             calBaseline.pierSide == PIER_SIDE_WEST ? _("West") : NA_STR;
-        cfgGrid->SetCellValue(_(sPierSide), row, col++);
+        cfgGrid->SetCellValue(row, col++, _(sPierSide));
 
         row++;
         col = 0;
 
-        cfgGrid->SetCellValue(_("RA Guide speed:"), row, col++);
-        if (validAscomInfo)                                                // Do the RA guide setting
+        cfgGrid->SetCellValue(row, col++, _("RA Guide speed:"));
+        if (guideRaSiderealX != -1.0)                                       // Do the RA guide setting
         {
-            cfgGrid->SetCellValue(wxString::Format("%0.2fx", guideRaSiderealX), row, col++);
+            cfgGrid->SetCellValue(row, col++, wxString::Format(_("%0.2fx"), guideRaSiderealX));
         }
         else
-            cfgGrid->SetCellValue(NA_STR, row, col++);
-        cfgGrid->SetCellValue(_("Dec Guide speed:"), row, col++);
-        if (validAscomInfo)                                                // Do the Dec guide setting
+            cfgGrid->SetCellValue(row, col++, NA_STR);
+
+        cfgGrid->SetCellValue(row, col++, _("Dec Guide speed:"));
+        if (guideDecSiderealX != -1.0)                                      // Do the Dec guide setting
         {
-            cfgGrid->SetCellValue(wxString::Format("%0.2fx", guideDecSiderealX), row, col++);
+            cfgGrid->SetCellValue(row, col++, wxString::Format(_("%0.2fx"), guideDecSiderealX));
         }
         else
-            cfgGrid->SetCellValue(NA_STR, row, col++);
+            cfgGrid->SetCellValue(row, col++, NA_STR);
 
         row++;
         col = 0;
 
         // dec may be gotten from mount or imputed
         double dec = calBaseline.declination;
+        bool decEstimated = false;
 
-        if (!validAscomInfo)
+        if (!validBaselineDeclination)
         {
             if (fabs(calBaseline.yRate) > 0.00001 && fabs(calBaseline.xRate / calBaseline.yRate) <= 1.0)
-                dec = degrees(acos(calBaseline.xRate / calBaseline.yRate));        // RA_Rate = Dec_Rate * cos(dec)
+            {
+                dec = acos(calBaseline.xRate / calBaseline.yRate);        // RA_Rate = Dec_Rate * cos(dec)
+                decEstimated = true;
+            }
         }
-        else
-        {
-            dec = degrees(dec);
-        }
-        cfgGrid->SetCellValue(_("Declination"), row, col++);
-        if (validAscomInfo)
-            cfgGrid->SetCellValue(wxString::Format("%0.1f", dec), row, col++);
-        else
-            cfgGrid->SetCellValue(wxString::Format("%0.1f", dec) + _(" (est)"), row, col++);
 
-        cfgGrid->SetCellValue(_("Rotator position:"), row, col++);
+        cfgGrid->SetCellValue(row, col++, _("Declination"));
+        wxString decStr = Mount::DeclinationStr(dec, "%0.1f");
+        if (decEstimated)
+            decStr += _(" (est)");
+        cfgGrid->SetCellValue(row, col++, decStr);
+
+        cfgGrid->SetCellValue(row, col++, _("Rotator position:"));
         bool valid_rotator = fabs(calBaseline.rotatorAngle) < 360.0;
         if (valid_rotator)
-            cfgGrid->SetCellValue(wxString::Format("%0.1f", calBaseline.rotatorAngle), row, col++);
+            cfgGrid->SetCellValue(row, col++, wxString::Format("%0.1f", calBaseline.rotatorAngle));
         else
-            cfgGrid->SetCellValue(NA_STR, row, col++);
+            cfgGrid->SetCellValue(row, col++, NA_STR);
 
         cfgGrid->AutoSize();
         configFrame->Add(cfgGrid, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
@@ -391,11 +398,13 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
 {
     wxMemoryDC memDC;
     wxBitmap bmp(CALREVIEW_BITMAP_SIZE, CALREVIEW_BITMAP_SIZE, -1);
-    wxPen axisPen("BLACK", 3, wxCROSS_HATCH);
-    wxPen redPen("RED", 3, wxSOLID);
-    wxPen bluePen("BLUE", 3, wxSOLID);
-    wxBrush redBrush("RED", wxSOLID);
-    wxBrush blueBrush("BLUE", wxSOLID);
+    wxPen axisPen("GREY", 3, wxCROSS_HATCH);
+    wxColour raColor = pFrame->pGraphLog->GetRaOrDxColor();
+    wxColour decColor = pFrame->pGraphLog->GetDecOrDyColor();
+    wxPen raPen(raColor, 3, wxSOLID);
+    wxPen decPen(decColor, 3, wxSOLID);
+    wxBrush raBrush(raColor, wxSOLID);
+    wxBrush decBrush(decColor, wxSOLID);
     CalibrationDetails calDetails;
     double scaleFactor;
     int ptRadius;
@@ -429,13 +438,14 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
         biggestVal = wxMax(biggestVal, fabs(it->x));
         biggestVal = wxMax(biggestVal, fabs(it->y));
     }
-    if (biggestVal > 0)
+
+    if (biggestVal > 0.0)
         scaleFactor = ((CALREVIEW_BITMAP_SIZE - 5) / 2) / biggestVal;           // Leave room for circular point
     else
         scaleFactor = 1.0;
 
     memDC.SelectObject(bmp);
-    memDC.SetBackground(*wxLIGHT_GREY_BRUSH);
+    memDC.SetBackground(*wxBLACK_BRUSH);
     memDC.Clear();
     memDC.SetPen(axisPen);
     // Draw the axes
@@ -446,8 +456,8 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
     if (calDetails.raStepCount > 0)
     {
         // Draw the RA data
-        memDC.SetPen(redPen);
-        memDC.SetBrush(redBrush);
+        memDC.SetPen(raPen);
+        memDC.SetBrush(raBrush);
         ptRadius = 2;
 
         // Scale the points, then plot them individually
@@ -455,14 +465,14 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
         {
             if (i == calDetails.raStepCount + 2)        // Valid even for "single-step" calibration
             {
-                memDC.SetPen(wxPen("Red", 1));         // 1-pixel-thick red outline
+                memDC.SetPen(wxPen(raColor, 1));         // 1-pixel-thick outline
                 memDC.SetBrush(wxNullBrush);           // Outline only for "return" data points
                 ptRadius = 3;
             }
             memDC.DrawCircle(IntPoint(calDetails.raSteps.at(i), scaleFactor), ptRadius);
         }
         // Show the line PHD2 will use for the rate
-        memDC.SetPen(redPen);
+        memDC.SetPen(raPen);
         if ((int)calDetails.raSteps.size() > calDetails.raStepCount)         // New calib, includes return values
             memDC.DrawLine(IntPoint(calDetails.raSteps.at(0), scaleFactor), IntPoint(calDetails.raSteps.at(calDetails.raStepCount), scaleFactor));
         else
@@ -470,8 +480,8 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
     }
 
     // Handle the Dec data
-    memDC.SetPen(bluePen);
-    memDC.SetBrush(blueBrush);
+    memDC.SetPen(decPen);
+    memDC.SetBrush(decBrush);
     ptRadius = 2;
     if (calDetails.decStepCount > 0)
     {
@@ -479,14 +489,14 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
         {
             if (i == calDetails.decStepCount + 2)
             {
-                memDC.SetPen(wxPen("Blue", 1));         // 1-pixel-thick red outline
+                memDC.SetPen(wxPen(decColor, 1));         // 1-pixel-thick outline
                 memDC.SetBrush(wxNullBrush);           // Outline only for "return" data points
                 ptRadius = 3;
             }
             memDC.DrawCircle(IntPoint(calDetails.decSteps.at(i), scaleFactor), ptRadius);
         }
         // Show the line PHD2 will use for the rate
-        memDC.SetPen(bluePen);
+        memDC.SetPen(decPen);
         if ((int)calDetails.decSteps.size() > calDetails.decStepCount)         // New calib, includes return values
             memDC.DrawLine(IntPoint(calDetails.decSteps.at(0), scaleFactor), IntPoint(calDetails.decSteps.at(calDetails.decStepCount), scaleFactor));
         else
@@ -540,9 +550,8 @@ void CalRestoreDialog::OnRestore(wxCommandEvent& event)
 {
     Debug.AddLine("User-requested restore calibration");
     pFrame->LoadCalibration();
-    pFrame->SetStatusText(_("Calibration restored"));
+    pFrame->StatusMsg(_("Calibration restored"));
     EndModal(wxID_OK);
-
 }
 
 // CalSanity dialog may get launched as part of an 'alert' if the last calibration looked wonky - this one is non-modal
@@ -550,13 +559,13 @@ CalSanityDialog::CalSanityDialog(wxFrame *parent, const Calibration& oldParams, 
     CalibrationIssueType issue)
 {
     m_pScope = TheScope();
-    m_pScope->GetLastCalibrationParams(&m_newParams);
+    m_pScope->GetLastCalibration(&m_newParams);
     pMount->GetCalibrationDetails(&m_calDetails);
     m_oldParams = oldParams;
     m_oldDetails = oldDetails;
     m_issue = issue;
     m_childDialog = true;
-    m_oldValid = (oldParams.declination < INVALID_DECLINATION);
+    m_oldValid = oldParams.isValid;
     // All above data must be initialized before the UI can be built
     Create(parent, _("Calibration Sanity Check"));
 }
@@ -588,7 +597,7 @@ void CalSanityDialog::BuildMessage(wxStaticText *pText, CalibrationIssueType ety
     case CI_Angle:
         msg = wxString::Format(_("The RA and Declination angles computed in the calibration are questionable.  Normally, "
             "these angles will be nearly perpendicular, having an 'orthogonality error' of less than 10 degrees.  In this calibration, your error was %s degrees, which "
-            "is often caused by poor polar alignment or a large periodic error in RA."), m_newAngleDelta);
+            "is often caused by poor polar alignment, large Dec backlash, or a large periodic error in RA."), m_newAngleDelta);
         break;
     case CI_Different:
         msg = wxString::Format(_("The most recent calibration produced results that are %s%% different from the previous calibration.  If this is because "
@@ -598,7 +607,7 @@ void CalSanityDialog::BuildMessage(wxStaticText *pText, CalibrationIssueType ety
     case CI_Rates:
         msg = wxString::Format(_("The RA and Declination guiding rates differ by an unexpected amount.  For your declination of %0.0f degrees, "
             "the RA rate should be about %0.0f%% of the Dec rate.  But your RA rate is %0.0f%% of the Dec rate.  "
-            "This often means one of the axis calibrations is inaccurate, which may result in poor guiding."),
+            "This usually means one of the axis calibrations is incorrect and may result in poor guiding."),
             degrees(m_newParams.declination), cos(m_newParams.declination) * 100.0, m_newParams.xRate / m_newParams.yRate * 100.0);
         break;
     default:
@@ -606,7 +615,7 @@ void CalSanityDialog::BuildMessage(wxStaticText *pText, CalibrationIssueType ety
         break;
     }
     pText->SetLabel(msg);
-    pText->Wrap(380);
+    pText->Wrap(420);
 }
 
 // Overridden method for building the data grids - these are substantially different from the CalReview base but the overall appearance and graph presence are the same
@@ -618,7 +627,7 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
     double newRARate = m_newParams.xRate * 1000;                          // px per sec for UI purposes
     double newDecRate = m_newParams.yRate * 1000;
     double imageScale = m_calDetails.imageScale;
-    bool oldValid = m_oldParams.declination < INVALID_DECLINATION;
+    bool oldValid = m_oldParams.isValid;
 
     if (!AO)                // AO calibration never triggers sanity check alerts, so don't show that data
     {
@@ -641,9 +650,9 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         wxStaticBoxSizer *pMsgGrp = new wxStaticBoxSizer(wxVERTICAL, parentPanel, _("Explanation"));
 
         // Explanation area
-        wxStaticText *pMsgArea = new wxStaticText(parentPanel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(400, -1), wxALIGN_LEFT | wxST_NO_AUTORESIZE);
+        wxStaticText *pMsgArea = new wxStaticText(parentPanel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(450, -1), wxALIGN_LEFT | wxST_NO_AUTORESIZE);
         BuildMessage(pMsgArea, m_issue);
-        pMsgArea->SetSizeHints(wxSize(-1, MESSAGE_HEIGHT));
+        pMsgArea->SetSizeHints(wxSize(450, MESSAGE_HEIGHT));
         wxFont font = pMsgArea->GetFont();
         font.SetWeight(wxFONTWEIGHT_BOLD);
         pMsgArea->SetFont(font);
@@ -660,10 +669,10 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
 
         int col = 0;
         int row = 0;
-        pGrid->SetCellValue(_("Steps, RA:"), row, col++);
-        pGrid->SetCellValue(raSteps, row, col++);
-        pGrid->SetCellValue(_("Steps, Dec:"), row, col++);
-        pGrid->SetCellValue(decSteps, row, col++);
+        pGrid->SetCellValue(row, col++, _("Steps, RA:"));
+        pGrid->SetCellValue(row, col++, raSteps);
+        pGrid->SetCellValue(row, col++, _("Steps, Dec:"));
+        pGrid->SetCellValue(row, col++, decSteps);
         if (m_issue == CI_Steps){
             if (raSteps <= decSteps)
                 HighlightCell(pGrid, row, 1);
@@ -672,10 +681,10 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         }
         row++;
         col = 0;
-        pGrid->SetCellValue(_("Orthogonality error:"), row, col++);
-        pGrid->SetCellValue(m_newAngleDelta, row, col++);
-        pGrid->SetCellValue(_("Previous orthogonality error:"), row, col++);
-        pGrid->SetCellValue(oldAngleDelta, row, col++);
+        pGrid->SetCellValue(row, col++, _("Orthogonality error:"));
+        pGrid->SetCellValue(row, col++, m_newAngleDelta);
+        pGrid->SetCellValue(row, col++, _("Previous orthogonality error:"));
+        pGrid->SetCellValue(row, col++, oldAngleDelta);
         if (m_issue == CI_Angle)
         {
             HighlightCell(pGrid, row, 1);
@@ -686,28 +695,28 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         // Show either the new RA and Dec rates or the new and old Dec rates depending on the issue
         if (m_issue == CI_Different)
         {
-            pGrid->SetCellValue(_("This declination rate:"), row, col++);
+            pGrid->SetCellValue(row, col++, _("This declination rate:"));
             if (newDecRate != CALIBRATION_RATE_UNCALIBRATED)
-                pGrid->SetCellValue(wxString::Format("%0.3f ''/sec\n%0.3f px/sec", newDecRate * imageScale, newDecRate), row, col++);
+                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * imageScale, newDecRate));
             else
-                pGrid->SetCellValue(NA_STR, row, col++);
-            pGrid->SetCellValue(_("Previous declination rate:"), row, col++);
+                pGrid->SetCellValue(row, col++, NA_STR);
+            pGrid->SetCellValue(row, col++, _("Previous declination rate:"));
             if (m_oldParams.yRate != CALIBRATION_RATE_UNCALIBRATED)
-                pGrid->SetCellValue(wxString::Format("\n%0.3f px/sec", m_oldParams.yRate * 1000), row, col++);
+                pGrid->SetCellValue(row, col++, wxString::Format(_("\n%0.3f px/sec"), m_oldParams.yRate * 1000));
             else
-                pGrid->SetCellValue(NA_STR, row, col++);
+                pGrid->SetCellValue(row, col++, NA_STR);
             HighlightCell(pGrid, row, 1);
             HighlightCell(pGrid, row, 3);
         }
         else
         {
-            pGrid->SetCellValue(_("RA rate:"), row, col++);
-            pGrid->SetCellValue(wxString::Format("%0.3f a-s/sec\n%0.3f px/sec", newRARate * imageScale, newRARate), row, col++);
-            pGrid->SetCellValue(_("Declination rate:"), row, col++);
+            pGrid->SetCellValue(row, col++, _("RA rate:"));
+            pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newRARate * imageScale, newRARate));
+            pGrid->SetCellValue(row, col++, _("Declination rate:"));
             if (newDecRate != CALIBRATION_RATE_UNCALIBRATED)
-                pGrid->SetCellValue(wxString::Format("%0.3f a-s/sec\n%0.3f px/sec", newDecRate * imageScale, newDecRate), row, col++);
+                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * imageScale, newDecRate));
             else
-                pGrid->SetCellValue(NA_STR, row, col++);
+                pGrid->SetCellValue(row, col++, NA_STR);
             if (m_issue == CI_Rates)
             {
                 HighlightCell(pGrid, row, 1);
@@ -723,7 +732,7 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         // Checkboxes for being quiet
         m_pBlockThis = new wxCheckBox(parentPanel, wxID_ANY, _("Don't show calibration alerts of this type"));
         pVSizer->Add(m_pBlockThis, wxSizerFlags(0).Border(wxALL, 15));
-        parentHSizer->Add(pVSizer, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);             // parentHSizer->Add(panelGridVSizer, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
+        parentHSizer->Add(pVSizer, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     }
 
 }
@@ -788,7 +797,7 @@ void CalSanityDialog::OnRestore(wxCommandEvent& evt)
     m_pScope->SetCalibrationDetails(m_oldDetails, m_oldParams.xAngle, m_oldParams.yAngle, m_oldDetails.origBinning);
 
     pFrame->LoadCalibration();
-    pFrame->SetStatusText(_("Previous calibration restored"));
+    pFrame->StatusMsg(_("Previous calibration restored"));
     Debug.AddLine("Calibration sanity check: user chose to restore old calibration");
     ShutDown();
 }

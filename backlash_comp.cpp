@@ -36,10 +36,15 @@
 #include "phd.h"
 #include "backlash_comp.h"
 
+static const unsigned int HISTORY_SIZE = 10;
+static const unsigned int MAX_COMP_AMOUNT = 8000;             // max pulse in ms
+
 BacklashComp::BacklashComp(Mount *theMount)
 {
     m_pMount = theMount;
-    m_pulseWidth = pConfig->Profile.GetInt("/" + m_pMount->GetMountClassName() + "/DecBacklashPulse", 0);
+    m_pScope = reinterpret_cast<Scope *>(theMount);
+    int lastAmt = pConfig->Profile.GetInt("/" + m_pMount->GetMountClassName() + "/DecBacklashPulse", 0);
+    SetCompValues(lastAmt, false);
     if (m_pulseWidth > 0)
         m_compActive = pConfig->Profile.GetBoolean("/" + m_pMount->GetMountClassName() + "/BacklashCompEnabled", false);
     else
@@ -47,19 +52,46 @@ BacklashComp::BacklashComp(Mount *theMount)
     m_justCompensated = false;
     m_lastDirection = NONE;
     if (m_compActive)
-        Debug.AddLine(wxString::Format("BLC: Backlash compensation is enabled with correction = %d ms", m_pulseWidth));
+        Debug.Write(wxString::Format("BLC: Backlash compensation is enabled with correction = %d ms\n", m_pulseWidth));
     else
-        Debug.AddLine("BLC: Backlash compensation is disabled");
-
+        Debug.Write("BLC: Backlash compensation is disabled\n");
 }
 
+int BacklashComp::GetBacklashPulseLimit()
+{
+    return MAX_COMP_AMOUNT;
+}
+
+// Private method to be sure all comp values are in-synch and don't exceed limits
+// May change max-move value for Dec or ceiling depending on the context
+void BacklashComp::SetCompValues(int requestedSize, bool autoAdjust)
+{
+    if (autoAdjust)
+    {
+        // Don't boost ceiling based on automatic adjustments
+        m_pulseWidth = wxMax(0, wxMin(requestedSize, m_adjustmentCeiling));   // should have been done already
+    }
+    else
+    {
+        m_pulseWidth = wxMax(0, wxMin(requestedSize, MAX_COMP_AMOUNT));
+        m_adjustmentCeiling = wxMin(2 * m_pulseWidth, MAX_COMP_AMOUNT);
+    }
+    if (m_pulseWidth > m_pScope->GetMaxDecDuration())
+        m_pScope->SetMaxDecDuration(m_pulseWidth);
+}
+
+// Public method to ask for a particular backlash comp.  This method will adjust the ceiling to 
+// 2x the value
 void BacklashComp::SetBacklashPulse(int ms)
 {
     if (m_pulseWidth != ms)
-        GuideLog.SetGuidingParam("Backlash comp amount", ms);
-    m_pulseWidth = wxMax(0, ms);
+    {
+        SetCompValues(ms, false);
+        GuideLog.SetGuidingParam("Backlash comp amount", m_pulseWidth);
+        Debug.Write(wxString::Format("BLC: Comp pulse set to %d ms\n", m_pulseWidth));
+    }
+
     pConfig->Profile.SetInt("/" + m_pMount->GetMountClassName() + "/DecBacklashPulse", m_pulseWidth);
-    Debug.AddLine(wxString::Format("BLC: Comp pulse set to %d ms", m_pulseWidth));
 }
 
 void BacklashComp::EnableBacklashComp(bool enable)
@@ -68,43 +100,107 @@ void BacklashComp::EnableBacklashComp(bool enable)
         GuideLog.SetGuidingParam("Backlash comp enabled", enable ? "true" : "false");
     m_compActive = enable;
     pConfig->Profile.SetBoolean("/" + m_pMount->GetMountClassName() + "/BacklashCompEnabled", m_compActive);
-    Debug.AddLine(wxString::Format("BLC: Backlash comp %s, Comp pulse = %d ms", m_compActive ? "enabled" : "disabled", m_pulseWidth));
+    Debug.Write(wxString::Format("BLC: Backlash comp %s, Comp pulse = %d ms\n", m_compActive ? "enabled" : "disabled", m_pulseWidth));
 }
 
-void BacklashComp::HandleOverShoot(int pulseSize)
+void BacklashComp::ResetBaseline()
 {
-    if (m_justCompensated && pulseSize > 0)
-    {                       // We just did a backlash comp so this is probably our problem
-        int reduction = floor(wxMin(0.5 * m_pulseWidth, pulseSize));
-        Debug.AddLine(wxString::Format("BLC: Backlash over-shoot, pulse size reduced from %d to %d", m_pulseWidth, m_pulseWidth - reduction));
-        m_pulseWidth -= reduction;
+    if (m_compActive)
+    {
+        m_lastDirection = NONE;
+        m_justCompensated = false;
+        Debug.Write("BLC: Last direction was reset\n");
     }
 }
 
-int BacklashComp::GetBacklashComp(int dir, double yDist)
+void BacklashComp::_TrackBLCResults(double yDistance, double minMove, double yRate)
 {
-    int rslt = 0;
-    if (m_compActive && m_pulseWidth > 0)
+    assert(m_justCompensated); // caller checks this
+        
+    // The previous Dec correction included a BLC
+
+    // Record the history even if residual error is zero. Sign convention has nothing to do with N or S direction - only whether we 
+    // needed more correction (+) or less (-)
+    GUIDE_DIRECTION dir = yDistance > 0.0 ? DOWN : UP;
+    yDistance = fabs(yDistance);
+    double miss;
+    if (dir == m_lastDirection)
+        miss = yDistance;            // + => we needed more of the same, under-shoot
+    else
+        miss = -yDistance;           // over-shoot
+    minMove = fmax(minMove, 0);         // Algo w/ no min-move returns -1
+    if (m_residualOffsets.GetCount() == HISTORY_SIZE)
     {
-        if (fabs(yDist) > 0)
+        m_residualOffsets.RemoveAt(0);
+    }
+    m_residualOffsets.Add(miss);
+
+    if (yDistance >= minMove)           // Don't adjust for a residual error < min_move_equivalent
+    {
+        // Compute the average residual error
+        int numPoints = m_residualOffsets.GetCount();
+        double avgMiss = 0.;
+        for (int inx = 0; inx < numPoints; inx++)
+            avgMiss += m_residualOffsets.Item(inx);
+        avgMiss = avgMiss / numPoints;
+
+        if (abs(avgMiss) > minMove)                        // Don't make micro-adjustments
         {
-            if (m_lastDirection != NONE && dir != m_lastDirection)
+            double corr = (int)floor(fabs(avgMiss / yRate) + 0.5);
+            int nominalBLC;
+            int newBLC;
+            if (miss >= 0)                                  // We under-shot the target
             {
-                rslt = (int) m_pulseWidth;
-                Debug.AddLine(wxString::Format("BLC: Dec direction reversal from %s to %s, backlash comp pulse of %d applied", 
-                    m_lastDirection == NORTH ? "North" : "South", dir == NORTH ? "North" : "South", rslt));
+                if (avgMiss > 0)
+                    nominalBLC = m_pulseWidth + corr;
+                else
+                    nominalBLC = m_pulseWidth;              // Need more evidence of under-shooting
+                // Don't increase by more than 10% or go above ceiling
+                newBLC = ROUND(fmin(m_pulseWidth * 1.1, wxMin(m_adjustmentCeiling, nominalBLC)));
             }
-                
-            m_lastDirection = dir;
+            else
+            {                                              // we over-shot the target
+                if (avgMiss < 0)
+                    nominalBLC = m_pulseWidth - corr;
+                else
+                    nominalBLC = m_pulseWidth;            // Need more evidence of over-shooting
+                // Don't decrease by more than 20% or go below zero
+                newBLC = ROUND(fmax(0.8 * m_pulseWidth, wxMax(0, nominalBLC)));
+            }
+
+            if (newBLC != m_pulseWidth && numPoints > 2)
+                m_residualOffsets.RemoveAt(0);               // Don't let initial big deflection dominate adjustments
+            if (newBLC != m_pulseWidth)
+            {
+                Debug.Write(wxString::Format("BLC: Adjustment from %d to %d based on avg residual of %.1f px\n", m_pulseWidth, newBLC, avgMiss));
+                pConfig->Profile.SetInt("/" + m_pMount->GetMountClassName() + "/DecBacklashPulse", newBLC);
+                SetCompValues(newBLC, true);
+            }
+
         }
     }
-    m_justCompensated = (rslt != 0);
-    return rslt;
+
+    m_justCompensated = false;
 }
 
-void BacklashComp::Reset()
+// Possibly add the backlash comp to the pending guide pulse (yAmount)
+void BacklashComp::ApplyBacklashComp(int dir, double yDist, int *yAmount)
 {
-    m_lastDirection = GUIDE_DIRECTION::NONE;
+    m_justCompensated = false;
+
+    if (!m_compActive || m_pulseWidth <= 0 || yDist == 0.0)
+        return;
+
+    if (m_lastDirection != NONE && dir != m_lastDirection)
+    {
+        *yAmount += m_pulseWidth;
+        m_justCompensated = true;
+
+        Debug.Write(wxString::Format("BLC: Dec direction reversal from %s to %s, backlash comp pulse of %d applied\n",
+            m_lastDirection == NORTH ? "North" : "South", dir == NORTH ? "North" : "South", m_pulseWidth));
+    }
+
+    m_lastDirection = dir;
 }
 
 // Class for implementing the backlash graph dialog
@@ -142,14 +238,16 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
 {
     wxMemoryDC dc;
     wxBitmap bmp(bmpWidth, bmpHeight, -1);
-    wxPen axisPen("BLACK", 3, wxCROSS_HATCH);
-    wxPen redPen("RED", 3, wxSOLID);
-    wxPen bluePen("BLUE", 3, wxSOLID);
-    wxBrush redBrush("RED", wxSOLID);
-    wxBrush blueBrush("BLUE", wxSOLID);
-    //double fakeNorthPoints[] = 
+    wxColour decColor = pFrame->pGraphLog->GetDecOrDyColor();
+    wxColour idealColor("WHITE");
+    wxPen axisPen("GREY", 3, wxCROSS_HATCH);
+    wxPen decPen(decColor, 3, wxSOLID);
+    wxPen idealPen(idealColor, 3, wxSOLID);
+    wxBrush decBrush(decColor, wxSOLID);
+    wxBrush idealBrush(idealColor, wxSOLID);
+    //double fakeNorthPoints[] =
     //{152.04, 164.77, 176.34, 188.5, 200.25, 212.36, 224.21, 236.89, 248.62, 260.25, 271.34, 283.54, 294.79, 307.56, 319.22, 330.87, 343.37, 355.75, 367.52, 379.7, 391.22, 403.89, 415.34, 427.09, 439.41, 450.36, 462.6};
-    //double fakeSouthPoints[] = 
+    //double fakeSouthPoints[] =
     //{474.84, 474.9, 464.01, 451.83, 438.08, 426, 414.68, 401.15, 390.39, 377.22, 366.17, 353.45, 340.75, 328.31, 316.93, 304.55, 292.42, 280.45, 269.03, 255.02, 243.76, 231.53, 219.43, 207.35, 195.22, 183.06, 169.47};
     //std::vector <double> northSteps(fakeNorthPoints, fakeNorthPoints + 27);
     //std::vector <double> southSteps(fakeSouthPoints, fakeSouthPoints + 27);
@@ -170,13 +268,13 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
     // Find the max excursion from the origin in order to scale the points to fit the bitmap
     double maxDec = -9999.0;
     double minDec = 9999.0;
-    for (std::vector<double>::const_iterator it = northSteps.begin(); it != northSteps.end(); ++it)
+    for (auto it = northSteps.begin(); it != northSteps.end(); ++it)
     {
         maxDec = wxMax(maxDec, *it);
         minDec = wxMin(minDec, *it);
     }
 
-    for (std::vector<double>::const_iterator it = southSteps.begin(); it != southSteps.end(); ++it)
+    for (auto it = southSteps.begin(); it != southSteps.end(); ++it)
     {
         maxDec = wxMax(maxDec, *it);
         minDec = wxMin(minDec, *it);
@@ -193,15 +291,15 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
     numSouth = southSteps.size();       // Should be same as numNorth but be careful
 
     dc.SelectObject(bmp);
-    dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+    dc.SetBackground(*wxBLACK_BRUSH);
 
     dc.SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
     dc.Clear();
 
     // Bottom and top labels
-    dc.SetTextForeground("BLUE");
+    dc.SetTextForeground(idealColor);
     dc.DrawText(_("Ideal"), 0.7 * graphWindowWidth, bmpHeight - 25);
-    dc.SetTextForeground("RED");
+    dc.SetTextForeground(decColor);
     dc.DrawText(_("Measured"), 0.2 * graphWindowWidth, bmpHeight - 25);
     dc.DrawText(_("North"), 0.1 * graphWindowWidth, 10);
     dc.DrawText(_("South"), 0.8 * graphWindowWidth, 10);
@@ -213,8 +311,8 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
     dc.DrawLine(xOrigin, yOrigin, xOrigin, 0);             // y
 
     // Draw the north steps
-    dc.SetPen(redPen);
-    dc.SetBrush(redBrush);
+    dc.SetPen(decPen);
+    dc.SetBrush(decBrush);
     ptRadius = 2;
 
     for (int i = 0; i < numNorth; i++)
@@ -230,8 +328,8 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
     }
 
     // Now show an ideal south recovery line
-    dc.SetPen(bluePen);
-    dc.SetBrush(blueBrush);
+    dc.SetPen(idealPen);
+    dc.SetBrush(idealBrush);
 
     double peakSouth = southSteps.at(0);
     for (int i = 1; i <= numNorth; i++)
@@ -242,17 +340,17 @@ wxBitmap BacklashGraph::CreateGraph(int bmpWidth, int bmpHeight)
 
     dc.SelectObject(wxNullBitmap);
     return bmp;
-
 }
 
 // -------------------  BacklashTool Implementation
 BacklashTool::BacklashTool()
 {
-    Calibration lastCalibration;
-
     m_scope = TheScope();
 
-    if (m_scope->GetLastCalibrationParams(&lastCalibration))
+    Calibration lastCalibration;
+    m_scope->GetLastCalibration(&lastCalibration);
+
+    if (lastCalibration.isValid)
     {
         m_lastDecGuideRate = lastCalibration.yRate;
         m_bltState = BLT_STATE_INITIALIZE;
@@ -261,7 +359,7 @@ BacklashTool::BacklashTool()
     {
         m_bltState = BLT_STATE_ABORTED;
         m_lastStatus = _("Backlash measurement cannot be run - please re-run your mount calibration");
-        Debug.AddLine("BLT: Could not get calibration data");
+        Debug.Write("BLT: Could not get calibration data\n");
     }
 
     m_backlashResultPx = 0;
@@ -284,7 +382,7 @@ void BacklashTool::StopMeasurement()
     DecMeasurementStep(pFrame->pGuider->CurrentPosition());
 }
 
-static bool OutOfRoom(wxSize frameSize, double camX, double camY, int margin)
+static bool OutOfRoom(const wxSize& frameSize, double camX, double camY, int margin)
 {
     return camX < margin ||
         camY < margin ||
@@ -333,11 +431,11 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
             if (m_stepCount == 0)
             {
                 // Get things moving with the first clearing pulse
-                Debug.AddLine(wxString::Format("BLT starting North backlash clearing using pulse width of %d,"
-                    " looking for moves >= %d px", m_pulseWidth, BACKLASH_EXPECTED_DISTANCE));
+                Debug.Write(wxString::Format("BLT starting North backlash clearing using pulse width of %d,"
+                    " looking for moves >= %d px\n", m_pulseWidth, BACKLASH_EXPECTED_DISTANCE));
                 pFrame->ScheduleCalibrationMove(m_scope, NORTH, m_pulseWidth);
                 m_stepCount = 1;
-                m_lastStatus = wxString::Format("Clearing North backlash, step %d", m_stepCount);
+                m_lastStatus = wxString::Format(_("Clearing North backlash, step %d"), m_stepCount);
                 break;
             }
             if (fabs(decDelta) >= BACKLASH_EXPECTED_DISTANCE)
@@ -345,16 +443,16 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 if (m_acceptedMoves == 0 || (m_lastClearRslt * decDelta) > 0)    // Just starting or still moving in same direction
                 {
                     m_acceptedMoves++;
-                    Debug.AddLine(wxString::Format("BLT accepted clearing move of %0.2f", decDelta));
+                    Debug.Write(wxString::Format("BLT accepted clearing move of %0.2f\n", decDelta));
                 }
                 else
                 {
                     m_acceptedMoves = 0;            // Reset on a direction reversal
-                    Debug.AddLine(wxString::Format("BLT rejected clearing move of %0.2f, direction reversal", decDelta));
+                    Debug.Write(wxString::Format("BLT rejected clearing move of %0.2f, direction reversal\n", decDelta));
                 }
             }
             else
-                Debug.AddLine(wxString::Format("BLT backlash clearing move of %0.2f px was not large enough", decDelta));
+                Debug.Write(wxString::Format("BLT backlash clearing move of %0.2f px was not large enough\n", decDelta));
             if (m_acceptedMoves < BACKLASH_MIN_COUNT)                    // More work to do
             {
                 if (m_stepCount < MAX_CLEARING_STEPS)
@@ -363,7 +461,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                     {
                         // We moved the mount a substantial distance north but the individual moves were too small - probably a bad calibration,
                         // so let the user proceed with backlash measurement before we push the star too far
-                        Debug.AddLine(wxString::Format("BLT: Cum backlash of %0.2f px is at least half of expected, continue with backlash measurement", m_cumClearingDistance));
+                        Debug.Write(wxString::Format("BLT: Cum backlash of %0.2f px is at least half of expected, continue with backlash measurement\n", m_cumClearingDistance));
                         m_backlashExemption = true;
                     }
                     else
@@ -374,8 +472,8 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                             m_stepCount++;
                             m_markerPoint = currMountLocation;
                             m_lastClearRslt = decDelta;
-                            m_lastStatus = wxString::Format("Clearing North backlash, step %d (up to limit of %d)", m_stepCount, MAX_CLEARING_STEPS);
-                            Debug.AddLine(wxString::Format("BLT: %s, LastDecDelta = %0.2f px", m_lastStatus, decDelta));
+                            m_lastStatus = wxString::Format(_("Clearing North backlash, step %d (up to limit of %d)"), m_stepCount, MAX_CLEARING_STEPS);
+                            Debug.Write(wxString::Format("BLT: %s, LastDecDelta = %0.2f px\n", m_lastStatus, decDelta));
                             break;
                         }
                     }
@@ -392,7 +490,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 m_markerPoint = currMountLocation;            // Marker point at start of big Dec move North
                 m_bltState = BLT_STATE_STEP_NORTH;
                 double totalBacklashCleared = m_stepCount * m_pulseWidth;
-                // Want to move the mount North at >=500 ms, regardless of image scale. But reduce pulse width if it would exceed 80% of the tracking rectangle - 
+                // Want to move the mount North at >=500 ms, regardless of image scale. But reduce pulse width if it would exceed 80% of the tracking rectangle -
                 // need to leave some room for seeing deflections and dec drift
                 m_pulseWidth = wxMax((int)NORTH_PULSE_SIZE, m_scope->GetCalibrationDuration());
                 m_pulseWidth = wxMin(m_pulseWidth, (int)floor(0.7 * (double)pFrame->pGuider->GetMaxMovePixels() / m_lastDecGuideRate));
@@ -402,15 +500,15 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 m_northPulseCount = wxMax((MAX_NORTH_PULSES + m_pulseWidth - 1) / m_pulseWidth,
                                           totalBacklashCleared * 1.5 / m_pulseWidth);  // Up to 8 secs
 
-                Debug.AddLine(wxString::Format("BLT: Starting North moves at Dec=%0.2f", currMountLocation.Y));
-                // falling through to start moving North            
+                Debug.Write(wxString::Format("BLT: Starting North moves at Dec=%0.2f\n", currMountLocation.Y));
+                // falling through to start moving North
             }
 
         case BLT_STATE_STEP_NORTH:
             if (m_stepCount < m_northPulseCount && !OutOfRoom(pCamera->FullSize, currentCamLoc.X, currentCamLoc.Y, pFrame->pGuider->GetMaxMovePixels()))
             {
-                m_lastStatus = wxString::Format("Moving North for %d ms, step %d / %d", m_pulseWidth, m_stepCount + 1, m_northPulseCount);
-                Debug.AddLine(wxString::Format("BLT: %s, DecLoc = %0.2f", m_lastStatus, currMountLocation.Y));
+                m_lastStatus = wxString::Format(_("Moving North for %d ms, step %d / %d"), m_pulseWidth, m_stepCount + 1, m_northPulseCount);
+                Debug.Write(wxString::Format("BLT: %s, DecLoc = %0.2f\n", m_lastStatus, currMountLocation.Y));
                 m_northBLSteps.push_back(currMountLocation.Y);
                 pFrame->ScheduleCalibrationMove(m_scope, NORTH, m_pulseWidth);
                 m_stepCount++;
@@ -419,16 +517,16 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
             else
             {
                 // Either got finished or ran out of room
-                Debug.AddLine(wxString::Format("BLT: North pulses ended at Dec location %0.2f, DecDelta=%0.2f px", currMountLocation.Y, decDelta));
+                Debug.Write(wxString::Format("BLT: North pulses ended at Dec location %0.2f, DecDelta=%0.2f px\n", currMountLocation.Y, decDelta));
                 m_northBLSteps.push_back(currMountLocation.Y);
                 if (m_stepCount < m_northPulseCount)
                 {
                     if (m_stepCount < 0.5 * m_northPulseCount)
                     {
-                        pFrame->Alert(_("Star too close to edge for accurate measurement of backlash"));
+                        pFrame->Alert(_("Star too close to edge for accurate measurement of backlash. Choose a star farther from the edge."));
                         m_Rslt = MEASUREMENT_INVALID;
                     }
-                    Debug.AddLine("BLT: North pulses truncated, too close to frame edge");
+                    Debug.Write("BLT: North pulses truncated, too close to frame edge\n");
                 }
                 m_northRate = fabs(decDelta / (m_stepCount * m_pulseWidth));
                 m_northPulseCount = m_stepCount;
@@ -440,15 +538,15 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
         case BLT_STATE_STEP_SOUTH:
             if (m_stepCount < m_northPulseCount)
             {
-                m_lastStatus = wxString::Format("Moving South for %d ms, step %d / %d", m_pulseWidth, m_stepCount + 1, m_northPulseCount);
-                Debug.AddLine(wxString::Format("BLT: %s, DecLoc = %0.2f", m_lastStatus, currMountLocation.Y));
+                m_lastStatus = wxString::Format(_("Moving South for %d ms, step %d / %d"), m_pulseWidth, m_stepCount + 1, m_northPulseCount);
+                Debug.Write(wxString::Format("BLT: %s, DecLoc = %0.2f\n", m_lastStatus, currMountLocation.Y));
                 m_southBLSteps.push_back(currMountLocation.Y);
                 pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_pulseWidth);
                 m_stepCount++;
                 break;
             }
             // Now see where we ended up - fall through to testing this correction
-            Debug.AddLine(wxString::Format("BLT: South pulses ended at Dec location %0.2f", currMountLocation.Y));
+            Debug.Write(wxString::Format("BLT: South pulses ended at Dec location %0.2f\n", currMountLocation.Y));
             m_southBLSteps.push_back(currMountLocation.Y);
             m_endSouth = currMountLocation;
             m_bltState = BLT_STATE_TEST_CORRECTION;
@@ -466,12 +564,12 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                     if (m_backlashResultMs >= 0.8 * m_northPulseCount * m_pulseWidth)
                         m_Rslt = MEASUREMENT_IMPAIRED;      // May not have moved far enough north for accurate measurement
                 }
-                Debug.AddLine(wxString::Format("BLT: Backlash amount is %0.2f px, %d ms", m_backlashResultPx, m_backlashResultMs));
+                Debug.Write(wxString::Format("BLT: Backlash amount is %0.2f px, %d ms\n", m_backlashResultPx, m_backlashResultMs));
                 // Don't try this refinement if the clearing pulse will cause us to lose the star
                 if (m_backlashResultPx < pFrame->pGuider->GetMaxMovePixels())
                 {
                     m_lastStatus = wxString::Format(_("Issuing test backlash correction of %d ms"), m_backlashResultMs);
-                    Debug.AddLine(m_lastStatus);
+                    Debug.Write(m_lastStatus + "\n");
                     // This should put us back roughly to where we issued the big North pulse unless the backlash is very large
                     pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_backlashResultMs);
                     m_stepCount++;
@@ -479,31 +577,31 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 else
                 {
                     int maxFrameMove = (int)floor((double)pFrame->pGuider->GetMaxMovePixels() / m_northRate);
-                    Debug.AddLine(wxString::Format("BLT: Clearing pulse is very large, issuing max S move of %d", maxFrameMove));
+                    Debug.Write(wxString::Format("BLT: Clearing pulse is very large, issuing max S move of %d\n", maxFrameMove));
                     pFrame->ScheduleCalibrationMove(m_scope, SOUTH, maxFrameMove);       // One more pulse to cycle the state machine
                     m_bltState = BLT_STATE_RESTORE;
                 }
                 break;
             }
             // See how close we came, maybe fine-tune a bit
-            Debug.AddLine(wxString::Format("BLT: Trial backlash pulse resulted in net DecDelta = %0.2f px, Dec Location %0.2f", decDelta, currMountLocation.Y));
+            Debug.Write(wxString::Format("BLT: Trial backlash pulse resulted in net DecDelta = %0.2f px, Dec Location %0.2f\n", decDelta, currMountLocation.Y));
             if (fabs(decDelta) > TRIAL_TOLERANCE)
             {
                 double pulse_delta = fabs(currMountLocation.Y - m_endSouth.Y);
                 if ((m_endSouth.Y - m_markerPoint.Y) * decDelta < 0)                // Sign change, went too far
                 {
                     m_backlashResultMs *= m_backlashResultPx / pulse_delta;
-                    Debug.AddLine(wxString::Format("BLT: Trial backlash resulted in overshoot - adjusting pulse size by %0.2f", m_backlashResultPx / pulse_delta));
+                    Debug.Write(wxString::Format("BLT: Trial backlash resulted in overshoot - adjusting pulse size by %0.2f\n", m_backlashResultPx / pulse_delta));
                 }
                 else
                 {
                     double corr_factor = (m_backlashResultPx / pulse_delta - 1.0) * 0.5 + 1.0;          // apply 50% of the correction to avoid over-shoot
                     //m_backlashResultMs *= corr_factor;
-                    Debug.AddLine(wxString::Format("BLT: Trial backlash resulted in under-correction - under-shot by %0.2f", corr_factor));
+                    Debug.Write(wxString::Format("BLT: Trial backlash resulted in under-correction - under-shot by %0.2f\n", corr_factor));
                 }
             }
             else
-                Debug.AddLine("BLT: Initial backlash pulse resulted in final delta of < 2 px");
+                Debug.Write("BLT: Initial backlash pulse resulted in final delta of < 2 px\n");
 
             m_bltState = BLT_STATE_RESTORE;
             m_stepCount = 0;
@@ -513,12 +611,12 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
             // We could be a considerable distance from where we started, so get back close to the starting point without losing the star
             if (m_stepCount == 0)
             {
-                Debug.AddLine(wxString::Format("BLT: Starting Dec position at %0.2f, Ending Dec position at %0.2f", m_markerPoint.Y, currMountLocation.Y));
+                Debug.Write(wxString::Format("BLT: Starting Dec position at %0.2f, Ending Dec position at %0.2f\n", m_markerPoint.Y, currMountLocation.Y));
                 amt = fabs(currMountLocation.Y - m_startingPoint.Y);
                 if (amt > pFrame->pGuider->GetMaxMovePixels())
                 {
                     m_restoreCount = (int)floor((amt / m_northRate) / m_pulseWidth);
-                    Debug.AddLine(wxString::Format("BLT: Final restore distance is %0.1f px, approx %d steps", amt, m_restoreCount));
+                    Debug.Write(wxString::Format("BLT: Final restore distance is %0.1f px, approx %d steps\n", amt, m_restoreCount));
                     m_stepCount = 0;
                 }
                 else
@@ -530,7 +628,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_pulseWidth);
                 m_stepCount++;
                 m_lastStatus = _("Restoring star position");
-                Debug.AddLine("BLT: Issuing restore pulse count %d of %d ms", m_stepCount, m_pulseWidth);
+                Debug.Write(wxString::Format("BLT: Issuing restore pulse count %d of %d ms\n", m_stepCount, m_pulseWidth));
                 break;
             }
             m_bltState = BLT_STATE_WRAPUP;
@@ -547,17 +645,17 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
 
         case BLT_STATE_ABORTED:
             m_lastStatus = _("Measurement halted");
-            Debug.AddLine("BLT: measurement process halted by user");
+            Debug.Write("BLT: measurement process halted by user\n");
             CleanUp();
             break;
         }                       // end of switch on state
     }
     catch (const wxString& msg)
     {
-        Debug.AddLine(wxString::Format("BLT: Exception thrown in logical state %d", (int)m_bltState));
+        Debug.Write(wxString::Format("BLT: Exception thrown in logical state %d\n", (int)m_bltState));
         m_bltState = BLT_STATE_ABORTED;
-        m_lastStatus = _("Measurement encountered an error: " + msg);
-        Debug.AddLine("BLT: " + m_lastStatus);
+        m_lastStatus = wxString::Format(_("Measurement encountered an error: %s"), msg);
+        Debug.Write("BLT: " + m_lastStatus + "\n");
         CleanUp();
     }
 }
@@ -571,7 +669,7 @@ void BacklashTool::ShowGraph(wxDialog *pGA)
 
 void BacklashTool::CleanUp()
 {
-    m_scope->GetBacklashComp()->Reset();        // Normal guiding will start, don't want old BC state applied
+    m_scope->GetBacklashComp()->ResetBaseline();        // Normal guiding will start, don't want old BC state applied
     pFrame->pGuider->EnableMeasurementMode(false);
 }
 

@@ -48,7 +48,7 @@
 static const int DefaultCalibrationDuration = 750;
 static const int DefaultMaxDecDuration = 2500;
 static const int DefaultMaxRaDuration = 2500;
-enum { MAX_DURATION_MIN = 50, MAX_DURATION_MAX = 5000, };
+enum { MAX_DURATION_MIN = 50, MAX_DURATION_MAX = 8000, };
 
 static const DEC_GUIDE_MODE DefaultDecGuideMode = DEC_AUTO;
 static const GUIDE_ALGORITHM DefaultRaGuideAlgorithm = GUIDE_ALGORITHM_HYSTERESIS;
@@ -66,6 +66,9 @@ static const bool SANITY_CHECKING_ACTIVE = true;                            // C
 static int LIMIT_REACHED_WARN_COUNT = 5;
 static int MAX_NUDGES = 3;
 static double NUDGE_TOLERANCE = 2.0;
+
+// enable dec compensation when calibration declination is less than this
+const double Scope::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;   // 60 degrees
 
 Scope::Scope(void)
     : m_raLimitReachedDirection(NONE),
@@ -115,11 +118,6 @@ Scope::~Scope(void)
     }
 }
 
-int Scope::GetCalibrationDuration(void)
-{
-    return m_calibrationDuration;
-}
-
 bool Scope::SetCalibrationDuration(int calibrationDuration)
 {
     bool bError = false;
@@ -145,11 +143,6 @@ bool Scope::SetCalibrationDuration(int calibrationDuration)
     return bError;
 }
 
-int Scope::GetMaxDecDuration(void)
-{
-    return m_maxDecDuration;
-}
-
 bool Scope::SetMaxDecDuration(int maxDecDuration)
 {
     bool bError = false;
@@ -163,8 +156,8 @@ bool Scope::SetMaxDecDuration(int maxDecDuration)
 
         if (m_maxDecDuration != maxDecDuration)
             GuideLog.SetGuidingParam("Dec Max Duration", maxDecDuration);
-        m_maxDecDuration = maxDecDuration;
 
+        m_maxDecDuration = maxDecDuration;
     }
     catch (const wxString& Msg)
     {
@@ -176,11 +169,6 @@ bool Scope::SetMaxDecDuration(int maxDecDuration)
     pConfig->Profile.SetInt("/scope/MaxDecDuration", m_maxDecDuration);
 
     return bError;
-}
-
-int Scope::GetMaxRaDuration(void)
-{
-    return m_maxRaDuration;
 }
 
 bool Scope::SetMaxRaDuration(double maxRaDuration)
@@ -211,11 +199,6 @@ bool Scope::SetMaxRaDuration(double maxRaDuration)
     return bError;
 }
 
-DEC_GUIDE_MODE Scope::GetDecGuideMode(void)
-{
-    return m_decGuideMode;
-}
-
 bool Scope::SetDecGuideMode(int decGuideMode)
 {
     bool bError = false;
@@ -240,7 +223,7 @@ bool Scope::SetDecGuideMode(int decGuideMode)
               "Off", "Auto", "North", "South"
             };
 
-            Debug.AddLine(wxString::Format("DecGuideMode set to %s (%d)", dec_modes[decGuideMode], decGuideMode));
+            Debug.Write(wxString::Format("DecGuideMode set to %s (%d)\n", dec_modes[decGuideMode], decGuideMode));
             GuideLog.SetGuidingParam("Dec Guide Mode", dec_modes[decGuideMode]);
 
             m_decGuideMode = (DEC_GUIDE_MODE) decGuideMode;
@@ -299,7 +282,7 @@ wxArrayString Scope::List(void)
     ScopeList.Add(_T("GC USB ST4"));
 #endif
 #ifdef GUIDE_INDI
-    ScopeList.Add(_T("INDI Mount"));
+    ScopeList.Add(_("INDI Mount"));
 #endif
 
     ScopeList.Sort(&CompareNoCase);
@@ -320,8 +303,10 @@ wxArrayString Scope::AuxMountList()
 #endif
 
 #ifdef GUIDE_INDI
-    scopeList.Add(_T("INDI Mount"));
+    scopeList.Add(_("INDI Mount"));
 #endif
+
+    scopeList.Add(ScopeManualPointing::GetDisplayName());
 
     return scopeList;
 }
@@ -403,6 +388,9 @@ Scope *Scope::Factory(const wxString& choice)
             pReturn = new ScopeINDI();
         }
 #endif
+        else if (choice.Find(ScopeManualPointing::GetDisplayName()) != wxNOT_FOUND) {
+            pReturn = new ScopeManualPointing();
+        }
         else {
             throw ERROR_INFO("ScopeFactory: Unknown Scope choice");
         }
@@ -425,12 +413,6 @@ Scope *Scope::Factory(const wxString& choice)
     }
 
     return pReturn;
-}
-
-bool Scope::GuidingCeases(void)
-{
-    // for scopes, we have nothing special to do when guiding stops
-    return false;
 }
 
 bool Scope::RequiresCamera(void)
@@ -542,27 +524,26 @@ static void SuppressLimitReachedWarning(long axis)
 
 void Scope::AlertLimitReached(int duration, GuideAxis axis)
 {
-    if (pConfig->Global.GetBoolean(LimitReachedWarningKey(axis), true))
+    static time_t s_lastLogged;
+    time_t now = wxDateTime::GetTimeNow();
+    if (s_lastLogged == 0 || now - s_lastLogged > 30)
     {
-        static time_t s_lastLogged;
-        time_t now = wxDateTime::GetTimeNow();
-        if (s_lastLogged == 0 || now - s_lastLogged > 30)
+        s_lastLogged = now;
+        if (duration < MAX_DURATION_MAX)
         {
-            s_lastLogged = now;
-            if (duration < MAX_DURATION_MAX)
-            {
-                wxString s = axis == GUIDE_RA ? _("Max RA Duration setting") : _("Max Dec Duration setting");
-                pFrame->Alert(wxString::Format(_("Your %s is preventing PHD from making adequate corrections to keep the guide star locked. "
-                    "Increasing the %s will allow PHD2 to make the needed corrections."), s, s),
-                    _("Don't show\nthis again"), SuppressLimitReachedWarning, axis);
-            }
-            else
-            {
-                wxString which_axis = axis == GUIDE_RA ? _("RA") : _("Dec");
-                pFrame->Alert(wxString::Format(_("Even using the maximum moves, PHD2 can't properly correct for the large guide star movements in %s. "
-                    "Guiding will be impaired until you can eliminate the source of these problems."), which_axis)
-                    , _("Don't show\nthis again"), SuppressLimitReachedWarning, axis);
-            }
+            wxString s = axis == GUIDE_RA ? _("Max RA Duration setting") : _("Max Dec Duration setting");
+            pFrame->SuppressableAlert(LimitReachedWarningKey(axis),
+                wxString::Format(_("Your %s is preventing PHD from making adequate corrections to keep the guide star locked. "
+                "Increase the %s to allow PHD2 to make the needed corrections."), s, s),
+                SuppressLimitReachedWarning, axis, false, wxICON_INFORMATION);
+        }
+        else
+        {
+            wxString which_axis = axis == GUIDE_RA ? _("RA") : _("Dec");
+            pFrame->SuppressableAlert(LimitReachedWarningKey(axis),
+                wxString::Format(_("Even using the maximum moves, PHD2 can't properly correct for the large guide star movements in %s. "
+                "Guiding will be impaired until you can eliminate the source of these problems."), which_axis),
+                SuppressLimitReachedWarning, axis, false, wxICON_INFORMATION);
         }
     }
 }
@@ -604,7 +585,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
                     if (duration > m_maxDecDuration)
                     {
                         duration = m_maxDecDuration;
-                        Debug.AddLine("duration set to %d by maxDecDuration", duration);
+                        Debug.Write(wxString::Format("duration set to %d by maxDecDuration\n", duration));
                         limitReached = true;
                     }
 
@@ -631,7 +612,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
                     if (duration > m_maxRaDuration)
                     {
                         duration = m_maxRaDuration;
-                        Debug.AddLine("duration set to %d by maxRaDuration", duration);
+                        Debug.Write(wxString::Format("duration set to %d by maxRaDuration\n", duration));
                         limitReached = true;
                     }
 
@@ -655,7 +636,8 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         }
 
         // Actually do the guide
-        assert(duration >= 0);
+        //assert(duration >= 0);
+        duration = 1; // Placeholder, none of this is used anymore
         if (duration > 0)
         {
             result = Guide(direction, duration);
@@ -673,7 +655,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         duration = 0;
     }
 
-    Debug.AddLine(wxString::Format("Move returns status %d, amount %d", result, duration));
+    Debug.Write(wxString::Format("Move returns status %d, amount %d\n", result, duration));
 
     if (moveResult)
     {
@@ -728,7 +710,7 @@ void Scope::HandleSanityCheckDialog()
     if (pFrame->pCalSanityCheckDlg)
         pFrame->pCalSanityCheckDlg->Destroy();
 
-    pFrame->pCalSanityCheckDlg = new CalSanityDialog(pFrame, m_prevCalibrationParams, m_prevCalibrationDetails, m_lastCalibrationIssue);
+    pFrame->pCalSanityCheckDlg = new CalSanityDialog(pFrame, m_prevCalibration, m_prevCalibrationDetails, m_lastCalibrationIssue);
     pFrame->pCalSanityCheckDlg->Show();
 }
 
@@ -736,17 +718,17 @@ void Scope::HandleSanityCheckDialog()
 // importance/confidence, since we only alert about a single condition
 void Scope::SanityCheckCalibration(const Calibration& oldCal, const CalibrationDetails& oldDetails)
 {
-    wxString detailInfo;
     Calibration newCal;
-    CalibrationDetails newDetails;
-    double speedRatio;
+    GetLastCalibration(&newCal);
 
-    GetLastCalibrationParams(&newCal);
+    CalibrationDetails newDetails;
     GetCalibrationDetails(&newDetails);
 
     m_lastCalibrationIssue = CI_None;
     int xSteps = newDetails.raStepCount;
     int ySteps = newDetails.decStepCount;
+
+    wxString detailInfo;
 
     // Too few steps
     if (xSteps < CAL_ALERT_MINSTEPS || (ySteps < CAL_ALERT_MINSTEPS && ySteps > 0))            // Dec guiding might be disabled
@@ -766,9 +748,10 @@ void Scope::SanityCheckCalibration(const Calibration& oldCal, const CalibrationD
         else
         {
             // RA/Dec rates should be related by cos(dec) but don't check if Dec is too high or Dec guiding is disabled
-            if (newCal.declination != 0.0 && newCal.yRate != CALIBRATION_RATE_UNCALIBRATED && fabs(newCal.declination) <= Mount::DEC_COMP_LIMIT)
+            if (newCal.declination != UNKNOWN_DECLINATION && newCal.yRate != CALIBRATION_RATE_UNCALIBRATED && fabs(newCal.declination) <= Scope::DEC_COMP_LIMIT)
             {
                 double expectedRatio = cos(newCal.declination);
+                double speedRatio;
                 if (newDetails.raGuideSpeed > 0.)                   // for mounts that may have different guide speeds on RA and Dec axes
                     speedRatio = newDetails.decGuideSpeed / newDetails.raGuideSpeed;
                 else
@@ -784,7 +767,7 @@ void Scope::SanityCheckCalibration(const Calibration& oldCal, const CalibrationD
 
         // Finally check for a significantly different result but don't be stupid - ignore differences if the configuration looks quite different
         // Can't do straight equality checks because of rounding - the "old" values have passed through the registry get/set routines
-        if (m_lastCalibrationIssue == CI_None && oldCal.declination < INVALID_DECLINATION &&
+        if (m_lastCalibrationIssue == CI_None && oldCal.isValid &&
             fabs(oldDetails.imageScale - newDetails.imageScale) < 0.1 && (fabs(degrees(oldCal.xAngle - newCal.xAngle)) < 5.0))
         {
             double newDecRate = newCal.yRate;
@@ -823,17 +806,25 @@ void Scope::SanityCheckCalibration(const Calibration& oldCal, const CalibrationD
         default:
             break;
         }
+
+        // Suppression of calibration alerts is handled in the 'Details' dialog - a special case
         if (pConfig->Global.GetBoolean(CalibrationWarningKey(m_lastCalibrationIssue), true))        // User hasn't disabled this type of alert
         {
-            pFrame->Alert(alertMsg,
-                _("Details..."), ShowCalibrationIssues, (long)this);
+            // Generate alert with 'Help' button that will lead to trouble-shooting section
+            pFrame->Alert(alertMsg, 0,
+                _("Details..."), ShowCalibrationIssues, (long)this, true);
         }
         else
+        {
             Debug.AddLine(wxString::Format("Alert detected in scope calibration but not shown to user - suppressed message was: %s", alertMsg));
+        }
+
         Debug.AddLine(wxString::Format("Calibration alert details: %s", detailInfo));
     }
     else
+    {
         Debug.AddLine("Calibration passed sanity checks...");
+    }
 }
 
 void Scope::ClearCalibration(void)
@@ -869,7 +860,7 @@ bool Scope::BeginCalibration(const PHD_Point& currentLocation)
         m_calibrationDetails.decSteps.clear();
         m_calibrationDetails.lastIssue = CI_None;
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
         bError = true;
@@ -940,6 +931,13 @@ void Scope::EnableDecCompensation(bool enable)
     pConfig->Profile.SetBoolean(prefix + "/UseDecComp", enable);
 }
 
+bool Scope::DecCompensationActive(void) const
+{
+    return DecCompensationEnabled() &&
+        MountCal().declination != UNKNOWN_DECLINATION &&
+        pPointingSource && pPointingSource->IsConnected() && pPointingSource->CanReportPosition();
+}
+
 static double CalibrationDistance(void)
 {
     return wxMin(pCamera->FullSize.GetHeight() * 0.05, MAX_CALIBRATION_DISTANCE);
@@ -959,6 +957,16 @@ static PHD_Point MountCoords(const PHD_Point& cameraVector, double xCalibAngle, 
     double xAngle = cameraTheta - xCalibAngle;
     double yAngle = cameraTheta - (xCalibAngle + yAngleError);
     return PHD_Point(hyp * cos(xAngle), hyp * sin(yAngle));
+}
+
+static void GetRADecCoordinates(PHD_Point *coords)
+{
+    double ra, dec, lst;
+    bool err = pPointingSource->GetCoordinates(&ra, &dec, &lst);
+    if (err)
+        coords->Invalidate();
+    else
+        coords->SetXY(ra, dec);
 }
 
 bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
@@ -986,12 +994,16 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
     try
     {
-        wxString status0, status1;
-
         if (!m_calibrationStartingLocation.IsValid())
         {
             m_calibrationStartingLocation = currentLocation;
-            Debug.AddLine(wxString::Format("desh Scope::UpdateCalibrationstate: starting location = %.2f,%.2f", currentLocation.X, currentLocation.Y));
+            GetRADecCoordinates(&m_calibrationStartingCoords);
+
+            Debug.Write(wxString::Format("Scope::UpdateCalibrationstate: starting location = %.2f,%.2f coords = %s\n",
+                currentLocation.X, currentLocation.Y,
+                m_calibrationStartingCoords.IsValid() ?
+                    wxString::Format("%.2f,%.1f", m_calibrationStartingCoords.X, m_calibrationStartingCoords.Y) : wxString("N/A")));
+
         }
 
         double dX = m_calibrationStartingLocation.dX(currentLocation);
@@ -1018,7 +1030,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(dX, dY));
 
                 if (m_calibrationStepsRemaining > 0) {
-                    status0.Printf(_("North step %3d"), m_calibrationSteps);
+                    //status0.Printf(_("North step %3d"), m_calibrationSteps);
                     Debug.AddLine(wxString::Format("desh: moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
@@ -1029,9 +1041,27 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationStepsRemaining = M_INITIAL_CALIBRATION_STEPS;
                 m_calibrationNorthLocation = PHD_Point(dX, dY);
 
-                Debug.AddLine(wxString::Format("NORTH calibration completes with angle=%.1f rate=%.3f", degrees(m_calibration.yAngle), m_calibration.yRate * 1000.0));
-                status1.Printf(_("angle=%.1f rate=%.3f"), degrees(m_calibration.yAngle), m_calibration.yRate * 1000.0);
-                GuideLog.CalibrationDirectComplete(this, "North", m_calibration.yAngle, m_calibration.yRate);
+                m_calibration.decGuideParity = GUIDE_PARITY_UNKNOWN;
+                if (m_calibrationStartingCoords.IsValid())
+                {
+                    PHD_Point endingCoords;
+                    GetRADecCoordinates(&endingCoords);
+                    if (endingCoords.IsValid())
+                    {
+                        // real Northward motion increases Dec
+                        double ONE_ARCSEC = 1.0 / (60. * 60.); // degrees
+                        double ddec = endingCoords.Y - m_calibrationStartingCoords.Y;
+                        if (ddec > ONE_ARCSEC)
+                            m_calibration.decGuideParity = GUIDE_PARITY_EVEN;
+                        else if (ddec < -ONE_ARCSEC)
+                            m_calibration.decGuideParity = GUIDE_PARITY_ODD;
+                    }
+                }
+
+                Debug.AddLine(wxString::Format("NORTH calibration completes with angle=%.1f rate=%.3f parity=%d",
+                    degrees(m_calibration.yAngle), m_calibration.yRate * 1000.0, m_calibration.decGuideParity));
+
+                GuideLog.CalibrationDirectComplete(this, "North", m_calibration.yAngle, m_calibration.yRate, m_calibration.decGuideParity);
 
                 m_calibrationState = CALIBRATION_STATE_RETURN_FROM_NORTH;
                 //m_southStartingLocation = currentLocation;
@@ -1045,7 +1075,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(dX, dY));
 
                 if (m_calibrationStepsRemaining > 0) {
-                    status0.Printf(_("South step %3d"), m_calibrationSteps);
+                    //status0.Printf(_("South step %3d"), m_calibrationSteps);
                     Debug.AddLine(wxString::Format("desh: moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
@@ -1084,10 +1114,10 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 
                 Debug.AddLine(wxString::Format("desh: angle %f", cameraAngle));
 
-                GetLastCalibrationParams(&m_prevCalibrationParams);
+                GetLastCalibration(&m_prevCalibration);
                 GetCalibrationDetails(&m_prevCalibrationDetails);
                 Calibration cal(m_calibration);
-                cal.declination = pPointingSource->GetGuidingDeclination();
+                cal.declination = pPointingSource->GetDeclination();
                 cal.pierSide = pPointingSource->SideOfPier();
                 cal.rotatorAngle = Rotator::RotatorPosition();
                 cal.binning = pCamera->Binning;
@@ -1097,37 +1127,15 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.cameraAngle = cameraAngle;
                 SetCalibrationDetails(m_calibrationDetails, m_calibration.xAngle, m_calibration.yAngle, pCamera->Binning);
                 if (SANITY_CHECKING_ACTIVE)
-                    SanityCheckCalibration(m_prevCalibrationParams, m_prevCalibrationDetails);  // method gets "new" info itself
-                pFrame->SetStatusText(_("calibration complete"), 1);
+                    SanityCheckCalibration(m_prevCalibration, m_prevCalibrationDetails);  // method gets "new" info itself
+                pFrame->StatusMsg(_("Calibration complete"));
                 GuideLog.CalibrationComplete(this);
                 EvtServer.NotifyCalibrationComplete(this);
                 Debug.AddLine("Calibration Complete");
                 break;
         }
-
-        if (m_calibrationState != CALIBRATION_STATE_COMPLETE)
-        {
-            if (status1.IsEmpty())
-            {
-                double dX = m_calibrationStartingLocation.dX(currentLocation);
-                double dY = m_calibrationStartingLocation.dY(currentLocation);
-                double dist = m_calibrationStartingLocation.Distance(currentLocation);
-
-                status1.Printf(_("dx=%4.1f dy=%4.1f dist=%4.1f"), dX, dY, dist);
-            }
-        }
-
-        if (!status0.IsEmpty())
-        {
-            pFrame->SetStatusText(status0, 0);
-        }
-
-        if (!status1.IsEmpty())
-        {
-            pFrame->SetStatusText(status1, 1);
-        }
     }
-    catch (wxString Msg)
+    catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
 
@@ -1139,21 +1147,11 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
     return bError;
 }
 
-// Return a default guiding declination that will "do no harm" in terms of RA rate adjustments - either the Dec
-// where the calibration was done or zero
-double Scope::GetDefGuidingDeclination()
+// Get a value of declination, in radians, that can be used for adjusting the RA guide rate,
+// or UNKNOWN_DECLINATION if the declination is not known.
+double Scope::GetDeclination(void)
 {
-    return MountIsCalibrated() ? MountCal().declination : 0.0;
-}
-
-// Get a value of declination, in radians, that can be used for adjusting the RA guide rate.  Normally, this will be gotten
-// from the ASCOM scope subclass, but it could also come from the 'aux' mount connection.  If this method in the base class is
-// called, we don't have any pointing info, so return a default that will do no harm.
-// Don't force clients to catch exceptions.  Callers who want the traditional ASCOM
-// dec value should use GetCoordinates().
-double Scope::GetGuidingDeclination(void)
-{
-    return GetDefGuidingDeclination();
+    return UNKNOWN_DECLINATION;
 }
 
 // Baseline implementations for non-ASCOM subclasses.  Methods will
@@ -1181,6 +1179,11 @@ bool Scope::CanSlew(void)
 bool Scope::CanSlewAsync(void)
 {
     return false;
+}
+
+bool Scope::PreparePositionInteractive(void)
+{
+    return false; // no error
 }
 
 bool Scope::CanReportPosition()
@@ -1224,14 +1227,14 @@ PierSide Scope::SideOfPier(void)
 
 wxString Scope::GetSettingsSummary()
 {
-    wxString rtnVal;
     Calibration calInfo;
+    GetLastCalibration(&calInfo);
+
     CalibrationDetails calDetails;
-    GetLastCalibrationParams(&calInfo);
     GetCalibrationDetails(&calDetails);
 
     // return a loggable summary of current mount settings
-    rtnVal = Mount::GetSettingsSummary() +
+    wxString rtnVal = Mount::GetSettingsSummary() +
         wxString::Format
             ("Calibration step = phdlab_placeholder, Max RA duration = %d, Max DEC duration = %d, DEC guide mode = %s\n",
             GetMaxRaDuration(),
@@ -1241,14 +1244,16 @@ wxString Scope::GetSettingsSummary()
             );
     if (calDetails.raGuideSpeed != -1.0)
     {
-        rtnVal += wxString::Format
-            (
-            "RA Guide Speed = %0.1f a-s/s, Dec Guide Speed = %0.1f a-s/s, ", 3600.0*calDetails.raGuideSpeed, 3600.0*calDetails.decGuideSpeed
-            );
+        rtnVal += wxString::Format("RA Guide Speed = %0.1f a-s/s, Dec Guide Speed = %0.1f a-s/s, ",
+            3600.0 * calDetails.raGuideSpeed, 3600.0 * calDetails.decGuideSpeed);
     }
     else
         rtnVal += "RA Guide Speed = Unknown, Dec Guide Speed = Unknown, ";
-    rtnVal += wxString::Format("Cal Dec = %0.1f, Last Cal Issue = %s, Timestamp = %s\n", degrees(calInfo.declination), Mount::GetIssueString(calDetails.lastIssue), calDetails.origTimestamp);
+
+    rtnVal += wxString::Format("Cal Dec = %s, Last Cal Issue = %s, Timestamp = %s\n",
+        DeclinationStr(calInfo.declination, "%0.1f"), Mount::GetIssueString(calDetails.lastIssue),
+        calDetails.origTimestamp);
+
     return rtnVal;
 }
 
@@ -1347,8 +1352,8 @@ ScopeConfigDialogCtrlSet::ScopeConfigDialogCtrlSet(wxWindow *pParent, Scope *pSc
         m_pUseBacklashComp = new wxCheckBox(GetParentWindow(AD_cbDecComp), wxID_ANY, _("Use backlash comp"));
         AddCtrl(CtrlMap, AD_cbDecComp, m_pUseBacklashComp, _("Check this if you want to apply a backlash compensation guide pulse when declination direction is reversed."));
         m_pBacklashPulse = new wxSpinCtrlDouble(GetParentWindow(AD_szDecCompAmt), wxID_ANY, wxEmptyString, wxDefaultPosition,
-            wxSize(width + 30, -1), wxSP_ARROW_KEYS, 0, 9000, 450, 50);
-        AddGroup(CtrlMap, AD_szDecCompAmt, (MakeLabeledControl(AD_szDecCompAmt, _("Amount"), m_pBacklashPulse, _("Length of backlash correction pulse (mSec). This will be automatically decreased if over-shoot corrections are observed."))));
+            wxSize(width + 30, -1), wxSP_ARROW_KEYS, 0, pScope->m_backlashComp->GetBacklashPulseLimit(), 450, 50);
+        AddGroup(CtrlMap, AD_szDecCompAmt, (MakeLabeledControl(AD_szDecCompAmt, _("Amount"), m_pBacklashPulse, _("Length of backlash correction pulse (mSec). This will be automatically adjusted based on observed performance."))));
 
         m_pUseDecComp = new wxCheckBox(GetParentWindow(AD_cbUseDecComp), wxID_ANY, _("Use Dec compensation"));
         m_pUseDecComp->Enable(enableCtrls && pPointingSource != NULL);
@@ -1370,6 +1375,7 @@ ScopeConfigDialogCtrlSet::ScopeConfigDialogCtrlSet(wxWindow *pParent, Scope *pSc
         m_pDecMode = new wxChoice(GetParentWindow(AD_szDecGuideMode), wxID_ANY, wxPoint(-1, -1),
             wxSize(width + 35, -1), WXSIZEOF(dec_choices), dec_choices);
         AddLabeledCtrl(CtrlMap, AD_szDecGuideMode, _("Dec guide mode"), m_pDecMode, _("Directions in which Dec guide commands will be issued"));
+        m_pScope->currConfigDialogCtrlSet = this;
     }
 }
 
@@ -1406,13 +1412,31 @@ void ScopeConfigDialogCtrlSet::UnloadValues()
         m_pScope->SetMaxRaDuration(m_pMaxRaDuration->GetValue());
         m_pScope->SetMaxDecDuration(m_pMaxDecDuration->GetValue());
         m_pScope->SetDecGuideMode(m_pDecMode->GetSelection());
-        m_pScope->m_backlashComp->SetBacklashPulse(m_pBacklashPulse->GetValue());
+        int oldBC = m_pScope->m_backlashComp->GetBacklashPulse();
+        int newBC = m_pBacklashPulse->GetValue();
+        if (oldBC != newBC)
+            m_pScope->m_backlashComp->SetBacklashPulse(newBC);
         m_pScope->m_backlashComp->EnableBacklashComp(m_pUseBacklashComp->GetValue());
         m_pScope->EnableDecCompensation(m_pUseDecComp->GetValue());
+        // Following needed in case user changes max_duration with blc value already set
+        if (m_pScope->m_backlashComp->IsEnabled() && m_pScope->GetMaxDecDuration() < newBC)
+            m_pScope->SetMaxDecDuration(newBC);
         if (pFrame)
             pFrame->UpdateCalibrationStatus();
     }
     MountConfigDialogCtrlSet::UnloadValues();
+}
+
+void ScopeConfigDialogCtrlSet::ResetRAParameterUI()
+{
+    m_pMaxRaDuration->SetValue(DefaultMaxRaDuration);
+}
+
+void ScopeConfigDialogCtrlSet::ResetDecParameterUI()
+{
+    m_pMaxDecDuration->SetValue(DefaultMaxDecDuration);
+    m_pDecMode->SetSelection(1);                // 'Auto'
+    m_pUseBacklashComp->SetValue(false);
 }
 
 void ScopeConfigDialogCtrlSet::OnCalcCalibrationStep(wxCommandEvent& evt)

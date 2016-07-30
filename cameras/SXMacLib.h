@@ -31,7 +31,7 @@
  
  \***************************************************************************/
 
-#if defined (__APPLE__)
+#if defined (__APPLE__) || defined (__linux__)
 
 //#include <MacTypes.h>
 typedef unsigned short UInt16;
@@ -165,8 +165,10 @@ extern "C" {
     
     void* sxOpenByModel(UInt16 nModelNumber);
     
+    void sxSetTimeoutMS(UInt32 timeoutMS);
+    
 #ifdef __cplusplus
 }
 #endif
 
-#endif // __APPLE__
+#endif // __APPLE__ || __linux__
