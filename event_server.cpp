@@ -37,6 +37,7 @@
 #include <wx/sstream.h>
 #include <wx/sckstrm.h>
 #include <sstream>
+#include <string>
 
 EventServer EvtServer;
 
@@ -876,6 +877,47 @@ static void find_star(JObj& response, const json_value *params)
     response << jrpc_error(1, "could not find star");
 }
 
+static void manual_move_mount(JObj& response, const json_value *params)
+{
+    Params p("direction", params);
+    const json_value *exp = p.param("direction");
+
+    if (!exp || exp->type != JSON_STRING)
+    {
+        response << jrpc_error(JSONRPC_INVALID_PARAMS, "expected direction string");
+        return;
+    }
+
+    PHD_Point moveVector(0, 0);
+
+    const string direction = exp->string_value;
+    if        ( direction == "pitch_forward" ) {
+        response << jrpc_result("pitching forward");
+        moveVector.SetXY(0,0.1);   
+    } else if (direction == "pitch_back") {
+        response << jrpc_result("pitching back");
+        moveVector.SetXY(0,-0.1);
+    } else if (direction == "roll_left") {
+        response << jrpc_result("rolling left");
+        moveVector.SetXY(-0.1,0);
+    } else if (direction == "roll_right") {
+        response << jrpc_result("rolling right");
+        moveVector.SetXY(0.1,0);
+    } else {
+        response << jrpc_error(1, "direction not recognised");
+        return;
+    }
+ 
+    if (pMount->HexMove(moveVector, 0))
+    {
+        return;
+    }
+    else
+    {
+        response << jrpc_error(1, "could not move mount");
+    }
+}
+
 static void get_pixel_scale(JObj& response, const json_value *params)
 {
     double scale = pFrame->GetCameraPixelScale();
@@ -1539,6 +1581,7 @@ static bool handle_request(const wxSocketClient *cli, JObj& response, const json
         { "guide", &guide, },
         { "dither", &dither, },
         { "find_star", &find_star, },
+        { "manual_move_mount", &manual_move_mount, },
         { "get_pixel_scale", &get_pixel_scale, },
         { "get_app_state", &get_app_state, },
         { "flip_calibration", &flip_calibration, },

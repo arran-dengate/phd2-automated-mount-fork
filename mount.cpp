@@ -783,7 +783,7 @@ void Mount::LogGuideStepInfo()
     m_lastStep.frameNumber = -1; // invalidate
 }
 
-void Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
+bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
     double xVector = xyVector.X;
     double yVector = xyVector.Y;
     char format[] = "%4.5f, %4.5f, %4.5f";
@@ -807,6 +807,8 @@ void Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
 
     Debug.Write(wxString::Format("Moving raw xVector=%.2f yVector=%.2f\n",
                 xVector, yVector));
+
+    return true; // Change when error checking code implemented
 
 }
 
