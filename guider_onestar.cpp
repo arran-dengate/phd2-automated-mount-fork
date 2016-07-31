@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <wx/rawbmp.h>
 
 #if ((wxMAJOR_VERSION < 3) && (wxMINOR_VERSION < 9))
 #define wxPENSTYLE_DOT wxDOT
@@ -808,7 +809,47 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
         dc.DrawText(strAngle, 40, 60);
         dc.SetTextForeground(original);
         
+        // Arran: attempting save file...
 
+        double LockX = LockPosition().X;
+        double LockY = LockPosition().Y;
+
+        wxBitmap SubBmp(60,60,-1);
+        wxMemoryDC tmpMdc;
+        tmpMdc.SelectObject(SubBmp);
+        memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
+        memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
+        memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
+        #ifdef __APPLEX__
+            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
+        #else
+            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
+        #endif
+        //          tmpMdc.Blit(0,0,200,200,&Cdc,0,0,wxCOPY);
+
+        // Attempting to get raw data
+
+        //wxImage image = SubBmp.ConvertToImage();
+        //unsigned char* rawData = image.GetData();
+
+        // End attempting to get raw data
+
+        const char TEMP_VIDEO_FILE_PATH[] = "/dev/shm/phd2/video_file_temp.jpg";
+        const char VIDEO_FILE_PATH[]      = "/dev/shm/phd2/video_file.jpg";
+        const char VIDEO_DIRECTORY[]      = "/dev/shm/phd2/";
+        mkdir(VIDEO_DIRECTORY, 0755);
+        wxString fname = TEMP_VIDEO_FILE_PATH;
+        //wxImage subImg = SubBmp.ConvertToImage();
+        wxImage* subImg = pFrame->pGuider->DisplayedImage();
+        // subImg.Rescale(120, 120);  zoom up (not now)
+        if (pFrame->GetLoggedImageFormat() == LIF_HI_Q_JPEG)
+        {
+            // set high(ish) JPEG quality
+            subImg->SetOption(wxIMAGE_OPTION_QUALITY, 100);
+        }
+
+        subImg->SaveFile(fname, wxBITMAP_TYPE_JPEG);
+        rename(TEMP_VIDEO_FILE_PATH, VIDEO_FILE_PATH);
 
         // display bookmarks
         if (m_showBookmarks && m_bookmarks.size() > 0)
