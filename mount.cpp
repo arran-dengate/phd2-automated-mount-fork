@@ -784,14 +784,20 @@ void Mount::LogGuideStepInfo()
 }
 
 bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
+    // Send a guide command (in radians) to the mount, via an atomic file shuffle.
+
     double xVector = xyVector.X;
     double yVector = xyVector.Y;
     char format[] = "%4.5f, %4.5f, %4.5f";
     char guideVector[100] = {0};
 
-    mkdir(GUIDE_DIRECTORY, 0755);
-    mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
-
+    // Create directory if does not exist
+    struct stat info;
+    if( stat( GUIDE_OUTPUT_DIRECTORY, &info ) != 0 ) {
+        mkdir(GUIDE_DIRECTORY, 0755);
+        mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
+    }
+        
     Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
     sprintf(guideVector,format,xVector, yVector, rotationVector);
     ofstream pulse_output;
@@ -805,7 +811,7 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
     }
     rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
-    Debug.Write(wxString::Format("Moving raw xVector=%.2f yVector=%.2f\n",
+    Debug.Write(wxString::Format("Moving xVector=%.2f yVector=%.2f\n (radians)",
                 xVector, yVector));
 
     return true; // Change when error checking code implemented

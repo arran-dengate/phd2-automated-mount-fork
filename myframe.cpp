@@ -127,6 +127,8 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(BUTTON_LOOP, MyFrame::OnLoopExposure) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_STOP, MyFrame::OnButtonStop)
     EVT_MENU(BUTTON_STOP, MyFrame::OnButtonStop) // Bit of a hack -- not actually on the menu but need an event to accelerate
+    EVT_TOOL(BUTTON_GOTO, MyFrame::OnButtonGoto)
+    EVT_MENU(BUTTON_GOTO, MyFrame::OnButtonGoto) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_ADVANCED, MyFrame::OnAdvanced)
     EVT_MENU(BUTTON_ADVANCED, MyFrame::OnAdvanced) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_GUIDE,MyFrame::OnGuide)
@@ -825,6 +827,7 @@ void MyFrame::SetupToolBar()
     MainToolbar->AddTool(BUTTON_LOOP, loop_bmp, loop_bmp_disabled, false, 0, _("Begin looping exposures for frame and focus"));
     MainToolbar->AddTool(BUTTON_GUIDE, guide_bmp, guide_bmp_disabled, false, 0, _("Begin guiding (PHD). Shift-click to force calibration."));
     MainToolbar->AddTool(BUTTON_STOP, stop_bmp, stop_bmp_disabled, false, 0, _("Stop looping and guiding"));
+    MainToolbar->AddTool(BUTTON_GOTO, connect_bmp, connect_bmp_disabled, false, 0, _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
@@ -859,6 +862,7 @@ void MyFrame::SetupKeyboardShortcuts(void)
         wxAcceleratorEntry(wxACCEL_CTRL,  (int) 'L', BUTTON_LOOP),
         wxAcceleratorEntry(wxACCEL_CTRL|wxACCEL_SHIFT,  (int) 'M', EEGG_MANUALCAL),
         wxAcceleratorEntry(wxACCEL_CTRL,  (int) 'S', BUTTON_STOP),
+        wxAcceleratorEntry(wxACCEL_CTRL,  (int) 'T', BUTTON_GOTO),
         wxAcceleratorEntry(wxACCEL_CTRL,  (int) 'D', BUTTON_ALERT_CLOSE),
     };
     wxAcceleratorTable accel(WXSIZEOF(entries), entries);

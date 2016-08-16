@@ -36,6 +36,7 @@
 #include "about_dialog.h"
 #include "image_math.h"
 #include "darks_dialog.h"
+#include "goto_dialog.h"
 #include "Refine_DefMap.h"
 #include "camcal_import_dialog.h"
 #include "aui_controls.h"
@@ -463,6 +464,24 @@ void MyFrame::OnButtonStop(wxCommandEvent& WXUNUSED(event))
 {
     Debug.Write("Stop button clicked\n");
     StopCapturing();
+}
+
+void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
+{
+    Debug.Write("desh: Goto button clicked\n");
+
+    Calibration cal;
+
+
+    GotoDialog gotodlg;
+    gotodlg.ShowModal();
+            //if (gotodlg.ShowModal () == wxID_OK)
+            //{
+            //   gotodlg.GetValues(&cal);
+            //    pMount->SetCalibration(cal);
+            //}
+    //GotoDialog dlg(cal);
+    //dlg.showModal();
 }
 
 void MyFrame::OnGammaSlider(wxScrollEvent& WXUNUSED(event))

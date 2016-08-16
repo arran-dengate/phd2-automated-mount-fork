@@ -799,17 +799,15 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
 
         // Arran: This is how to draw something on the screen!
         
-        //double angle = atan2(m_star.Y - m_altStar.Y, m_star.X - m_altStar.X);
-        //angle = ( angle * 180 ) / 3.14159265; // Convert to degrees
-        wxString strAngle = wxString::Format(wxT("%f"),RotationAngleDelta());
-
-        wxColour original = dc.GetTextForeground();
-        dc.SetTextForeground(wxColour(255, 255, 255));
+        //wxString strAngle = wxString::Format(wxT("%f"),RotationAngleDelta());
+        //wxColour original = dc.GetTextForeground();
+        //dc.SetTextForeground(wxColour(255, 255, 255));
         //dc.DrawText(wxT(angleStatus), 40, 60);
-        dc.DrawText(strAngle, 40, 60);
-        dc.SetTextForeground(original);
+        //dc.DrawText(strAngle, 40, 60);
+        //dc.SetTextForeground(original);
         
         // Arran: attempting save file...
+        // Save a file for streaming to web interface.
 
         double LockX = LockPosition().X;
         double LockY = LockPosition().Y;
@@ -825,15 +823,9 @@ void GuiderOneStar::OnPaint(wxPaintEvent& event)
         #else
             tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
         #endif
-        //          tmpMdc.Blit(0,0,200,200,&Cdc,0,0,wxCOPY);
 
-        // Attempting to get raw data
-
-        //wxImage image = SubBmp.ConvertToImage();
-        //unsigned char* rawData = image.GetData();
-
-        // End attempting to get raw data
-
+        // File shuffle to atomically overwrite the next image for streaming
+         
         const char TEMP_VIDEO_FILE_PATH[] = "/dev/shm/phd2/video_file_temp.jpg";
         const char VIDEO_FILE_PATH[]      = "/dev/shm/phd2/video_file.jpg";
         const char VIDEO_DIRECTORY[]      = "/dev/shm/phd2/";

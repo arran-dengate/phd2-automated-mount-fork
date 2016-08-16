@@ -80,7 +80,7 @@ class Scope : public Mount
 
     // New calibration variables
     int m_calibrationStepsRemaining;
-    const int M_INITIAL_CALIBRATION_STEPS = 2;
+    const int M_INITIAL_CALIBRATION_STEPS = 8;
     PHD_Point m_calibrationNorthLocation;
     PHD_Point m_calibrationNorthReturnLocation;
 

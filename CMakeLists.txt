@@ -410,6 +410,18 @@ set(phd2_SRC
   ${phd_src_dir}/logger.h
   ${phd_src_dir}/manualcal_dialog.cpp
   ${phd_src_dir}/manualcal_dialog.h
+  ${phd_src_dir}/goto_dialog.cpp
+  ${phd_src_dir}/goto_dialog.h
+  ${phd_src_dir}/goto/astrometry.cpp
+  ${phd_src_dir}/goto/astrometry.h
+  ${phd_src_dir}/goto/conversion.cpp
+  ${phd_src_dir}/goto/conversion.h
+  ${phd_src_dir}/goto/csv.cpp
+  ${phd_src_dir}/goto/csv.h
+  ${phd_src_dir}/goto/conversion.cpp
+  ${phd_src_dir}/goto/conversion.h
+  ${phd_src_dir}/goto/units.cpp
+  ${phd_src_dir}/goto/units.h
   ${phd_src_dir}/messagebox_proxy.cpp
   ${phd_src_dir}/messagebox_proxy.h
   ${phd_src_dir}/myframe.cpp
