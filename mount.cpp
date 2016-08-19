@@ -785,6 +785,8 @@ void Mount::LogGuideStepInfo()
 
 bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
     // Send a guide command (in radians) to the mount, via an atomic file shuffle.
+    // This is the raw command - transformation based on calibration results occurs
+    // at a higher level.
 
     double xVector = xyVector.X;
     double yVector = xyVector.Y;

@@ -366,6 +366,8 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
         m_mgr.GetPane(_T("Target")).Caption(_("Target"));
         m_mgr.GetPane(_T("Guider")).PaneBorder(false);
     }
+    
+    m_mgr.GetPane(_T("MainToolBar")).MinSize(wxSize(600, 50));    
 
     bool panel_state;
 

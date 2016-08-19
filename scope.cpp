@@ -45,7 +45,7 @@
 #define PI 3.14159265
 
 
-static const int DefaultCalibrationDuration = 750;
+static const int DefaultCalibrationDuration = 250;
 static const int DefaultMaxDecDuration = 2500;
 static const int DefaultMaxRaDuration = 2500;
 enum { MAX_DURATION_MIN = 50, MAX_DURATION_MAX = 8000, };
@@ -553,12 +553,36 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
 
+    // TODO actually use duration and moveType
     Debug.Write(wxString::Format("desh: Scope move(%d, %d, %d)\n", direction, duration, moveType));
-    PHD_Point movePoint(2,2);
-    pMount->HexMove(movePoint, 0);
+    double moveAmount = 0.0003;
+    PHD_Point movePoint(0,0);
+    switch (direction)
+    {
+        case NORTH:
+            movePoint.SetXY(0, moveAmount);
+            pMount->HexMove(movePoint, 0);
+            break;
+        case SOUTH:
+            movePoint.SetXY(0, -moveAmount);
+            pMount->HexMove(movePoint, 0);
+            break;
+        case EAST:
+            movePoint.SetXY(moveAmount, 0);
+            pMount->HexMove(movePoint, 0);
+            break;
+        case WEST:
+            movePoint.SetXY(-moveAmount, 0);
+            pMount->HexMove(movePoint, 0);
+            break;
+        default:
+            break;
+    }
     
     try
     {
+        Debug.Write(wxString::Format("Move(%d, %d, %d)\n", direction, duration, moveType));
+
         if (!m_guidingEnabled)
         {
             throw THROW_INFO("Guiding disabled");
@@ -636,8 +660,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         }
 
         // Actually do the guide
-        //assert(duration >= 0);
-        duration = 1; // Placeholder, none of this is used anymore
+        assert(duration >= 0);
         if (duration > 0)
         {
             result = Guide(direction, duration);
@@ -662,7 +685,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         moveResult->amountMoved = duration;
         moveResult->limited = limitReached;
     }
-    
+
     return result;
 }
 
@@ -851,7 +874,7 @@ bool Scope::BeginCalibration(const PHD_Point& currentLocation)
         }
 
         ClearCalibration();
-        m_calibrationStepsRemaining = M_INITIAL_CALIBRATION_STEPS;
+        m_calibrationStepsRemaining = 10; // M_INITIAL_CALIBRATION_STEPS;
         m_calibrationSteps = 0;
         m_calibrationInitialLocation = currentLocation;
         m_calibrationStartingLocation.Invalidate();
@@ -975,7 +998,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
     // 1. We start at m_calibrationStartingLocation.
     // 2. We try to move the mount north. This is captured as m_calibrationNorthLocation.
     // 3. We try to move the mount back south by the same amount. (m_calibrationNorthReturnLocation.)
-    //    Due to sky movement, this will likely be different to 1. 
+    //    The scope would end up back where it started, except for sky movement. 
     // 4. We calculate the midpoint between points 1 and 3.
     //    
     // Then we get the angle from 4 to 2 compared to the horizontal.
@@ -1031,6 +1054,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("North step %3d"), m_calibrationSteps);
+                    pFrame->StatusMsg(wxString::Format(_("Moving north - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
                     Debug.AddLine(wxString::Format("desh: moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
@@ -1076,6 +1100,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("South step %3d"), m_calibrationSteps);
+                    pFrame->StatusMsg(wxString::Format(_("Moving south - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
                     Debug.AddLine(wxString::Format("desh: moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
@@ -1113,6 +1138,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 cameraAngle *= -1;
                 
                 Debug.AddLine(wxString::Format("desh: angle %f", cameraAngle));
+                pFrame->StatusMsg(wxString::Format("Calibration completed with angle %f", cameraAngle));
 
                 GetLastCalibration(&m_prevCalibration);
                 GetCalibrationDetails(&m_prevCalibrationDetails);
@@ -1125,6 +1151,13 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.raStepCount = m_raSteps;
                 m_calibrationDetails.decStepCount = m_decSteps;
                 m_calibrationDetails.cameraAngle = cameraAngle;
+                
+                // Arran: set fake calibration; we're not really using this system
+                m_calibrationDetails.raStepCount = m_raSteps;
+                m_calibrationDetails.decStepCount = m_decSteps;
+                m_calibration.xAngle = 0;
+                m_calibration.yAngle = 0;
+                
                 SetCalibrationDetails(m_calibrationDetails, m_calibration.xAngle, m_calibration.yAngle, pCamera->Binning);
                 if (SANITY_CHECKING_ACTIVE)
                     SanityCheckCalibration(m_prevCalibration, m_prevCalibrationDetails);  // method gets "new" info itself
