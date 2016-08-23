@@ -824,8 +824,11 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
         #endif
 
+<<<<<<< HEAD
         /* File streaming to web interface.
 
+=======
+>>>>>>> 8c140e172446ac2c30db2a9ae85c042b2dae1b0f
         // File shuffle to atomically overwrite the next image for streaming
          
         const char TEMP_VIDEO_FILE_PATH[] = "/dev/shm/phd2/video_file_temp.jpg";
@@ -844,8 +847,11 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
 
         subImg->SaveFile(fname, wxBITMAP_TYPE_JPEG);
         rename(TEMP_VIDEO_FILE_PATH, VIDEO_FILE_PATH);
+<<<<<<< HEAD
             
         */
+=======
+>>>>>>> 8c140e172446ac2c30db2a9ae85c042b2dae1b0f
 
         // display bookmarks
         if (m_showBookmarks && m_bookmarks.size() > 0)
