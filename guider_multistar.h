@@ -1,5 +1,5 @@
 /*
- *  guider_onestar.h
+ *  guider_multistar.h
  *  PHD Guiding
  *
  *  Created by Craig Stark.
@@ -37,21 +37,21 @@
  *
  */
 
-#ifndef GUIDER_ONESTAR_H_INCLUDED
-#define GUIDER_ONESTAR_H_INCLUDED
+#ifndef GUIDER_MULTISTAR_H_INCLUDED
+#define GUIDER_MULTISTAR_H_INCLUDED
 
 class MassChecker;
-class GuiderOneStar;
+class GuiderMultiStar;
 class GuiderConfigDialogCtrlSet;
 
-class GuiderOneStarConfigDialogCtrlSet : public GuiderConfigDialogCtrlSet
+class GuiderMultiStarConfigDialogCtrlSet : public GuiderConfigDialogCtrlSet
 {
 
 public:
-    GuiderOneStarConfigDialogCtrlSet(wxWindow *pParent, Guider *pGuider, AdvancedDialog *pAdvancedDialog, BrainCtrlIdMap& CtrlMap);
-    virtual ~GuiderOneStarConfigDialogCtrlSet();
+    GuiderMultiStarConfigDialogCtrlSet(wxWindow *pParent, Guider *pGuider, AdvancedDialog *pAdvancedDialog, BrainCtrlIdMap& CtrlMap);
+    virtual ~GuiderMultiStarConfigDialogCtrlSet();
 
-    GuiderOneStar *m_pGuiderOneStar;
+    GuiderMultiStar *m_pGuiderMultiStar;
     wxSpinCtrl *m_pSearchRegion;
     wxCheckBox *m_pEnableStarMassChangeThresh;
     wxSpinCtrlDouble *m_pMassChangeThreshold;
@@ -61,24 +61,27 @@ public:
     void OnStarMassEnableChecked(wxCommandEvent& event);
 };
 
-class GuiderOneStar : public Guider
+class GuiderMultiStar : public Guider
 {
 private:
     Star m_star;
+    Star m_altStar;
     MassChecker *m_massChecker;
+    MassChecker *m_altMassChecker;
 
     // parameters
     bool m_massChangeThresholdEnabled;
     double m_massChangeThreshold;
+    double m_originalRotationAngle;
 
 public:
-    class GuiderOneStarConfigDialogPane : public GuiderConfigDialogPane
+    class GuiderMultiStarConfigDialogPane : public GuiderConfigDialogPane
     {
     protected:
 
         public:
-        GuiderOneStarConfigDialogPane(wxWindow *pParent, GuiderOneStar *pGuider);
-        ~GuiderOneStarConfigDialogPane(void) {};
+        GuiderMultiStarConfigDialogPane(wxWindow *pParent, GuiderMultiStar *pGuider);
+        ~GuiderMultiStarConfigDialogPane(void) {};
 
         virtual void LoadValues(void) {};
         virtual void UnloadValues(void) {};
@@ -91,24 +94,27 @@ public:
     bool SetMassChangeThreshold(double starMassChangeThreshold);
     bool SetSearchRegion(int searchRegion);
 
-    friend class GuiderOneStarConfigDialogPane;
-    friend class GuiderOneStarConfigDialogCtrlSet;
+    friend class GuiderMultiStarConfigDialogPane;
+    friend class GuiderMultiStarConfigDialogCtrlSet;
 
 public:
-    GuiderOneStar(wxWindow *parent);
-    virtual ~GuiderOneStar(void);
+    GuiderMultiStar(wxWindow *parent);
+    virtual ~GuiderMultiStar(void);
 
     void OnPaint(wxPaintEvent& evt);
 
     bool IsLocked(void);
     bool AutoSelect(void);
     const PHD_Point& CurrentPosition(void);
+    const PHD_Point& CurrentPositionAltStar(void);
     wxRect GetBoundingBox(void);
     int GetMaxMovePixels(void);
     double StarMass(void);
     unsigned int StarPeakADU(void);
     double SNR(void);
     double HFD(void);
+    double RotationAngle(void);
+    double RotationAngleDelta(void);
     int StarError(void);
     wxString GetSettingsSummary();
 
@@ -130,4 +136,4 @@ private:
     DECLARE_EVENT_TABLE()
 };
 
-#endif /* GUIDER_ONESTAR_H_INCLUDED */
+#endif /* GUIDER_MULTISTAR_H_INCLUDED */

@@ -224,7 +224,7 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
 
     sizer->Add(m_infoBar, wxSizerFlags().Expand());
 
-    pGuider = new GuiderOneStar(guiderWin);
+    pGuider = new GuiderMultiStar(guiderWin);
     sizer->Add(pGuider, wxSizerFlags().Proportion(1).Expand());
 
     guiderWin->SetSizer(sizer);
