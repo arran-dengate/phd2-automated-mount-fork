@@ -1,0 +1,113 @@
+	Messier Objects										
+											
+ObjectNum	Name	Type	Constellation	RAHour	RAMinute	DecSign	DecDeg	DecMinute	Magnitude	Info	Distance (ly)
+      1	NGC 1952 Crab Nebula	Supernova Remnant	Taurus	5	34.5	+	22	1	8.4	Size: 6.0x4.0	6,300
+      2	NGC 7089  	Globular Cluster	Aquarius	21	33.5	-	0	49	6.5	Size: 12.9	37,500
+      3	NGC 5272  	Globular Cluster	Canes Venatici	13	42.2	+	28	23	6.2	Size: 16.2	33,900
+      4	NGC 6121  	Globular Cluster	Scorpius	16	23.6	-	26	32	5.6	Size: 26.3	7,200
+      5	NGC 5904  	Globular Cluster	Serpens Caput	15	18.6	+	2	5	5.6	Size: 17.4	24,500
+      6	NGC 6405 Butterfly Cluster	Open Cluster	Scorpius	17	40.1	-	32	13	5.3	Size: 25	2,000
+      7	NGC 6475 Ptolemy¹s Cluster	Open Cluster	Scorpius	17	53.9	-	34	49	4.1	Size: 80	800
+      8	NGC 6523 Lagoon Nebula	Diffuse Nebula	Sagittarius	18	3.8	-	24	23	6	Size: 90x40	5,200
+      9	NGC 6333  	Globular Cluster	Ophiucus	17	19.2	-	18	31	7.7	Size: 9.3	26,700
+     10	NGC 6254  	Globular Cluster	Ophiucus	16	57.1	-	4	6	6.6	Size: 15.1	14,400
+     11	NGC 6705 Wild Duck Cluster	Open Cluster	Scutum	18	51.1	-	6	16	6.3	Size: 14	6,000
+     12	NGC 6218  	Globular Cluster	Ophiucus	16	47.2	-	1	57	6.7	Size: 14.5	16,000
+     13	NGC 6205 Hercules Globular Cluster	Globular Cluster	Hercules	16	41.7	+	36	28	5.8	Size: 16.6	22,800
+     14	NGC 6402  	Globular Cluster	Ophiucus	17	37.6	-	3	15	7.6	Size: 11.7	27,400
+     15	NGC 7078  	Globular Cluster	Pegasus	21	30	+	12	10	6.2	Size: 12.3	33,600
+     16	NGC 6611 Eagle Nebula Cluster	Open Cluster	Serpens Claudia	18	18.8	-	13	47	6.4	Size: 7	7,000
+     17	NGC 6618 Omega, Swan, Horseshoe Nebula	Diffuse Nebula	Sagittarius	18	20.8	-	16	11	7	Size: 11	5,000
+     18	NGC 6613  	Open Cluster	Sagittarius	18	19.9	-	17	8	7.5	Size: 9	4,900
+     19	NGC 6273  	Globular Cluster	Ophiucus	17	2.6	-	26	16	6.8	Size: 13.5	27,100
+     20	NGC 6514 Trifid Nebula	Diffuse Nebula	Sagittarius	18	2.3	-	23	2	9	Size: 28	5,200
+     21	NGC 6531  	Open Cluster	Sagittarius	18	4.6	-	22	30	6.5	Size: 13	4,250
+     22	NGC 6656  	Globular Cluster	Sagittarius	18	36.4	-	23	54	5.1	Size: 24	10,100
+     23	NGC 6494  	Open Cluster	Sagittarius	17	56.8	-	19	1	6.9	Size: 27	2,150
+     24	NGC 6603 Milky Way Patch	Star Cloud	Sagittarius	18	18.4	-	18	25	4.6	Size: 90	10,000
+     25	IC 4725	Open Cluster	Sagittarius	18	31.7	-	19	14	6.5	Size: 40	2,000
+     26	NGC 6694  	Open Cluster	Scutum	18	45.2	-	9	24	8	Size: 15	5,000
+     27	NGC 6853 Dumbbell Nebula	Planetary Nebula	Vulpecula	19	59.6	+	22	43	7.4	Size: 8.0x5.7	1,250
+     28	NGC 6626  	Globular Cluster	Sagittarius	18	24.5	-	24	52	6.8	Size: 11.2	17,900
+     29	NGC 6913  	Open Cluster	Cygnus	20	23.9	+	38	32	7.1	Size: 7	4,000
+     30	NGC 7099  	Globular Cluster	Capricornus	21	40.4	-	23	11	7.2	Size: 11	24,800
+     31	NGC 224 Andromeda Galaxy	Spiral Galaxy	Andromeda	0	42.7	+	41	16	3.4	Size: 178x63	2,900,000
+     32	NGC 221 Satellite of M31	Elliptical Galaxy	Andromeda	0	42.7	+	40	52	8.1	Size: 8x6	2,900,000
+     33	NGC 598 Triangulum/Pinwheel Galaxy	Spiral Galaxy	Triangulum	1	33.9	+	30	39	5.7	Size: 73x45	3,000,000
+     34	NGC 1039  	Open Cluster	Perseus	2	42	+	42	47	5.5	Size: 35	1,400
+     35	NGC 2168  	Open Cluster	Gemini	6	8.9	+	24	20	5.3	Size: 28	2,800
+     36	NGC 1960  	Open Cluster	Auriga	5	36.1	+	34	8	6.3	Size: 12	4,100
+     37	NGC 2099  	Open Cluster	Auriga	5	52.4	+	32	33	6.2	Size: 24	4,400
+     38	NGC 1912  	Open Cluster	Auriga	5	28.7	+	35	50	7.4	Size: 21	4,200
+     39	NGC 7092  	Open Cluster	Cygnus	21	32.2	+	48	26	5.2	Size: 32	825
+     40	Winecke 4	Double Star	Ursa Major	12	22.2	+	58	5	9 & 9.3	Sep: 49 arcsec	510
+     41	NGC 2287  	Open Cluster	Canis Major	6	47	-	20	44	4.6	Size: 38	2,300
+     42	NGC 1976 Great Orion Nebula	Diffuse Nebula	Orion	5	35.4	-	5	27	4	Size: 85x60	1,600
+     43	NGC 1982 de Mairan¹s Nebula	Diffuse Nebula	Orion	5	35.6	-	5	16	9	Size: 20x15	1,600
+     44	NGC 2632 Beehive Cluster (Praesepe)	Open Cluster	Cancer	8	40.1	+	19	59	3.7	Size: 95	577
+     45	Pleiades, Subaru, Seven Sisters	Open Cluster	Taurus	3	47	+	24	7.2	1.6	Size: 110	380
+     46	NGC 2437  	Open Cluster	Puppis	7	41.8	-	14	49	6	Size: 27	5,400
+     47	NGC 2422  	Open Cluster	Puppis	7	36.6	-	14	30	5.2	Size: 30	1,600
+     48	NGC 2548  	Open Cluster	Hydra	8	13.8	-	5	48	5.5	Size: 54	1,500
+     49	NGC 4472  	Elliptical Galaxy	Virgo	12	29.8	+	8	0	8.4	Size: 9x7.5	60,000,000
+     50	NGC 2323  	Open Cluster	Monocerus	7	3.2	-	8	20	6.3	Size: 16	3,000
+     51	NGC 5194 Whirlpool Galaxy	Spiral Galaxy	Canes Venatici	13	29.9	+	47	12	8.4	Size: 11x7	37,000,000
+     52	NGC 7654  	Open Cluster	Cassiopeia	23	24.2	+	61	35	7.3	Size: 13	5,000
+     53	NGC 5024  	Globular Cluster	Coma Berenices	13	12.9	+	18	10	7.6	Size: 12.6	56,400
+     54	NGC 6715  	Globular Cluster	Sagittarius	18	55.1	-	30	29	7.6	Size: 9.1	82,800
+     55	NGC 6809  	Globular Cluster	Sagittarius	19	40	-	30	58	6.3	Size: 19	16,600
+     56	NGC 6779  	Globular Cluster	Lyra	19	16.6	+	30	11	8.3	Size: 7.1	31,600
+     57	NGC 6720 Ring Nebula	Planetary Nebula	Lyra	18	53.6	+	33	2	8.8	Size: 1.4x1	4,100
+     58	NGC 4579  	Spiral Galaxy	Virgo	12	37.7	+	11	49	9.7	Size: 5.5x4.5	60,000,000
+     59	NGC 4621  	Elliptical Galaxy	Virgo	12	42	+	11	39	9.6	Size: 5x3.5	60,000,000
+     60	NGC 4649  	Elliptical Galaxy	Virgo	12	43.7	+	11	33	8.8	Size: 7x6	60,000,000
+     61	NGC 4303  	Spiral Galaxy	Virgo	12	21.9	+	4	28	9.7	Size: 6x5.5	60,000,000
+     62	NGC 6266  	Globular Cluster	Ophiucus	17	1.2	-	30	7	6.5	Size: 14.1	21,500
+     63	NGC 5055 Sunflower Galaxy	Spiral Galaxy	Canes Venatici	13	15.8	+	42	2	8.6	Size: 10x6	37,000,000
+     64	NGC 4826 Blackeye Galaxy	Spiral Galaxy	Coma Berenices	12	56.7	+	21	41	8.5	Size: 9.3x5.4	19,000,000
+     65	NGC 3623  	Spiral Galaxy	Leo	11	18.9	+	13	5	9.3	Size: 8x1.5	35,000,000
+     66	NGC 3627  	Spiral Galaxy	Leo	11	20.2	+	12	59	8.9	Size: 8x2.5	35,000,000
+     67	NGC 2682  	Open Cluster	Cancer	8	50.4	+	11	49	6.1	Size: 30	2,700
+     68	NGC 4590  	Globular Cluster	Hydra	12	39.5	-	26	45	7.8	Size: 12	33,300
+     69	NGC 6637  	Globular Cluster	Sagittarius	18	31.4	-	32	21	7.6	Size: 7.1	26,700
+     70	NGC 6681  	Globular Cluster	Sagittarius	18	43.2	-	32	18	7.9	Size: 7.8	28,000
+     71	NGC 6838  	Globular Cluster	Sagitta	19	53.8	+	18	47	8.3	Size: 7.2	11,700
+     72	NGC 6981	Globular Cluster	Aquarius	20	53.5	-	12	32	9.3	Size: 5.9	52,800
+     73	NGC 6994  Group of 4 stars	Group/Asterism	Aquarius	20	59	-	12	38	9	Size: 2.8	2,000
+     74	NGC 628 	Spiral Galaxy	Pisces	1	36.7	+	15	47	9.4	Size: 10.2x9.5	35,000,000
+     75	NGC 6864  	Globular Cluster	Sagittarius	20	6.1	-	21	55	8.5	Size: 6	57,700
+     76	NGC 650 Little Dumbell, Cork, Butterfly Nebula	Planetary Nebula	Perseus	1	42.3	+	51	34	10.1	Size: 2.7x1.8	3,400
+     77	NGC 1068 Cetus A	Spiral Galaxy	Cetus	2	42.7	+	0	1	8.9	Size: 7x6	60,000,000
+     78	NGC 2068  	Diffuse Nebula	Orion	5	46.7	+	0	3	8.3	Size: 8x6	1,600
+     79	NGC 1904  	Globular Cluster	Lepus	5	24.5	-	24	33	7.7	Size: 8.7	41,100
+     80	NGC 6093  	Globular Cluster	Scorpius	16	17	-	22	59	7.3	Size: 8.9	27,400
+     81	NGC 3031 Bode¹s Galaxy	Spiral Galaxy	Ursa Major	9	55.6	+	69	4	6.9	Size: 21x10	12,000,000
+     82	NGC 3034 Cigar Galaxy	Irregular Galaxy	Ursa Major	9	55.8	+	69	41	8.4	Size: 9.x4	12,000,000
+     83	NGC 5236 Southern Pinwheel Galaxy	Spiral Galaxy	Hydra	13	37	-	29	52	7.6	Size: 11x10	15,000,000
+     84	NGC 4374  	Lenticular (S0) Galaxy	Virgo	12	25.1	+	12	53	9.1	Size: 5	60,000,000
+     85	NGC 4382  	Lenticular (S0) Galaxy	Coma Berenices	12	25.4	+	18	11	9.1	Size: 7.1x5.2	60,000,000
+     86	NGC 4406  	Lenticular (S0) Galaxy	Virgo	12	26.2	+	12	57	8.9	Size: 7.5x5.5	60,000,000
+     87	NGC 4486 Virgo A	Elliptical Galaxy	Virgo	12	30.8	+	12	24	8.6	Size: 7	60,000,000
+     88	NGC 4501  	Spiral Galaxy	Coma Berenices	12	32	+	14	25	9.6	Size: 7x4	60,000,000
+     89	NGC 4552  	Elliptical Galaxy	Virgo	12	35.7	+	12	33	9.8	Size: 4	60,000,000
+     90	NGC 4569  	Spiral Galaxy	Virgo	12	36.8	+	13	10	9.5	Size: 9.5x4.5	60,000,000
+     91	NGC 4548  	Spiral Galaxy	Coma Berenices	12	35.4	+	14	30	10.2	Size: 5.4x4.4	60,000,000
+     92	NGC 6341  	Globular Cluster	Hercules	17	17.1	+	43	8	6.4	Size: 11.2	26,400
+     93	NGC 2447  	Open Cluster	Puppis	7	44.6	-	23	52	6	Size: 22	3,600
+     94	NGC 4736  	Spiral Galaxy	Canes Venatici	12	50.9	+	41	7	8.2	Size: 7x3	14,500,000
+     95	NGC 3351  	Spiral Galaxy	Leo	10	44	+	11	42	9.7	Size: 4.4x3.3	38,000,000
+     96	NGC 3368  	Spiral Galaxy	Leo	10	46.8	+	11	49	9.2	Size: 6x4	38,000,000
+     97	NGC 3587 Owl Nebula	Planetary Nebula	Ursa Major	11	14.8	+	55	1	9.9	Size: 3.4x3.3	2,600
+     98	NGC 4192  	Spiral Galaxy	Coma Berenices	12	13.8	+	14	54	10.1	Size: 9.5x3.2	60,000,000
+     99	NGC 4254  	Spiral Galaxy	Coma Berenices	12	18.8	+	14	25	9.9	Size: 5.4x4.8	60,000,000
+    100	NGC 4321  	Spiral Galaxy	Coma Berenices	12	22.9	+	15	49	9.3	Size: 7x6	60,000,000
+    101	NGC 5457 Pinwheel Galaxy	Spiral Galaxy	Ursa Major	14	3.2	+	54	21	7.9	Size: 22	27,000,000
+    102	NGC 5866 Spindle Galaxy	Lenticular (S0) Galaxy	Draco	15	6.5	+	55	46	9.9	Size: 5.2x2.3	40,000,000
+    103	NGC 581	Open Cluster	Cassiopeia	1	33.2	+	60	42	7.4	Size: 6	8,000
+    104	NGC 4594 Sombrero Galaxy	Spiral Galaxy	Virgo	12	40	-	11	37	8	Size: 9x4	50,000,000
+    105	NGC 3379	Elliptical Galaxy	Leo	10	47.8	+	12	35	9.3	Size: 2	38,000,000
+    106	NGC 4258	Spiral Galaxy	Canes Venatici	12	19	+	47	18	8.4	Size: 19x8	25,000,000
+    107	NGC 6171	Globular Cluster	Ophiucus	16	32.5	-	13	3	7.9	Size: 10	19,600
+    108	NGC 3556	Spiral Galaxy	Ursa Major	11	11.5	+	55	40	10	Size: 8x1	45,000,000
+    109	NGC 3992	Spiral Galaxy	Ursa Major	11	57.6	+	53	23	9.8	Size: 7x4	55,000,000
+    110	NGC 205 Satellite of M31	Elliptical Galaxy	Andromeda	0	40.4	+	41	41	8.5	Size: 17x10	2,900,000

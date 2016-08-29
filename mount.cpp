@@ -49,6 +49,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <cmath>
+#include "cam_simulator.h" // Temporarily and for debugging only!!
 
 // enable dec compensation when calibration declination is less than this
 //const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
@@ -799,7 +800,22 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
         mkdir(GUIDE_DIRECTORY, 0755);
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }
-        
+   
+    /* Changing simulator rotation
+
+    if (dynamic_cast<GuideCamera*>(pCamera)) {
+        Debug.AddLine("dsvf: pCamera is a GuideCamera");    
+    }
+
+    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
+        Debug.AddLine("dsvf: pCamera is a Camera_SimClass");    
+    }    
+
+    Debug.AddLine("Attempting to change angle...");
+    pCamera->ChangeAngle(1);
+
+    */
+
     Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
     sprintf(guideVector,format,xVector, yVector, rotationVector);
     ofstream pulse_output;
@@ -852,16 +868,8 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             xDistance = mountVectorEndpoint.X;
             yDistance = mountVectorEndpoint.Y;
 
-            // Added by Arran 
-            // When it's time to move the mount, write the vector to a named pipe.
-            // This will be read and acted upon by the Python program.
-            // It is synchronous communication but non-blocking from this end.
-            // Note, I think we're missing out on dead-reckoning moves (above.)
-
             double rotationVector = pFrame->pGuider->RotationAngleDelta();
-            // Temporarily disabling this for debugging purposes
-            rotationVector *= 0;
-
+            
             // Convert pixels to radians
             // For Starshoot Autoguide, this is...
             // 2.1701 x 1.73582 degrees
@@ -883,9 +891,11 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             //xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
             //yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
 
+            // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
             HexMove(moveVector, rotationVector);
 
+            // Arran: the rest of this method not currently used, left in for now.
             if (moveType == MOVETYPE_ALGO)
             {
                 // Feed the raw distances to the guide algorithms

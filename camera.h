@@ -185,6 +185,9 @@ public:
 
     virtual const wxSize& DarkFrameSize() { return FullSize; }
 
+    virtual void ChangeAngle(double angle) {}; // For cam angle at runtime in simulator. Overridden there only.
+
+
 protected:
 
     virtual bool Capture(int duration, usImage& img, int captureOptions, const wxRect& subframe) = 0;

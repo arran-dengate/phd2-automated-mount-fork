@@ -805,9 +805,6 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         //dc.DrawText(wxT(angleStatus), 40, 60);
         //dc.DrawText(strAngle, 40, 60);
         //dc.SetTextForeground(original);
-        
-        // Arran: attempting save file...
-        // Save a file for streaming to web interface.
 
         double LockX = LockPosition().X;
         double LockY = LockPosition().Y;
@@ -824,12 +821,10 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
         #endif
 
-<<<<<<< HEAD
-        /* File streaming to web interface.
 
-=======
->>>>>>> 8c140e172446ac2c30db2a9ae85c042b2dae1b0f
-        // File shuffle to atomically overwrite the next image for streaming
+        /* File streaming to web interface.
+         * Commented out because not currently using.
+         * File is repeatedly overwritten to create a video stream.
          
         const char TEMP_VIDEO_FILE_PATH[] = "/dev/shm/phd2/video_file_temp.jpg";
         const char VIDEO_FILE_PATH[]      = "/dev/shm/phd2/video_file.jpg";
@@ -847,11 +842,8 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
 
         subImg->SaveFile(fname, wxBITMAP_TYPE_JPEG);
         rename(TEMP_VIDEO_FILE_PATH, VIDEO_FILE_PATH);
-<<<<<<< HEAD
             
         */
-=======
->>>>>>> 8c140e172446ac2c30db2a9ae85c042b2dae1b0f
 
         // display bookmarks
         if (m_showBookmarks && m_bookmarks.size() > 0)

@@ -41,6 +41,8 @@
 #include "image_math.h"
 #include "cam_simulator.h"
 
+#include <sys/time.h> 
+
 #include <wx/dir.h>
 #include <wx/gdicmn.h>
 #include <wx/stopwatch.h>
@@ -69,6 +71,8 @@ struct SimCamParams
     static double dec_drift_rate;
     static double seeing_scale;
     static double cam_angle;
+    static double mount_angle;
+    static double sky_rotate_rate;
     static double guide_rate;
     static PierSide pier_side;
     static bool reverse_dec_pulse_on_west_side;
@@ -94,6 +98,8 @@ double SimCamParams::pe_scale;                   // scale factor controlling mag
 double SimCamParams::dec_drift_rate;             // dec drift rate (pixels per second)
 double SimCamParams::seeing_scale;               // simulated seeing scale factor
 double SimCamParams::cam_angle;                  // simulated camera angle (degrees)
+double SimCamParams::mount_angle;                // simulated rotation of the mount (degrees)
+double SimCamParams::sky_rotate_rate;              // How fast the starfield rotates
 double SimCamParams::guide_rate;                 // guide rate, pixels per second
 PierSide SimCamParams::pier_side;                // side of pier
 bool SimCamParams::reverse_dec_pulse_on_west_side; // reverse dec pulse on west side of pier, like ASCOM pulse guided equatorial mounts
@@ -108,18 +114,22 @@ double SimCamParams::comet_rate_x;
 double SimCamParams::comet_rate_y;
 
 // Note: these are all in units appropriate for the UI
-#define NR_STARS_DEFAULT 20
+#define NR_STARS_DEFAULT 800
 #define NR_HOT_PIXELS_DEFAULT 8
 #define NOISE_DEFAULT 2.0
 #define NOISE_MAX 5.0
 #define DEC_BACKLASH_DEFAULT 5.0                  // arc-sec
 #define DEC_BACKLASH_MAX 100.0
 #define DEC_DRIFT_DEFAULT 5.0                     // arc-sec per minute
-#define DEC_DRIFT_MAX 30.0
+#define DEC_DRIFT_MAX 50.0
 #define SEEING_DEFAULT 2.0                        // arc-sec FWHM
 #define SEEING_MAX 5.0
 #define CAM_ANGLE_DEFAULT 15.0
 #define CAM_ANGLE_MAX 360.0
+#define MOUNT_ANGLE_DEFAULT 0
+#define MOUNT_ANGLE_MAX 360.0
+#define SKY_ROTATE_RATE_DEFAULT 100.0
+#define SKY_ROTATE_RATE_MAX 10000.0
 #define GUIDE_RATE_DEFAULT (1.0 * 15.0)           // multiples of sidereal rate, a-s/sec
 #define GUIDE_RATE_MAX (1.0 * 15.0)
 #define PIER_SIDE_DEFAULT PIER_SIDE_EAST
@@ -163,6 +173,8 @@ static void load_sim_params()
 
     SimCamParams::seeing_scale = range_check(pConfig->Profile.GetDouble("/SimCam/seeing_scale", SEEING_DEFAULT), 0, SEEING_MAX);       // FWHM a-s
     SimCamParams::cam_angle = pConfig->Profile.GetDouble("/SimCam/cam_angle", CAM_ANGLE_DEFAULT);
+    SimCamParams::mount_angle = pConfig->Profile.GetDouble("/SimCam/mount_angle", MOUNT_ANGLE_DEFAULT);
+    SimCamParams::sky_rotate_rate = pConfig->Profile.GetDouble("/SimCam/sky_rotate_rate", SKY_ROTATE_RATE_DEFAULT);
     SimCamParams::guide_rate = range_check(pConfig->Profile.GetDouble("/SimCam/guide_rate", GUIDE_RATE_DEFAULT), 0, GUIDE_RATE_MAX);
     SimCamParams::pier_side = (PierSide) pConfig->Profile.GetInt("/SimCam/pier_side", PIER_SIDE_DEFAULT);
     SimCamParams::reverse_dec_pulse_on_west_side = pConfig->Profile.GetBoolean("/SimCam/reverse_dec_pulse_on_west_side", REVERSE_DEC_PULSE_ON_WEST_SIDE_DEFAULT);
@@ -186,6 +198,8 @@ static void save_sim_params()
     pConfig->Profile.SetDouble("/SimCam/dec_drift", SimCamParams::dec_drift_rate * 60.0 * SimCamParams::image_scale);
     pConfig->Profile.SetDouble("/SimCam/seeing_scale", SimCamParams::seeing_scale);
     pConfig->Profile.SetDouble("/SimCam/cam_angle", SimCamParams::cam_angle);
+    pConfig->Profile.SetDouble("/SimCam/mount_angle", SimCamParams::mount_angle);
+    pConfig->Profile.SetDouble("/SimCam/sky_rotate_rate", SimCamParams::sky_rotate_rate); 
     pConfig->Profile.SetDouble("/SimCam/guide_rate", SimCamParams::guide_rate);
     pConfig->Profile.SetInt("/SimCam/pier_side", (int) SimCamParams::pier_side);
     pConfig->Profile.SetBoolean("/SimCam/reverse_dec_pulse_on_west_side", SimCamParams::reverse_dec_pulse_on_west_side);
@@ -474,8 +488,11 @@ void SimCamState::Initialize()
     for (unsigned int i = 0; i < nr_stars; i++)
     {
         // generate stars in ra/dec coordinates
-        stars[i].pos.x = (double)(rand() % (width - 2 * border)) - 0.5 * width;
-        stars[i].pos.y = (double)(rand() % (height - 2 * border)) - 0.5 * height;
+        const int FIELD_SCALE = 5;
+        stars[i].pos.x = (double)(rand() % (width  * FIELD_SCALE)) - (FIELD_SCALE / 2) * width;
+        stars[i].pos.y = (double)(rand() % (height * FIELD_SCALE)) - (FIELD_SCALE / 2) * height;
+        //stars[i].pos.x = (double)(rand() % (width - 2 * border)) - 0.5 * width;
+        //stars[i].pos.y = (double)(rand() % (height - 2 * border)) - 0.5 * height;
         double r = (double) (rand() % 90) / 3.0; // 0..30
         stars[i].inten = 0.1 + (double) (r * r * r) / 9000.0;
 
@@ -983,17 +1000,81 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
         }
     }
 
-    // convert to camera coordinates
-    wxVector<wxRealPoint> cc(nr_stars);
-    double angle = radians(SimCamParams::cam_angle);
 
-    if (SimCamParams::pier_side == PIER_SIDE_WEST)
-        angle += M_PI;
-    double const cos_t = cos(angle);
-    double const sin_t = sin(angle);
+    // convert to camera coordinates
+    
+    // Declare variables and get the 'camera coordinate' array ready
+
+    wxVector<wxRealPoint> cc(nr_stars);
+    double angle;
+    double cos_t;
+    double sin_t;
+    double camRotX;
+    double camRotY;
+    double centerX = width / 2.0;
+    double centerY = width / 2.0;
+    
     for (unsigned int i = 0; i < nr_stars; i++) {
-        cc[i].x = pos[i].x * cos_t - pos[i].y * sin_t + width / 2.0;
-        cc[i].y = pos[i].x * sin_t + pos[i].y * cos_t + height / 2.0;
+        cc[i].x = pos[i].x + centerX;
+        cc[i].y = pos[i].y + centerY; 
+    }
+
+    // Camera angle rotation
+    // This value does not change at runtime. Just meant to simulate that people's cameras
+    // can be set up at any angle.
+    
+    angle   = radians(SimCamParams::cam_angle);
+    cos_t   = cos(angle);
+    sin_t   = sin(angle);
+    camRotX = centerX; // Rotate from center of FOV
+    camRotY = centerY; 
+
+    for (int i = 0; i < nr_stars; i++) {
+        double rotatedX = cos_t * (cc[i].x - camRotX) - sin_t * (cc[i].y - camRotY) + camRotX;
+        double rotatedY = sin_t * (cc[i].x - camRotX) + cos_t * (cc[i].y - camRotY) + camRotY;
+        cc[i].x = rotatedX;
+        cc[i].y = rotatedY;
+    }
+
+    // Mount rotation
+    // Simulates rotational guide commands from the mount.
+    // Can be trigged at runtime by either manual or automatic guide commands.
+    
+    angle   = radians(SimCamParams::mount_angle);
+    cos_t   = cos(angle);
+    sin_t   = sin(angle);
+    camRotX = centerX; // Rotate from center of FOV
+    camRotY = centerY; 
+
+    for (int i = 0; i < nr_stars; i++) {
+        double rotatedX = cos_t * (cc[i].x - camRotX) - sin_t * (cc[i].y - camRotY) + camRotX;
+        double rotatedY = sin_t * (cc[i].x - camRotX) + cos_t * (cc[i].y - camRotY) + camRotY;
+        cc[i].x = rotatedX;
+        cc[i].y = rotatedY;
+    }
+
+    // Sky rotation
+    // Get a monotonically increasing clock value & use it to increment the sky rotation value
+    
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    long int ms = tp.tv_sec * 1000 + tp.tv_usec / 1000; 
+    double skyRotation = fmod(ms * (SimCamParams::sky_rotate_rate) / 100000, 360);
+
+    angle   = radians(skyRotation);
+    cos_t   = cos(angle);
+    sin_t   = sin(angle);
+    /* Rotate starfield aroudn the origin (top left corner of screen). Other points would work 
+       too, but would need to change other settings to generate more stars & have a larger starfield, 
+       if we wanted to simulate an area further away from the celestial pole. */ 
+    camRotX = 0;
+    camRotY = 0;  
+
+    for (int i = 0; i < nr_stars; i++) {
+        double rotatedX = cos_t * (cc[i].x - camRotX) - sin_t * (cc[i].y - camRotY) + camRotX;
+        double rotatedY = sin_t * (cc[i].x - camRotX) + cos_t * (cc[i].y - camRotY) + camRotY;
+        cc[i].x = rotatedX;
+        cc[i].y = rotatedY;
     }
 
 #ifdef STEPGUIDER_SIMULATOR
@@ -1408,6 +1489,7 @@ struct SimCamDialog : public wxDialog
     wxSpinCtrlDouble *pDriftSpin;
     wxSpinCtrlDouble *pGuideRateSpin;
     wxSpinCtrlDouble *pCameraAngleSpin;
+    wxSpinCtrlDouble *pSkyRotateRateSpin;
     wxSpinCtrlDouble *pSeeingSpin;
     wxCheckBox* showComet;
     wxCheckBox* pCloudsCbx;
@@ -1564,7 +1646,7 @@ SimCamDialog::SimCamDialog(wxWindow *parent)
     // Camera group controls
     wxStaticBoxSizer *pCamGroup = new wxStaticBoxSizer(wxVERTICAL, this, _("Camera"));
     wxFlexGridSizer *pCamTable = new wxFlexGridSizer(1, 6, 15, 15);
-    pStarsSlider = NewSlider(this, SimCamParams::nr_stars, 1, 100, _("Number of simulated stars"));
+    pStarsSlider = NewSlider(this, SimCamParams::nr_stars, 1, 800, _("Number of simulated stars"));
     AddTableEntryPair(this, pCamTable, _("Stars"), pStarsSlider);
     pHotpxSlider = NewSlider(this, SimCamParams::nr_hot_pixels, 0, 50, _("Number of hot pixels"));
     AddTableEntryPair(this, pCamTable, _("Hot pixels"), pHotpxSlider);
@@ -1633,9 +1715,12 @@ SimCamDialog::SimCamDialog(wxWindow *parent)
 
     // Session group controls
     wxStaticBoxSizer *pSessionGroup = new wxStaticBoxSizer(wxVERTICAL, this, _("Session"));
+    pSessionGroup->Add(new wxStaticText(this, wxID_ANY, _("Use either sky rotate rate OR dec drift, but not both! They simulate the same effect in different ways. (Set to 0 to turn off).")));
     wxFlexGridSizer *pSessionTable = new wxFlexGridSizer(1, 5, 15, 15);
     pCameraAngleSpin = NewSpinner(this, SimCamParams::cam_angle, 0, CAM_ANGLE_MAX, 10, _("Camera angle, degrees"));
     AddTableEntryPair(this, pSessionTable, _("Camera angle"), pCameraAngleSpin);
+    pSkyRotateRateSpin = NewSpinner(this, SimCamParams::sky_rotate_rate, 0, SKY_ROTATE_RATE_MAX, 10, _("Sky rotation rate"));
+    AddTableEntryPair(this, pSessionTable, _("Sky rotate rate"), pSkyRotateRateSpin);
     pSeeingSpin = NewSpinner(this, SimCamParams::seeing_scale, 0, SEEING_MAX, 0.5, _("Seeing, FWHM arc-sec"));
     AddTableEntryPair(this, pSessionTable, _("Seeing"), pSeeingSpin);
     showComet = new wxCheckBox(this, wxID_ANY, _("Comet"));
@@ -1689,6 +1774,7 @@ void SimCamDialog::OnReset(wxCommandEvent& event)
     pDriftSpin->SetValue(DEC_DRIFT_DEFAULT);
     pSeeingSpin->SetValue(SEEING_DEFAULT);
     pCameraAngleSpin->SetValue(CAM_ANGLE_DEFAULT);
+    pSkyRotateRateSpin->SetValue(CAM_ANGLE_DEFAULT);
     pGuideRateSpin->SetValue(GUIDE_RATE_DEFAULT / GUIDE_RATE_MAX);
     pReverseDecPulseCbx->SetValue(REVERSE_DEC_PULSE_ON_WEST_SIDE_DEFAULT);
     pUsePECbx->SetValue(USE_PE_DEFAULT);
@@ -1745,6 +1831,7 @@ void Camera_SimClass::ShowPropertyDialog()
         SimCamParams::dec_drift_rate =   (double) dlg.pDriftSpin->GetValue() / (imageScale * 60.0);  // a-s per min to px per second
         SimCamParams::seeing_scale =     (double) dlg.pSeeingSpin->GetValue();                      // already in a-s
         SimCamParams::cam_angle =        (double) dlg.pCameraAngleSpin->GetValue();
+        SimCamParams::sky_rotate_rate =  (double) dlg.pSkyRotateRateSpin->GetValue();
         SimCamParams::guide_rate =       (double) dlg.pGuideRateSpin->GetValue() * 15.0;
         SimCamParams::pier_side = dlg.pPierSide;
         SimCamParams::reverse_dec_pulse_on_west_side = dlg.pReverseDecPulseCbx->GetValue();
@@ -1754,5 +1841,14 @@ void Camera_SimClass::ShowPropertyDialog()
         sim->Initialize();
     }
 }
+
+void Camera_SimClass::ChangeAngle(double angle)
+{
+    
+    //exit(1);
+    SimCamParams::cam_angle += 1;
+    Debug.Write(wxString::Format("Simulator camera angle is now %d\n", SimCamParams::cam_angle));
+}
+
 
 #endif // SIMULATOR

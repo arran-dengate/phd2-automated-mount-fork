@@ -398,7 +398,8 @@ bool GuiderOneStar::AutoSelect(void)
             edgeAllowance = wxMax(edgeAllowance, pSecondaryMount->CalibrationTotDistance());
 
         Star newStar;
-        if (!newStar.AutoFind(*pImage, edgeAllowance, m_searchRegion))
+        Star empty;
+        if (!newStar.AutoFind(*pImage, edgeAllowance, m_searchRegion, empty))
         {
             throw ERROR_INFO("Unable to AutoFind");
         }

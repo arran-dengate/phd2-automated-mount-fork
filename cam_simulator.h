@@ -57,6 +57,7 @@ public:
     bool     ST4PulseGuideScope (int direction, int duration);
     PierSide SideOfPier() const;
     void     FlipPierSide();
+    void     ChangeAngle(double angle); // For debugging purposes
 };
 
 #endif
