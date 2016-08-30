@@ -466,7 +466,7 @@ bool GuiderMultiStar::AutoSelect(void)
         {
             SaveAutoSelectFailedImg(pImage);
         }
-        Debug.AddLine(wxString::Format("desh: %s", Msg));
+        Debug.AddLine(wxString::Format("%s", Msg));
         POSSIBLY_UNUSED(Msg);
         bError = true;
     }

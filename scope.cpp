@@ -554,7 +554,7 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     bool limitReached = false;
 
     // TODO actually use duration and moveType
-    Debug.Write(wxString::Format("desh: Scope move(%d, %d, %d)\n", direction, duration, moveType));
+    Debug.Write(wxString::Format("Scope move(%d, %d, %d)\n", direction, duration, moveType));
     double moveAmount = 0.0003;
     PHD_Point movePoint(0,0);
     switch (direction)
@@ -1055,8 +1055,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("North step %3d"), m_calibrationSteps);
                     pFrame->StatusMsg(wxString::Format(_("Moving north - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
-                    Debug.AddLine(wxString::Format("desh: moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
-                    Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
+                    Debug.AddLine(wxString::Format("moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
+                    Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
                     pFrame->ScheduleCalibrationMove(this, NORTH, m_calibrationDuration);
                     break;
@@ -1091,7 +1091,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 //m_southStartingLocation = currentLocation;
 
                 // fall through
-                Debug.AddLine("desh: Falling Through to state RETURN_FROM_NORTH");
+                Debug.AddLine("Falling Through to state RETURN_FROM_NORTH");
 
             case CALIBRATION_STATE_RETURN_FROM_NORTH:
 
@@ -1137,7 +1137,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 }
                 cameraAngle *= -1;
                 
-                Debug.AddLine(wxString::Format("desh: angle %f", cameraAngle));
                 pFrame->StatusMsg(wxString::Format("Calibration completed with angle %f", cameraAngle));
 
                 GetLastCalibration(&m_prevCalibration);

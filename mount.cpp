@@ -816,7 +816,7 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
 
     */
 
-    Debug.Write(wxString::Format("desh: Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
+    Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
     sprintf(guideVector,format,xVector, yVector, rotationVector);
     ofstream pulse_output;
     pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
@@ -1037,8 +1037,8 @@ bool Mount::TransformCameraCoordinatesToMountCoordinates(const PHD_Point& camera
         CalibrationDetails calDetails; 
         Mount::GetCalibrationDetails(&calDetails);
         double cameraAngleRad = calDetails.cameraAngle * 3.14159 / 180;
-        Debug.AddLine(wxString::Format("desh: transform angle deg %f", calDetails.cameraAngle));
-        Debug.AddLine(wxString::Format("desh: cameraVectorEndpoint %f %f", 
+        Debug.AddLine(wxString::Format("transform angle deg %f", calDetails.cameraAngle));
+        Debug.AddLine(wxString::Format("cameraVectorEndpoint %f %f", 
                                        cameraVectorEndpoint.X, cameraVectorEndpoint.Y));
         double camCos = cos(cameraAngleRad);
         double camSin = sin(cameraAngleRad);
@@ -1046,7 +1046,7 @@ bool Mount::TransformCameraCoordinatesToMountCoordinates(const PHD_Point& camera
         double y = cameraVectorEndpoint.Y;
         double px = x * camCos - y * camSin;
         double py = x * camSin + y * camCos;
-        Debug.AddLine(wxString::Format("desh: mountVectorEndpoint %f %f", 
+        Debug.AddLine(wxString::Format("mountVectorEndpoint %f %f", 
                                        px, py));
 
 

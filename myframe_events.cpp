@@ -468,7 +468,7 @@ void MyFrame::OnButtonStop(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
-    Debug.Write("desh: Goto button clicked\n");
+    Debug.Write("Goto button clicked\n");
 
     Calibration cal;
 
