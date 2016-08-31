@@ -39,6 +39,8 @@
 #define STAR_H_INCLUDED
 
 #include "point.h"
+#include "masschecker.h"
+#include <vector>
 
 class Star : public PHD_Point
 {
@@ -59,7 +61,8 @@ public:
         STAR_MASSCHANGE,
         STAR_ERROR,
     };
-
+   
+    MassChecker massChecker; // Can I just create this? When will constructor be called? Memory leak? 
     double Mass;
     double SNR;
     double HFD;
@@ -75,8 +78,9 @@ public:
      */
     bool Find(const usImage *pImg, int searchRegion, FindMode mode);
     bool Find(const usImage *pImg, int searchRegion, int X, int Y, FindMode mode);
-    bool AutoFind(const usImage& image, int edgeAllowance, int searchRegion, Star& exclude);
-   
+    bool AutoFind(const usImage& image, int edgeAllowance, int searchRegion);
+    bool GetStarList(const usImage& image, int extraEdgeAllowance, int searchRegion, std::vector<Star>& outStars);
+ 
     bool WasFound(FindResult result);
     bool WasFound(void);
     void Invalidate(void);

@@ -829,8 +829,11 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
     }
     rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
-    Debug.Write(wxString::Format("Moving xVector=%.2f yVector=%.2f\n (radians)",
+    Debug.Write(wxString::Format("Moving xVector=%.7f yVector=%.7f\n (radians)",
                 xVector, yVector));
+
+    // If the mount is moving while we're taking an exposure, this might help
+    sleep(0.3);
 
     return true; // Change when error checking code implemented
 

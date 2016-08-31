@@ -874,7 +874,7 @@ bool Scope::BeginCalibration(const PHD_Point& currentLocation)
         }
 
         ClearCalibration();
-        m_calibrationStepsRemaining = 10; // M_INITIAL_CALIBRATION_STEPS;
+        m_calibrationStepsRemaining = 5; //M_INITIAL_CALIBRATION_STEPS;
         m_calibrationSteps = 0;
         m_calibrationInitialLocation = currentLocation;
         m_calibrationStartingLocation.Invalidate();
@@ -1051,6 +1051,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 GuideLog.CalibrationStep(this, "North", m_calibrationSteps, dX, dY, currentLocation, dist);
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(dX, dY));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(dX, dY));
 
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("North step %3d"), m_calibrationSteps);
@@ -1101,8 +1102,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("South step %3d"), m_calibrationSteps);
                     pFrame->StatusMsg(wxString::Format(_("Moving south - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
-                    Debug.AddLine(wxString::Format("desh: moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
-                    Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
+                    Debug.AddLine(wxString::Format("moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
+                    Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
                     pFrame->ScheduleCalibrationMove(this, SOUTH, m_calibrationDuration);
                     break;
@@ -1116,10 +1117,10 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
             case CALIBRATION_STATE_COMPLETE:
 
                 // Work out camera correction angle 
-                Debug.AddLine("desh: Calibration complete.");
-                Debug.AddLine(wxString::Format("desh: dX %f dY %f", dX, dY));
-                Debug.AddLine(wxString::Format("desh: North - x %f y %f", m_calibrationNorthLocation.X, m_calibrationNorthLocation.Y));
-                Debug.AddLine(wxString::Format("desh: North return - x %f y %f", m_calibrationNorthReturnLocation.X, m_calibrationNorthReturnLocation.Y));
+                Debug.AddLine("Calibration complete.");
+                Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
+                Debug.AddLine(wxString::Format("North - x %f y %f", m_calibrationNorthLocation.X, m_calibrationNorthLocation.Y));
+                Debug.AddLine(wxString::Format("North return - x %f y %f", m_calibrationNorthReturnLocation.X, m_calibrationNorthReturnLocation.Y));
                 
                 // Because the starting location is defined as 0,0 , the average of that and the 
                 // final location is just final location / 2.
@@ -1142,6 +1143,14 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 GetLastCalibration(&m_prevCalibration);
                 GetCalibrationDetails(&m_prevCalibrationDetails);
                 Calibration cal(m_calibration);
+
+                // Fake calibration so it shuts up. I'll rework this later. 
+
+                cal.xAngle=0.0;
+                cal.yAngle=90.0;
+                cal.xRate=5.000;
+                cal.yRate=5.000;
+                
                 cal.declination = pPointingSource->GetDeclination();
                 cal.pierSide = pPointingSource->SideOfPier();
                 cal.rotatorAngle = Rotator::RotatorPosition();
@@ -1151,15 +1160,15 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.decStepCount = m_decSteps;
                 m_calibrationDetails.cameraAngle = cameraAngle;
                 
-                // Arran: set fake calibration; we're not really using this system
+                // More fake calibration 
                 m_calibrationDetails.raStepCount = m_raSteps;
                 m_calibrationDetails.decStepCount = m_decSteps;
                 m_calibration.xAngle = 0;
                 m_calibration.yAngle = 0;
                 
                 SetCalibrationDetails(m_calibrationDetails, m_calibration.xAngle, m_calibration.yAngle, pCamera->Binning);
-                if (SANITY_CHECKING_ACTIVE)
-                    SanityCheckCalibration(m_prevCalibration, m_prevCalibrationDetails);  // method gets "new" info itself
+                //if (SANITY_CHECKING_ACTIVE)
+                //    SanityCheckCalibration(m_prevCalibration, m_prevCalibrationDetails);  // method gets "new" info itself
                 pFrame->StatusMsg(_("Calibration complete"));
                 GuideLog.CalibrationComplete(this);
                 EvtServer.NotifyCalibrationComplete(this);

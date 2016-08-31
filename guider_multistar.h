@@ -40,7 +40,8 @@
 #ifndef GUIDER_MULTISTAR_H_INCLUDED
 #define GUIDER_MULTISTAR_H_INCLUDED
 
-class MassChecker;
+#include "masschecker.h"
+
 class GuiderMultiStar;
 class GuiderConfigDialogCtrlSet;
 
@@ -65,9 +66,7 @@ class GuiderMultiStar : public Guider
 {
 private:
     Star m_star;
-    Star m_altStar;
-    MassChecker *m_massChecker;
-    MassChecker *m_altMassChecker;
+    std::vector<Star> m_starList;
 
     // parameters
     bool m_massChangeThresholdEnabled;
@@ -106,7 +105,6 @@ public:
     bool IsLocked(void);
     bool AutoSelect(void);
     const PHD_Point& CurrentPosition(void);
-    const PHD_Point& CurrentPositionAltStar(void);
     wxRect GetBoundingBox(void);
     int GetMaxMovePixels(void);
     double StarMass(void);

@@ -30,9 +30,6 @@
 
 cmake_minimum_required(VERSION 2.8.11)
 
-# Added by AD for debugging
-# set(CMAKE_VERBOSE_MAKEFILE 1)
-
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
@@ -331,9 +328,9 @@ set(guiding_SRC
   ${phd_src_dir}/guide_algorithm.cpp
   ${phd_src_dir}/guide_algorithm.h
   ${phd_src_dir}/guide_algorithms.h
-  ${phd_src_dir}/guider_onestar.cpp
-  ${phd_src_dir}/guider_onestar.h
   ${phd_src_dir}/guider_multistar.cpp
+  ${phd_src_dir}/masschecker.cpp
+  ${phd_src_dir}/masschecker.h
   ${phd_src_dir}/guider_multistar.h
   ${phd_src_dir}/guider.cpp
   ${phd_src_dir}/guider.h
