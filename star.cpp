@@ -426,8 +426,8 @@ bool Star::Find(const usImage *pImg, int searchRegion, int base_x, int base_y, F
         HFD = 0.0;
     }
 
-    Debug.Write(wxString::Format("Star::Find returns %d (%d), X=%.2f, Y=%.2f, Mass=%.f, SNR=%.1f, Peak=%hu HFD=%.1f\n",
-        wasFound, Result, newX, newY, Mass, SNR, PeakVal, HFD));
+    //Debug.Write(wxString::Format("Star::Find returns %d (%d), X=%.2f, Y=%.2f, Mass=%.f, SNR=%.1f, Peak=%hu HFD=%.1f\n",
+    //    wasFound, Result, newX, newY, Mass, SNR, PeakVal, HFD));
 
     return wasFound;
 }

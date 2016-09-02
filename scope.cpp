@@ -555,7 +555,8 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
 
     // TODO actually use duration and moveType
     Debug.Write(wxString::Format("Scope move(%d, %d, %d)\n", direction, duration, moveType));
-    double moveAmount = 0.0003;
+    double moveAmount = (double)duration / 1000000;
+    Debug.Write(wxString::Format("moveAmount %f\n", moveAmount));
     PHD_Point movePoint(0,0);
     switch (direction)
     {
@@ -1138,6 +1139,12 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 }
                 cameraAngle *= -1;
                 
+                wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                              wxString::Format("Camera angle %f", cameraAngle), 
+                                                              wxString::Format("Calibration complete"), 
+                                                              wxOK|wxCENTRE, wxDefaultPosition);
+                alert->ShowModal();
+
                 pFrame->StatusMsg(wxString::Format("Calibration completed with angle %f", cameraAngle));
 
                 GetLastCalibration(&m_prevCalibration);
@@ -1352,8 +1359,8 @@ ScopeConfigDialogCtrlSet::ScopeConfigDialogCtrlSet(wxWindow *pParent, Scope *pSc
 
     wxBoxSizer* pCalibSizer = new wxBoxSizer(wxHORIZONTAL);
     m_pCalibrationDuration = new wxSpinCtrl(GetParentWindow(AD_szCalibrationDuration), wxID_ANY, wxEmptyString, wxPoint(-1, -1),
-            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0, 10000, 1000,_T("Cal_Dur"));
-    pCalibSizer->Add(MakeLabeledControl(AD_szCalibrationDuration, _("Calibration step (ms)"), m_pCalibrationDuration, 
+            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0, 10000, 1000,_T("Cal_Dur")); 
+    pCalibSizer->Add(MakeLabeledControl(AD_szCalibrationDuration, _("Calibration step distance (microradians)"), m_pCalibrationDuration, 
         _("How long a guide pulse should be used during calibration? Click \"Calculate\" to compute a suitable value.")));
     m_pCalibrationDuration->Enable(enableCtrls);
 

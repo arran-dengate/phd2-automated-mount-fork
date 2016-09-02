@@ -572,7 +572,6 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
     
     }
 
-    Debug.Write("== End secondary stars ==\n");
     return bError;
 }
 

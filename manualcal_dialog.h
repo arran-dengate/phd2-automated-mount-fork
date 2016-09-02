@@ -41,19 +41,15 @@ class ManualCalDialog :
 {
 private:
     wxChoice *m_binning;
-    wxTextCtrl *m_pXRate;
-    wxTextCtrl *m_pYRate;
-    wxTextCtrl *m_pXAngle;
-    wxTextCtrl *m_pYAngle;
-    wxTextCtrl *m_pDeclination;
+    wxTextCtrl *m_pCamAngle;
 
     int StringWidth(const wxString& string);
 
 public:
-    ManualCalDialog(const Calibration& cal);
+    ManualCalDialog(const Calibration& cal, Mount *theMount);
     ~ManualCalDialog(void);
 
-    void GetValues(Calibration *cal);
+    void GetValues(Calibration *cal, Mount *theMount);
 };
 
 #endif

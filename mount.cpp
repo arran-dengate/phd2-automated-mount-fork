@@ -1039,6 +1039,7 @@ bool Mount::TransformCameraCoordinatesToMountCoordinates(const PHD_Point& camera
 
         CalibrationDetails calDetails; 
         Mount::GetCalibrationDetails(&calDetails);
+        Debug.Write(wxString::Format("Camera angle %f", calDetails.cameraAngle));
         double cameraAngleRad = calDetails.cameraAngle * 3.14159 / 180;
         Debug.AddLine(wxString::Format("transform angle deg %f", calDetails.cameraAngle));
         Debug.AddLine(wxString::Format("cameraVectorEndpoint %f %f", 

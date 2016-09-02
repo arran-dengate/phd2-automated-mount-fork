@@ -94,10 +94,11 @@ void MyFrame::OnEEGG(wxCommandEvent& evt)
                 cal.declination = UNKNOWN_DECLINATION;
             }
 
-            ManualCalDialog manualcal(cal);
+            CalibrationDetails calDetails; 
+            ManualCalDialog manualcal(cal, pMount);
             if (manualcal.ShowModal () == wxID_OK)
             {
-                manualcal.GetValues(&cal);
+                manualcal.GetValues(&cal, pMount);
                 pMount->SetCalibration(cal);
             }
         }
