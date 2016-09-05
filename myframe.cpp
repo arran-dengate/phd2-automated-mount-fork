@@ -235,7 +235,7 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     pGuider->SetLockPosIsSticky(sticky);
     tools_menu->Check(EEGG_STICKY_LOCK, sticky);
 
-    SetMinSize(wxSize(wxMax(400, m_statusbar->GetMinSBWidth()), 300));
+    //SetMinSize(wxSize(wxMax(400, m_statusbar->GetMinSBWidth()), 300));
 
     wxString geometry = pConfig->Global.GetString("/geometry", wxEmptyString);
     if (geometry == wxEmptyString)
@@ -270,20 +270,15 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
             }
         }
     }
-
     // Setup some keyboard shortcuts
     SetupKeyboardShortcuts();
 
-    m_mgr.AddPane(MainToolbar, wxAuiPaneInfo().
-        Name(_T("MainToolBar")).Caption(_T("Main tool bar")).
-        ToolbarPane().Bottom());
+    m_mgr.AddPane(MainToolbar, wxAuiPaneInfo().Name(_T("MainToolBar"))
+                                          .Caption(_T("Main tool bar")));
 
-    guiderWin->SetMinSize(wxSize(XWinSize,YWinSize));
-    guiderWin->SetSize(wxSize(XWinSize,YWinSize));
     m_mgr.AddPane(guiderWin, wxAuiPaneInfo().
         Name(_T("Guider")).Caption(_T("Guider")).
-        CenterPane().MinSize(wxSize(XWinSize,YWinSize)));
-
+        CenterPane());
 
     pGraphLog = new GraphLogWindow(this);
     m_mgr.AddPane(pGraphLog, wxAuiPaneInfo().
@@ -366,9 +361,16 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
         m_mgr.GetPane(_T("Target")).Caption(_("Target"));
         m_mgr.GetPane(_T("Guider")).PaneBorder(false);
     }
-    
-    m_mgr.GetPane(_T("MainToolBar")).MinSize(wxSize(600, 50));    
 
+    m_mgr.GetPane(_T("MainToolBar")).Right().Show();
+    
+    // wxAUI hack: set minimum height to desired value, then call wxAuiPaneInfo::Fixed() to apply it
+    m_mgr.GetPane(_T("MainToolBar")).MinSize(50, -1);
+    m_mgr.GetPane(_T("MainToolBar")).BestSize(75, -1);
+    m_mgr.GetPane(_T("MainToolBar")).MaxSize(75, -1);
+    m_mgr.GetPane(_T("MainToolBar")).Fixed();
+    m_mgr.Update();
+    
     bool panel_state;
 
     panel_state = m_mgr.GetPane(_T("MainToolBar")).IsShown();
@@ -553,7 +555,7 @@ void MyFrame::SetComboBoxWidth(wxComboBox *pComboBox, unsigned int extra)
         }
     }
 
-    pComboBox->SetMinSize(wxSize(width + extra, -1));
+    //pComboBox->SetMinSize(wxSize(width + extra, -1));
 }
 
 static wxString dur_choices[] = {
@@ -778,7 +780,7 @@ void MyFrame::LoadProfileSettings(void)
 
 void MyFrame::SetupToolBar()
 {
-    MainToolbar = new wxAuiToolBar(this, -1, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
+    MainToolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL|wxTB_RIGHT|wxTB_FLAT, wxT("MainToolbar"));
 
 #   include "icons/loop.png.h"
     wxBitmap loop_bmp(wxBITMAP_PNG_FROM_DATA(loop));
@@ -821,7 +823,7 @@ void MyFrame::SetupToolBar()
     Dur_Choice->SetToolTip(_("Camera exposure duration"));
     SetComboBoxWidth(Dur_Choice, 40);
 
-    Gamma_Slider = new wxSlider(MainToolbar, CTRL_GAMMA, GAMMA_DEFAULT, GAMMA_MIN, GAMMA_MAX, wxPoint(-1,-1), wxSize(160,-1));
+    Gamma_Slider = new wxSlider(MainToolbar, CTRL_GAMMA, GAMMA_DEFAULT, GAMMA_MIN, GAMMA_MAX, wxPoint(-1,-1), wxSize(-1,160), wxSL_VERTICAL, wxDefaultValidator, wxT("Gamma_Slider"));
     Gamma_Slider->SetBackgroundColour(wxColor(60, 60, 60));         // Slightly darker than toolbar background
     Gamma_Slider->SetToolTip(_("Screen gamma (brightness)"));
 
@@ -842,7 +844,6 @@ void MyFrame::SetupToolBar()
     MainToolbar->EnableTool(BUTTON_GUIDE, false);
     MainToolbar->EnableTool(BUTTON_STOP, false);
 
-    MainToolbar->SetArtProvider(new PHDToolBarArt);             // Get the custom background we want
 }
 
 void MyFrame::SetupStatusBar(void)
@@ -893,7 +894,7 @@ void MyFrame::SetupHelpFile(void)
     }
 }
 
-static bool cond_update_tool(wxAuiToolBar *tb, int toolId, bool enable)
+static bool cond_update_tool(wxToolBar *tb, int toolId, bool enable)
 {
     bool ret = false;
     if (tb->GetToolEnabled(toolId) != enable) {
@@ -2056,7 +2057,7 @@ static bool load_multi_darks(GuideCamera *camera, const wxString& fname)
                 last_frame_size[0] = fsize[0];
                 last_frame_size[1] = fsize[1];
 
-                std::auto_ptr<usImage> img(new usImage());
+                std::unique_ptr<usImage> img(new usImage());
 
                 if (img->Init((int)fsize[0], (int)fsize[1]))
                 {

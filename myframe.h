@@ -201,7 +201,7 @@ public:
     wxMenuItem *m_useDefectMapMenuItem;
     wxMenuItem *m_calibrationMenuItem;
     wxMenuItem *m_importCamCalMenuItem;
-    wxAuiToolBar *MainToolbar;
+    wxToolBar * MainToolbar;
     wxInfoBar *m_infoBar;
     wxComboBox    *Dur_Choice;
     wxCheckBox *HotPixel_Checkbox;
