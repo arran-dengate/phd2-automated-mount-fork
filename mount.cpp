@@ -800,21 +800,13 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
         mkdir(GUIDE_DIRECTORY, 0755);
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }
-   
-    /* Changing simulator rotation
-
-    if (dynamic_cast<GuideCamera*>(pCamera)) {
-        Debug.AddLine("dsvf: pCamera is a GuideCamera");    
-    }
+    
+    // Rotate simulator mount angle (if we're using the simulator camera)
 
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        Debug.AddLine("dsvf: pCamera is a Camera_SimClass");    
+        Debug.AddLine("Simulator detected, attempting to change mount angle...");
+        pCamera->RotateSimMount(rotationVector);    
     }    
-
-    Debug.AddLine("Attempting to change angle...");
-    pCamera->ChangeAngle(1);
-
-    */
 
     Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
     sprintf(guideVector,format,xVector, yVector, rotationVector);
@@ -833,7 +825,7 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
                 xVector, yVector));
 
     // If the mount is moving while we're taking an exposure, this might help
-    sleep(0.3);
+    //sleep(0.3);
 
     return true; // Change when error checking code implemented
 

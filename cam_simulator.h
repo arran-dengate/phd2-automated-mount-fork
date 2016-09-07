@@ -41,6 +41,7 @@ struct SimCamState;
 class Camera_SimClass : public GuideCamera
 {
     SimCamState *sim;
+    void  RotateStarfield(wxVector<wxRealPoint> &pos, double rotCenterX, double rotCenterY, double rotAngleDegrees);
 public:
     Camera_SimClass();
     ~Camera_SimClass();
@@ -57,7 +58,7 @@ public:
     bool     ST4PulseGuideScope (int direction, int duration);
     PierSide SideOfPier() const;
     void     FlipPierSide();
-    void     ChangeAngle(double angle); // For debugging purposes
+    void     RotateSimMount(double angleChangeRadians);
 };
 
 #endif

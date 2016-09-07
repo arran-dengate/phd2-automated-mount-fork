@@ -36,7 +36,7 @@
 
 class TestGuideDialog : public wxDialog
 {
-    wxButton *NButton1, *SButton1, *EButton1, *WButton1;
+    wxButton *NButton1, *SButton1, *EButton1, *WButton1, *CWButton1, *CCWButton1;
     wxButton *NButton2, *SButton2, *EButton2, *WButton2;
     wxSpinCtrlDouble *pulseDurationSpinCtrl;
     wxChoice *ditherTypeChoice;
@@ -71,6 +71,8 @@ wxBEGIN_EVENT_TABLE(TestGuideDialog, wxDialog)
     EVT_BUTTON(MGUIDE1_DOWN,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE1_RIGHT,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE1_LEFT,TestGuideDialog::OnButton)
+    EVT_BUTTON(MGUIDE1_CW,TestGuideDialog::OnButton)
+    EVT_BUTTON(MGUIDE1_CCW,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE2_UP,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE2_DOWN,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE2_RIGHT,TestGuideDialog::OnButton)
@@ -149,7 +151,7 @@ TestGuideDialog::TestGuideDialog() :
     wxStaticBoxSizer *pWrapperSizer = new wxStaticBoxSizer(wxVERTICAL, this, _("Mount"));
     wxGridSizer *sizer = new wxGridSizer(3,3,0,0);
     static wxString AoLabels[] = {_("Up"), _("Down"), _("Right"), _("Left") };
-    static wxString ScopeLabels[] = {_("North"), _("South"), _("East"), _("West") };
+    static wxString ScopeLabels[] = {_("Pitch foward"), _("Pitch back"), _("Roll right"), _("Roll left") };
 
     bool usingAo = pSecondaryMount && pSecondaryMount->IsConnected();
 
@@ -171,10 +173,14 @@ TestGuideDialog::TestGuideDialog() :
     SButton1 = new wxButton(this, MGUIDE1_DOWN, pLabels[1], wxPoint(-1,-1),wxSize(-1,-1));
     EButton1 = new wxButton(this, MGUIDE1_RIGHT, pLabels[2], wxPoint(-1,-1),wxSize(-1,-1));
     WButton1 = new wxButton(this, MGUIDE1_LEFT, pLabels[3], wxPoint(-1,-1),wxSize(-1,-1));
+    CWButton1 = new wxButton(this, MGUIDE1_CW, wxT("Rotate clockwise"), wxPoint(-1,-1), wxSize(-1,-1));
+    CCWButton1 = new wxButton(this, MGUIDE1_CCW, wxT("Rotate counter-clockwise"), wxPoint(-1, -1), wxSize(-1, -1));
 
-    sizer->AddStretchSpacer();
+    //sizer->AddStretchSpacer();
+    sizer->Add(CWButton1, wxSizerFlags().Expand().Border(wxALL,6));
     sizer->Add(NButton1,wxSizerFlags().Expand().Border(wxALL,6));
-    sizer->AddStretchSpacer();
+    sizer->Add(CCWButton1, wxSizerFlags().Expand().Border(wxALL,6));    
+    //sizer->AddStretchSpacer();
     sizer->Add(WButton1,wxSizerFlags().Expand().Border(wxALL,6));
     sizer->AddStretchSpacer();
     sizer->Add(EButton1,wxSizerFlags().Expand().Border(wxALL,6));
@@ -267,6 +273,18 @@ void TestGuideDialog::OnButton(wxCommandEvent &evt)
 
     switch (evt.GetId())
     {
+        case MGUIDE1_CW:
+            {
+                PHD_Point blank(0,0);
+                pMount->HexMove(blank, 0.03);
+            }
+            break;
+        case MGUIDE1_CCW:
+            {
+                PHD_Point blank(0,0);
+                pMount->HexMove(blank, -0.03);
+            }
+            break;
         case MGUIDE1_UP:
             if (pMount && pMount->IsConnected())
             {
