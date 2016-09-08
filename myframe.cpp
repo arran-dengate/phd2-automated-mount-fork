@@ -96,6 +96,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(MENU_XHAIR3,MyFrame::OnOverlay)
     EVT_MENU(MENU_XHAIR4,MyFrame::OnOverlay)
     EVT_MENU(MENU_XHAIR5,MyFrame::OnOverlay)
+    EVT_MENU(MENU_XHAIR6,MyFrame::OnOverlay)
     EVT_MENU(MENU_SLIT_OVERLAY_COORDS, MyFrame::OnOverlaySlitCoords)
     EVT_MENU(MENU_BOOKMARKS_SHOW, MyFrame::OnBookmarksShow)
     EVT_MENU(MENU_BOOKMARKS_SET_AT_LOCK, MyFrame::OnBookmarksSetAtLockPos)
@@ -479,6 +480,7 @@ void MyFrame::SetupMenuBar(void)
     view_menu->AppendRadioItem(MENU_XHAIR3, _("&Coarse Grid"),_("Grid overlay"));
     view_menu->AppendRadioItem(MENU_XHAIR4, _("&RA/Dec"),_("RA and Dec overlay"));
     view_menu->AppendRadioItem(MENU_XHAIR5, _("Spectrograph S&lit"), _("Spectrograph slit overlay"));
+    view_menu->AppendRadioItem(MENU_XHAIR6, _("&Star trails"),_("Star trails"));
     view_menu->AppendSeparator();
     view_menu->Append(MENU_SLIT_OVERLAY_COORDS, _("Slit Position..."));
     view_menu->AppendSeparator();

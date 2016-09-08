@@ -87,6 +87,7 @@ enum OVERLAY_MODE
     OVERLAY_GRID_COARSE,
     OVERLAY_RADEC,
     OVERLAY_SLIT,
+    OVERLAY_STAR_TRAILS,
 };
 
 struct OverlaySlitCoords

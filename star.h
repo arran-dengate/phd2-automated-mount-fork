@@ -68,7 +68,7 @@ public:
     double SNR;
     double HFD;
     unsigned short PeakVal;
-    std::queue<PHD_Point> previous_positions; 
+    std::deque<PHD_Point> previousPositions; 
 
     Star(void);
     ~Star();

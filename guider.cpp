@@ -207,6 +207,7 @@ bool Guider::SetOverlayMode(int overlayMode)
         switch (overlayMode)
         {
             case OVERLAY_NONE:
+            case OVERLAY_STAR_TRAILS:
             case OVERLAY_BULLSEYE:
             case OVERLAY_GRID_FINE:
             case OVERLAY_GRID_COARSE:
@@ -561,6 +562,9 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
                             dc.DrawLines(5, pt);
                         }
                     }
+                    break;
+
+                case OVERLAY_STAR_TRAILS:
                     break;
 
                 case OVERLAY_NONE:

@@ -48,6 +48,7 @@
 #endif
 
 static const double DefaultMassChangeThreshold = 0.5;
+const int PREV_STAR_POSITIONS_LENGTH = 20;
 
 enum {
     MIN_SEARCH_REGION = 7,
@@ -555,21 +556,41 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
 
     // Also update positions for the secondary stars
 
-    for (Star &s : m_starList) {
-       Star newStar(s);
+    std::vector<Star>::iterator s = m_starList.begin(); 
+    while (s != m_starList.end()) {
+       Star newStar(*s);
         if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode())) {
-            // TODO: Write some error-checking code to throw out consistently badly performing stars.
-            Debug.Write(wxString::Format("Didn't find secondary star at %f %f\n", s.X, s.Y));
+            // TODO: Write some error-checking code to throw out stars that fail several checks in a row.
+            s->massChecker.validationChances -= 1;
+            s->massChecker.currentlyValid = false;
         } else {
-            s.X       = newStar.X;
-            s.Y       = newStar.Y;
-            s.Mass    = newStar.Mass;
-            s.SNR     = newStar.SNR;
-            s.HFD     = newStar.HFD;
-            s.PeakVal = newStar.PeakVal;
-            s.massChecker.AppendData(newStar.Mass);
+            s->previousPositions.push_front(PHD_Point(s->X, s->Y));
+            s->X       = newStar.X;
+            s->Y       = newStar.Y;
+            s->Mass    = newStar.Mass;
+            s->SNR     = newStar.SNR;
+            s->HFD     = newStar.HFD;
+            s->PeakVal = newStar.PeakVal;
+            s->massChecker.AppendData(newStar.Mass);
+            s->massChecker.validationChances = 3;
+            s->massChecker.currentlyValid = true;
+        }  
+        if (s->previousPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
+            s->previousPositions.pop_back(); // Only keep the most recent
         }
-    
+
+        if (s->massChecker.validationChances <= 0) {
+                Debug.Write(wxString::Format("Star: Failed to find secondary star at %f %f, removing from list\n", s->X, s->Y));
+                m_starList.erase(s);
+        } else {
+                s++;
+        }
+        
+            
+        //Debug.Write(wxString::Format("Star: Star with mass %f:\n", s.Mass));
+        //for (PHD_Point p : s.previousPositions ) {
+        //    Debug.Write(wxString::Format("Star: Previous position %f %f\n", p.X, p.Y));
+        //}
     }
 
     return bError;
@@ -754,13 +775,31 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         if (state == STATE_SELECTED)
         {  
             // Draw yellow boxes around all the secondary stars
-            dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));
             int border = 20;
             for (Star s : m_starList) {
-                if ( s.X > m_star.X + border || s.X < m_star.X - border ||
-                     s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
+                if ( s.X > m_star.X + border || s.X < m_star.X - border || s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
+                    if ( s.massChecker.currentlyValid ) {
+                        dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));    
+                    } else {
+                        dc.SetPen(wxPen(wxColour(255,0,0), 1, wxSOLID));
+                    }
+                    
                     DrawBox(dc, s, m_searchRegion, m_scaleFactor);    
                 }
+
+                // Also trails, if they're currently enabled
+
+                if ( this->GetOverlayMode() == OVERLAY_STAR_TRAILS ) 
+                {
+                    PHD_Point prevPoint(s.X, s.Y);
+                    dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));
+                    for (PHD_Point p : s.previousPositions) {
+                        dc.DrawLine(wxPoint(prevPoint.X * m_scaleFactor, prevPoint.Y * m_scaleFactor), 
+                                wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor));
+                        prevPoint = p;
+                    }    
+                }
+                
                 
             }
 

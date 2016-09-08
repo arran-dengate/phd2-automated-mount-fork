@@ -57,6 +57,8 @@ class MassChecker {
     double *m_tmp;
     size_t m_tmpSize;
     int m_lastExposure;
+    int validationChances = 3; // If several invalid readings in close succession, star is discarded.
+    bool currentlyValid = true;
 
     MassChecker();
     ~MassChecker();
