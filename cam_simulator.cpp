@@ -1055,7 +1055,7 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
  
     // Mount rotation
     // Simulates rotational guide commands from the mount.
-    // Can be trigged at runtime by either manual or automatic guide commands.
+    // Can be triggered at runtime by either manual or automatic guide commands.
     
     RotateStarfield(cc, centerX, centerY, SimCamState::mount_rotation_deg);
 
@@ -1317,16 +1317,18 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
-
-    double d = SimCamParams::guide_rate * duration / (1000.0 * SimCamParams::image_scale);
-
+    double magnitude = SimCamParams::guide_rate * duration / (1000.0 * SimCamParams::image_scale);
+    double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
-    case WEST:    sim->ra_ofs += d;      break;
-    case EAST:    sim->ra_ofs -= d;      break;
-    case NORTH:   sim->dec_ofs.incr(d);  break;
-    case SOUTH:   sim->dec_ofs.incr(-d); break;
-    default: return true;
+    case WEST:    theta -= radians(90);      break;
+    case EAST:    theta += radians(90);      break;
+    case SOUTH:   theta += radians(180);      break;
     }
+    double x   = sin(theta) * magnitude;//(sim->mount_rotation_deg);
+    double y   = cos(theta) * magnitude;//(sim->mount_rotation_deg);
+
+    sim->ra_ofs += x;
+    sim->dec_ofs.incr(y);
     WorkerThread::MilliSleep(duration, WorkerThread::INT_ANY);
     return false;
 }

@@ -41,6 +41,7 @@
 #include "point.h"
 #include "masschecker.h"
 #include <vector>
+#include <queue>
 
 class Star : public PHD_Point
 {
@@ -62,11 +63,12 @@ public:
         STAR_ERROR,
     };
    
-    MassChecker massChecker; // Can I just create this? When will constructor be called? Memory leak? 
+    MassChecker massChecker;
     double Mass;
     double SNR;
     double HFD;
     unsigned short PeakVal;
+    std::queue<PHD_Point> previous_positions; 
 
     Star(void);
     ~Star();
