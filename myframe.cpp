@@ -1485,6 +1485,18 @@ void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direct
     m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration);
 }
 
+void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationRad)
+{
+    wxCriticalSectionLocker lock(m_CSpWorkerThread);
+
+    assert(mount);
+
+    mount->IncrementRequestCount();
+
+    assert(m_pPrimaryWorkerThread);
+    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationRad);
+}
+
 void MyFrame::StartCapturing()
 {
     Debug.Write(wxString::Format("StartCapturing CaptureActive=%d continueCapturing=%d exposurePending=%d\n", CaptureActive, m_continueCapturing, m_exposurePending));

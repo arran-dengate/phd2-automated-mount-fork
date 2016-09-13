@@ -802,9 +802,7 @@ bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
     }
     
     // Rotate simulator mount angle (if we're using the simulator camera)
-
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        Debug.AddLine("Simulator detected, attempting to change mount angle...");
         pCamera->RotateSimMount(rotationVector);    
     }    
 
@@ -860,8 +858,10 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                 throw ERROR_INFO("Unable to transform camera coordinates");
             }
 
-            xDistance = mountVectorEndpoint.X;
-            yDistance = mountVectorEndpoint.Y;
+            // The camera -> mount transform has been broken ever since we changed calibration process.
+            // So we're bypassing it (by skipping the transform and just using the camera vector).
+            xDistance = cameraVectorEndpoint.X;
+            yDistance = cameraVectorEndpoint.Y;
 
             double rotationVector = pFrame->pGuider->RotationAngleDelta();
             
@@ -876,20 +876,25 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             // Roll is reversed.
             xVector *= -1;
 
-             // If we want to scale the movements up or down... (0.005 kinda works)
-            const double MOVE_SCALE_FACTOR = 1;
+            // If debugging value set in profile, scale movements by this value.
+            const double MOVE_SCALE_FACTOR = pConfig->Profile.GetDouble("/debug/MoveScaleFactor", 1.0); 
             xVector *= MOVE_SCALE_FACTOR;
             yVector *= MOVE_SCALE_FACTOR;
 
-            // Uncomment this to clamp the maximum move distance.
-            //const double MAX_MOVE_DISTANCE = 0.0006;
-            //xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
-            //yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
-
+            // If this debugging value is set in the profile, put an upper limit on the distance of a single move.
+            const double MAX_MOVE_DISTANCE = pConfig->Profile.GetDouble("/debug/MaxMoveCommandRadians", -1.0);
+            if ( MAX_MOVE_DISTANCE > 0 ) {
+                Debug.AddLine(wxString::Format("Mount: capping max move distance at %f", MAX_MOVE_DISTANCE));
+                xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
+                yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
+            }
+            
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
             HexMove(moveVector, rotationVector);
 
+            xDistance *= 100; // Just for the benefit for the simulator, which gives tiny guide pulses otherwise.
+            yDistance *= 100; 
             // Arran: the rest of this method not currently used, left in for now.
             if (moveType == MOVETYPE_ALGO)
             {

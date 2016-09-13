@@ -506,6 +506,30 @@ Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duratio
     return result;
 }
 
+Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad)
+{
+    MOVE_RESULT result = MOVE_OK;
+
+    Debug.AddLine(wxString::Format("Scope: calibration move dir %d dur %d rotation %f", direction, duration, rotationRad));
+
+    try
+    {
+        MoveResultInfo move;
+        result = Move(direction, duration, rotationRad, MOVETYPE_DIRECT, &move);
+
+        if (result != MOVE_OK)
+        {
+            throw THROW_INFO("Move failed");
+        }
+    }
+    catch (const wxString& Msg)
+    {
+        POSSIBLY_UNUSED(Msg);
+    }
+
+    return result;
+}
+
 int Scope::CalibrationMoveSize(void)
 {
     return m_calibrationDuration;
@@ -575,6 +599,148 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
         case WEST:
             movePoint.SetXY(-moveAmount, 0);
             pMount->HexMove(movePoint, 0);
+            break;
+        default:
+            break;
+    }
+    
+    try
+    {
+        Debug.Write(wxString::Format("Move(%d, %d, %d)\n", direction, duration, moveType));
+
+        if (!m_guidingEnabled)
+        {
+            throw THROW_INFO("Guiding disabled");
+        }
+
+        // Compute the actual guide durations
+
+        switch (direction)
+        {
+            case NORTH:
+            case SOUTH:
+
+                // Do not enforce dec guiding mode and max dec duration for direct moves
+                if (moveType != MOVETYPE_DIRECT)
+                {
+                    if ((m_decGuideMode == DEC_NONE) ||
+                        (direction == SOUTH && m_decGuideMode == DEC_NORTH) ||
+                        (direction == NORTH && m_decGuideMode == DEC_SOUTH))
+                    {
+                        duration = 0;
+                        Debug.AddLine("duration set to 0 by GuideMode");
+                    }
+
+                    if (duration > m_maxDecDuration)
+                    {
+                        duration = m_maxDecDuration;
+                        Debug.Write(wxString::Format("duration set to %d by maxDecDuration\n", duration));
+                        limitReached = true;
+                    }
+
+                    if (limitReached && direction == m_decLimitReachedDirection)
+                    {
+                        if (++m_decLimitReachedCount >= LIMIT_REACHED_WARN_COUNT)
+                            AlertLimitReached(duration, GUIDE_DEC);
+                    }
+                    else
+                        m_decLimitReachedCount = 0;
+
+                    if (limitReached)
+                        m_decLimitReachedDirection = direction;
+                    else
+                        m_decLimitReachedDirection = NONE;
+                }
+                break;
+            case EAST:
+            case WEST:
+
+                // Do not enforce max dec duration for direct moves
+                if (moveType != MOVETYPE_DIRECT)
+                {
+                    if (duration > m_maxRaDuration)
+                    {
+                        duration = m_maxRaDuration;
+                        Debug.Write(wxString::Format("duration set to %d by maxRaDuration\n", duration));
+                        limitReached = true;
+                    }
+
+                    if (limitReached && direction == m_raLimitReachedDirection)
+                    {
+                        if (++m_raLimitReachedCount >= LIMIT_REACHED_WARN_COUNT)
+                            AlertLimitReached(duration, GUIDE_RA);
+                    }
+                    else
+                        m_raLimitReachedCount = 0;
+
+                    if (limitReached)
+                        m_raLimitReachedDirection = direction;
+                    else
+                        m_raLimitReachedDirection = NONE;
+                }
+                break;
+
+            case NONE:
+                break;
+        }
+
+        // Actually do the guide
+        assert(duration >= 0);
+        if (duration > 0)
+        {
+            result = Guide(direction, duration);
+            if (result != MOVE_OK)
+            {
+                throw ERROR_INFO("guide failed");
+            }
+        }
+    }
+    catch (const wxString& Msg)
+    {
+        POSSIBLY_UNUSED(Msg);
+        if (result == MOVE_OK)
+            result = MOVE_ERROR;
+        duration = 0;
+    }
+
+    Debug.Write(wxString::Format("Move returns status %d, amount %d\n", result, duration));
+
+    if (moveResult)
+    {
+        moveResult->amountMoved = duration;
+        moveResult->limited = limitReached;
+    }
+
+    return result;
+}
+
+Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double rotationRad, MountMoveType moveType, MoveResultInfo *moveResult)
+{
+    MOVE_RESULT result = MOVE_OK;
+    bool limitReached = false;
+
+    // TODO actually use duration and moveType
+    Debug.Write(wxString::Format("Scope move(direction %d, duration %d, movetype %d, rotationRad %f)\n", direction, duration, moveType, rotationRad));
+    double moveAmount = (double)duration / 1000000;
+    Debug.Write(wxString::Format("moveAmount %f\n", moveAmount));
+    PHD_Point movePoint(0,0);
+    switch (direction)
+    {
+        case NORTH:
+            movePoint.SetXY(0, moveAmount);
+            pMount->HexMove(movePoint, rotationRad);
+            break;
+        case SOUTH:
+            movePoint.SetXY(0, -moveAmount);
+            pMount->HexMove(movePoint, rotationRad);
+            break;
+        case EAST:
+            movePoint.SetXY(moveAmount, 0);
+            pMount->HexMove(movePoint, rotationRad);
+            break;
+        case WEST:
+            movePoint.SetXY(-moveAmount, 0);
+            pMount->HexMove(movePoint, rotationRad);
             break;
         default:
             break;
@@ -909,8 +1075,8 @@ void Scope::SetCalibrationDetails(const CalibrationDetails& calDetails, double x
         ra_rate = -1.0;
         dec_rate = -1.0;
     }
-    m_calibrationDetails.raGuideSpeed = ra_rate;
-    m_calibrationDetails.decGuideSpeed = dec_rate;
+    m_calibrationDetails.raGuideSpeed = 1.0;//ra_rate;
+    m_calibrationDetails.decGuideSpeed = 1.0;//dec_rate;
     m_calibrationDetails.focalLength = pFrame->GetFocalLength();
     m_calibrationDetails.imageScale = pFrame->GetCameraPixelScale();
     m_calibrationDetails.orthoError = degrees(fabs(fabs(norm_angle(xAngle - yAngle)) - M_PI / 2.));         // Delta from the nearest multiple of 90 degrees
@@ -993,6 +1159,35 @@ static void GetRADecCoordinates(PHD_Point *coords)
         coords->SetXY(ra, dec);
 }
 
+static Line GetPerpendicularLine(const PHD_Point &A, const PHD_Point &B) {
+    PHD_Point midAB( (A.X + B.X) / 2.0, (A.Y + B.Y) / 2.0);
+    double slopeAB = (B.Y - A.Y) / (B.X - A.X); 
+    double slopePerpAB = pow(slopeAB, -1) * -1;
+    const double X_DISTANCE = 10; // We get another point on the line, doesn't matter where.
+    PHD_Point extraPointPerpAB(midAB.X + X_DISTANCE, midAB.Y + slopePerpAB * X_DISTANCE);
+    Line perpAB(midAB.X, midAB.Y, extraPointPerpAB.X, extraPointPerpAB.Y);
+    
+    //printf("midAB              x %.2f y %.2f\n", midAB.X, midAB.Y);
+    //printf("slopeAB            %.2f\n", slopeAB);
+    //printf("slopePerpAB        %.2f\n", slopePerpAB);
+    //printf("extraPointPerpAB   x %.2f y %.2f\n", extraPointPerpAB.X, extraPointPerpAB.Y);
+    //printf("perpAB values      lA %.2f lB %.2f lC %.2f\n", perpAB.H, perpAB.I, perpAB.J);
+
+    return perpAB;
+}
+
+static bool GetIntersectionPoint(const Line &L1, const Line &L2, PHD_Point &outIntersection) {
+    double det = L1.H * L2.I - L2.H * L1.I;
+    if ( det == 0 ) {
+        printf("Lines are parallel");
+        return false;
+    } else {
+        outIntersection.X = (L2.I * L1.J - L1.I * L2.J) / det;
+        outIntersection.Y = (L1.H * L2.J - L2.H * L1.J) / det;
+        return true;
+    }
+}
+
 bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 {
     // New calibration works like this.
@@ -1012,8 +1207,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
     //                                   /   |    \
     // m_calibrationStartingLocation -> 1____|_____3 <- m_calibrationNorthReturnLocation;
     //                                       ^4, midpoint
-
-
+    
     bool bError = false;
 
     try
@@ -1051,8 +1245,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
             case CALIBRATION_STATE_GO_NORTH:
 
                 GuideLog.CalibrationStep(this, "North", m_calibrationSteps, dX, dY, currentLocation, dist);
-                m_calibrationDetails.decSteps.push_back(wxRealPoint(dX, dY));
-                m_calibrationDetails.raSteps.push_back(wxRealPoint(dX, dY));
 
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("North step %3d"), m_calibrationSteps);
@@ -1061,6 +1253,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                     Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
                     pFrame->ScheduleCalibrationMove(this, NORTH, m_calibrationDuration);
+                    //pFrame->ScheduleCalibrationMove(this, NORTH, 0, 1);
                     break;
                 }
 
@@ -1098,7 +1291,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
             case CALIBRATION_STATE_RETURN_FROM_NORTH:
 
                 GuideLog.CalibrationStep(this, "South", m_calibrationSteps, dX, dY, currentLocation, dist);
-                m_calibrationDetails.decSteps.push_back(wxRealPoint(dX, dY));
 
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("South step %3d"), m_calibrationSteps);
@@ -1114,6 +1306,60 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 m_calibrationState = CALIBRATION_STATE_COMPLETE;
                 m_calibrationSteps = 0;
+
+            case CALIBRATION_STATE_GO_CLOCKWISE:
+                Debug.AddLine("Scope: calibration going clockwise");
+                if (m_calibrationStepsRemaining > 0) {
+
+                    if (m_calibrationStepsRemaining == M_INITIAL_CALIBRATION_STEPS) {
+                        for (Star &s : pFrame->pGuider->m_starList) {
+                            s.calStartPos = PHD_Point(s.X, s.Y);
+                        }
+                    }
+
+                    pFrame->StatusMsg(wxString::Format(_("Moving clockwise - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
+                    m_calibrationStepsRemaining -= 1;
+                    pFrame->ScheduleCalibrationMove(this, NORTH, 0, 0.03);
+                    break;
+                }
+
+                for (Star &s : pFrame->pGuider->m_starList) {
+                    s.calEndPos = PHD_Point(s.X, s.Y);
+                    Debug.AddLine(wxString::Format("Scope: calibration start x %f y %f end x %f y %f",
+                                                   s.calStartPos.X, s.calStartPos.Y,
+                                                   s.calEndPos.X, s.calEndPos.Y));
+                    
+                    //Debug.AddLine(wxString::Format("Scope: estimated center %f, %f", Get))
+                }
+
+                {
+                    double xSum = 0;
+                    double ySum = 0;
+                    double pointCount = 0;
+                    for (Star &i : pFrame->pGuider->m_starList) 
+                    {
+                        for (Star &j : pFrame->pGuider->m_starList) 
+                        {
+                            Line perpAB = GetPerpendicularLine(PHD_Point(i.calStartPos.X, i.calStartPos.Y), PHD_Point(i.calEndPos.X, i.calEndPos.Y));
+                            Line perpCD = GetPerpendicularLine(PHD_Point(j.calStartPos.X, j.calStartPos.Y), PHD_Point(j.calEndPos.X, j.calEndPos.Y));
+                            PHD_Point intersection(0,0);
+                            if ( GetIntersectionPoint(perpAB, perpCD, intersection)) {
+                                Debug.AddLine(wxString::Format("Scope: intersection at %.2f, %.2f", intersection.X, intersection.Y));
+                                xSum += intersection.X;
+                                ySum += intersection.Y;
+                                pointCount += 1;
+                            }
+
+                        }
+                     }
+                    PHD_Point averageCenter(xSum / pointCount, ySum / pointCount);
+                    pFrame->pGuider->SetRotationCenter(averageCenter);
+                    Debug.AddLine(wxString::Format("Scope: average center was %.2f, %.2f", averageCenter.X, averageCenter.Y));
+                }
+
+
+                m_calibrationStepsRemaining = M_INITIAL_CALIBRATION_STEPS;
+                m_calibrationState = CALIBRATION_STATE_COMPLETE;
 
             case CALIBRATION_STATE_COMPLETE:
 
@@ -1154,7 +1400,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 // Fake calibration so it shuts up. I'll rework this later. 
 
                 cal.xAngle=0.0;
-                cal.yAngle=90.0;
+                cal.yAngle=0.0;
                 cal.xRate=5.000;
                 cal.yRate=5.000;
                 
@@ -1163,15 +1409,34 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 cal.rotatorAngle = Rotator::RotatorPosition();
                 cal.binning = pCamera->Binning;
                 SetCalibration(cal);
-                m_calibrationDetails.raStepCount = m_raSteps;
-                m_calibrationDetails.decStepCount = m_decSteps;
+                
+
                 m_calibrationDetails.cameraAngle = cameraAngle;
+
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(0,0));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(-5,0));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(-10,0));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(-15,0));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(-7,0));
+                m_calibrationDetails.raSteps.push_back(wxRealPoint(-2,0));
+                m_calibrationDetails.raStepCount = 6;
+
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, 0));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -2));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -4));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -8));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -12));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -5));
+                m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -1));
+                m_calibrationDetails.decStepCount = 7;
                 
                 // More fake calibration 
-                m_calibrationDetails.raStepCount = m_raSteps;
-                m_calibrationDetails.decStepCount = m_decSteps;
+                //GetString("/profile/2/scope/calibration/ra_steps", "") returns "{0.0 0.0}, {-1.3 -0.0}, {-2.4 0.0}, {-3.4 0.1}, {-4.7 0.1}, {-5.8 0.2}, {-7.1 0.1}, {-8.2 0.1}, {-9.4 0.1}, {-10.4 0.2}, {-11.7 0.2}, {-12.9 0.0}, {-14.0 -0.1}, {-15.3 0.0}, {-16.3 0.0}, {-17.5 0.0}, {-18.7 0.1}, {-20.1 0.0}, {-21.2 0.1}, {-22.4 0.1}, {-23.5 -0.0}, {-24.8 0.0}, {-25.8 0.0}, {-25.8 0.0}, {-16.2 -0.0}, {-6.0 0.2}, {0.3 0.1}"
+//13:25:46.369 00.000 139725371582976 GetString("/profile/2/scope/calibration/dec_steps", "") returns "{0.0 0.0}, {-0.1 -1.1}, {-0.1 -2.4}, {-0.2 -3.9}, {-0.0 -5.1}, {-0.0 -6.5}, {-0.1 -7.7}, {-0.1 -9.0}, {-0.1 -10.3}, {-0.0 -11.7}, {-0.1 -12.9}, {-0.2 -14.3}, {0.1 -15.6}, {-0.0 -16.8}, {0.1 -18.2}, {-0.0 -19.6}, {0.0 -20.8}, {-0.2 -22.1}, {-0.1 -23.5}, {0.1 -24.7}, {0.0 -26.1}, {0.0 -26.1}, {-0.2 -16.6}, {-0.2 -5.7}, {-0.2 -1.3}"
+
+
                 m_calibration.xAngle = 0;
-                m_calibration.yAngle = 0;
+                m_calibration.yAngle = 90;
                 
                 SetCalibrationDetails(m_calibrationDetails, m_calibration.xAngle, m_calibration.yAngle, pCamera->Binning);
                 //if (SANITY_CHECKING_ACTIVE)

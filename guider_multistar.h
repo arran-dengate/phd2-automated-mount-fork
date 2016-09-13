@@ -65,15 +65,15 @@ public:
 class GuiderMultiStar : public Guider
 {
 private:
-    Star m_star;
-    std::vector<Star> m_starList;
 
     // parameters
     bool m_massChangeThresholdEnabled;
     double m_massChangeThreshold;
     double m_originalRotationAngle;
+    PHD_Point m_rotationCenter;
 
 public:
+
     class GuiderMultiStarConfigDialogPane : public GuiderConfigDialogPane
     {
     protected:
@@ -87,6 +87,8 @@ public:
         void LayoutControls(Guider *pGuider, BrainCtrlIdMap& CtrlMap);
     };
 
+    void SetRotationCenter(const PHD_Point &rotationCenter);
+    bool GetRotationCenter(PHD_Point &outRotationCenter);
     bool GetMassChangeThresholdEnabled(void);
     void SetMassChangeThresholdEnabled(bool enable);
     double GetMassChangeThreshold(void);

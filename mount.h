@@ -320,6 +320,7 @@ public:
     virtual void SetCalibration(const Calibration& cal);
     virtual void SetCalibrationDetails(const CalibrationDetails& calDetails);
     void GetCalibrationDetails(CalibrationDetails *calDetails);
+    virtual MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad) {} ;
 
     virtual bool IsConnected(void) const;
     virtual bool Connect(void);

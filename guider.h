@@ -175,6 +175,8 @@ protected:
 
     // Things related to the Advanced Config Dialog
 public:
+
+    
     class GuiderConfigDialogPane : public ConfigDialogPane
     {
         Guider *m_pGuider;
@@ -208,6 +210,9 @@ protected:
     void ToggleBookmark(const wxRealPoint& pt);
 
 public:
+    Star m_star; // Primary guiding star
+    std::vector<Star> m_starList; // Secondary stars
+
     bool IsPaused(void) const;
     PauseType GetPauseType(void) const;
     PauseType SetPaused(PauseType pause);
@@ -267,6 +272,8 @@ public:
 private:
     virtual void InvalidateLockPosition(void);
 public:
+    virtual void SetRotationCenter(const PHD_Point &rotationCenter) {};
+    virtual bool GetRotationCenter(PHD_Point &outRotationCenter) {};
     virtual void LoadProfileSettings(void);
 
     // pure virtual functions -- these MUST be overridden by a subclass

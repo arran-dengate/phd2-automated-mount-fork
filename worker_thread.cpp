@@ -253,6 +253,27 @@ void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRE
     EnqueueMessage(message);
 }
 
+void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationRad)
+{
+    m_interruptRequested &= ~INT_STOP;
+
+    WORKER_THREAD_REQUEST message;
+    memset(&message, 0, sizeof(message));
+
+    Debug.Write(wxString::Format("Enqueuing Calibration Move request for direction %d\n", direction));
+
+    message.request                   = REQUEST_MOVE;
+    message.args.move.pMount          = mount;
+    message.args.move.calibrationMove = true;
+    message.args.move.direction       = direction;
+    message.args.move.duration        = duration;
+    message.args.move.moveType        = MOVETYPE_DIRECT;
+    message.args.move.pSemaphore      = NULL;
+    message.args.move.rotationRad     = rotationRad;
+
+    EnqueueMessage(message);
+}
+
 Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
 {
     Mount::MOVE_RESULT result = Mount::MOVE_OK;
@@ -267,9 +288,16 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
 
             if (pArgs->calibrationMove)
             {
-                Debug.Write("calibration move\n");
+                Debug.AddLine("Calibration move");
+                if (pArgs->rotationRad > 0) {
+                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationRad));
+                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationRad);
+                } else {
+                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move doesn't have rotational component"));
+                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
+                }
 
-                result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
+                //result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
                 if (result != Mount::MOVE_OK)
                 {
                     throw ERROR_INFO("CalibrationMove failed");

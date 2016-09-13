@@ -360,6 +360,7 @@ public:
     void SchedulePrimaryMove(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType);
     void ScheduleSecondaryMove(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType);
     void ScheduleCalibrationMove(Mount *pMount, const GUIDE_DIRECTION direction, int duration);
+    void ScheduleCalibrationMove(Mount *pMount, const GUIDE_DIRECTION direction, int duration, double rotationRad);
 
     void StartCapturing(void);
     void StopCapturing(void);

@@ -1003,6 +1003,7 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
     
     double rotX = -float(width/2);
     double rotY = -float(height/2);
+    Debug.AddLine(wxString::Format("Simulator: -float(width/2) %f", rotX));
     RotateStarfield(pos, rotX, rotY, skyRotation);
 
     // Apply shifts caused by drift + manual movement 
@@ -1058,6 +1059,7 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
     // Can be triggered at runtime by either manual or automatic guide commands.
     
     RotateStarfield(cc, centerX, centerY, SimCamState::mount_rotation_deg);
+    //RotateStarfield(cc, 10, 10, SimCamState::mount_rotation_deg);
 
 
 //    Debug.Write(wxString::Format("Simulator: camera angle %f\n", SimCamParams::cam_angle));
@@ -1817,9 +1819,8 @@ void Camera_SimClass::ShowPropertyDialog()
 
 void Camera_SimClass::RotateSimMount(double angleChangeRadians)
 {    
-    
     sim->mount_rotation_deg += degrees(angleChangeRadians);
-    Debug.Write(wxString::Format("Simulator mount angle is now %f\n", sim->mount_rotation_deg));
+    //Debug.Write(wxString::Format("Simulator mount angle is now %f\n", sim->mount_rotation_deg));
 }
 
 

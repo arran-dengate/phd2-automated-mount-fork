@@ -34,13 +34,20 @@
  */
 
 #include "phd.h"
-#include "goto/astrometry.h"
-#include "goto/csv.h"
-#include "goto/units.h"
-#include "goto/conversion.h"
 #include "goto_dialog.h"
-#include <wx/srchctrl.h>
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <wx/listctrl.h>
+#include <wx/srchctrl.h>
+
+const char IMAGE_DIRECTORY[]         = "/dev/shm/phd2/goto";
+const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
+const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fits";
 
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(800, 400), wxCAPTION | wxCLOSE_BOX)
@@ -60,16 +67,16 @@ GotoDialog::GotoDialog(void)
     Connect(wxID_EXIT, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(GotoDialog::OnGoto));
     rightBox->Add(gotoButton);
         
-
+    // Autocomplete is broken for searchCtrl, so I had to use a textCtrl.
     wxTextCtrl * searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 
                                                 0, wxDefaultValidator, wxTextCtrlNameStr);
     
     wxArrayString strings;
-    strings.Add( "Pomegranate" );
-    strings.Add( "Banana" );
-    strings.Add( "Lemon" );
-    strings.Add( "Melon" );
-    strings.Add( "Coconut" );
+    strings.Add( "Arcturus" );
+    strings.Add( "Sirius" );
+    strings.Add( "Rigel" );
+    strings.Add( "Canopus" );
+    strings.Add( "Achernar" );
     searchBar->AutoComplete( strings );
 
     leftBox->Add(searchBar, 
@@ -168,7 +175,69 @@ GotoDialog::GotoDialog(void)
 
 void GotoDialog::OnGoto(wxCommandEvent& )
 {
+    // Create directory if does not exist
+    struct stat info;
+    if( stat( IMAGE_DIRECTORY, &info ) != 0 ) {
+        mkdir(IMAGE_PARENT_DIRECTORY, 0755);
+        mkdir(IMAGE_DIRECTORY, 0755);
+    }
+    pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME);
+    double ra = 0;
+    double dec = 0;
+    getAstroLocation(ra, dec);
+
     Close(true);
+}
+
+bool GotoDialog::getAstroLocation(double &outRa, double &outDec) {
+
+    // Run astrometry, identify where we are,
+    // and pipe the textual results from stdin into pos.ra and pos.dec.
+    
+    string astOutput;
+    FILE *in;
+    char buff[512];
+
+    char inputFilename[200];
+    strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite ");
+    strcat(inputFilename, IMAGE_FILENAME);
+    Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
+    if(!(in = popen(inputFilename, "r"))){
+        return 1;
+    }
+    while(fgets(buff, sizeof(buff), in)!=NULL){
+        cout << buff;
+        astOutput += buff;
+    }
+    pclose(in);
+
+    // FITS image is no longer needed, can be deleted.
+    //remove(IMAGE_FILENAME);
+
+    Debug.AddLine(wxString::Format("About to search string"));
+    //raise(SIGINT);
+     
+    unsigned int strLocation = astOutput.find("(RA,Dec)");
+    if ( astOutput.find("(RA,Dec)") == string::npos) {
+        return false; // Astrometry failed to solve
+    }
+    const string line = astOutput.substr(strLocation, strLocation+30);
+    // const string line = "Field center: (RA,Dec) = (104.757911, -3.500760) deg.";
+    
+    regex raReg("\\(-?[[:digit:]]+(\\.[[:digit:]]+)?");
+    regex decReg("-?[[:digit:]]+(\\.[[:digit:]]+)?\\)");
+    smatch raMatch;
+    smatch decMatch;
+    regex_search(line.begin(), line.end(), raMatch, raReg); 
+    regex_search(line.begin(), line.end(), decMatch, decReg);
+    string raResult = raMatch[0];
+    string decResult = decMatch[0];
+    outRa = stod(raResult.substr(1, raResult.size())); // Trim leading bracket
+    outDec = stod(decResult.substr(0, decResult.size()-1)); // Trim ending bracket
+    
+    // printf("Ra %f Dec %f", ra, dec);
+
+    return true; // todo: return error code if failed
 }
 
 int GotoDialog::StringWidth(const wxString& string)

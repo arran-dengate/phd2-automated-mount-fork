@@ -93,6 +93,17 @@ bool GuiderMultiStar::GetMassChangeThresholdEnabled(void)
     return m_massChangeThresholdEnabled;
 }
 
+void GuiderMultiStar::SetRotationCenter(const PHD_Point &rotationCenter)
+{
+    m_rotationCenter = rotationCenter;
+}
+
+bool GuiderMultiStar::GetRotationCenter(PHD_Point &outRotationCenter)
+{
+    outRotationCenter = m_rotationCenter;
+    return true;
+}
+
 void GuiderMultiStar::SetMassChangeThresholdEnabled(bool enable)
 {
     m_massChangeThresholdEnabled = enable;
@@ -771,19 +782,23 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
 
         GUIDER_STATE state = GetState();
         bool FoundStar = m_star.WasFound();
+        int border = 20;
 
-        if (state == STATE_SELECTED)
-        {  
-            // Draw yellow boxes around all the secondary stars
-            int border = 20;
-            for (Star s : m_starList) {
+        // Secondary stars are drawn under most circumstances
+        if (FoundStar && (state == STATE_SELECTED | STATE_CALIBRATING_PRIMARY | STATE_CALIBRATING_SECONDARY | STATE_CALIBRATED | STATE_GUIDING)) {
+            
+            dc.SetPen(wxPen(wxColour(200,200,24), 1, wxSOLID));
+            dc.DrawCircle(m_rotationCenter.X * m_scaleFactor, m_rotationCenter.Y *m_scaleFactor, 5);
+            for (Star s : m_starList) 
+            {   
                 if ( s.X > m_star.X + border || s.X < m_star.X - border || s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
                     if ( s.massChecker.currentlyValid ) {
+                        // Draw yellow boxes if valid
                         dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));    
                     } else {
+                        // Otherwise red
                         dc.SetPen(wxPen(wxColour(255,0,0), 1, wxSOLID));
-                    }
-                    
+                    }    
                     DrawBox(dc, s, m_searchRegion, m_scaleFactor);    
                 }
 
@@ -795,13 +810,16 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                     dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));
                     for (PHD_Point p : s.previousPositions) {
                         dc.DrawLine(wxPoint(prevPoint.X * m_scaleFactor, prevPoint.Y * m_scaleFactor), 
-                                wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor));
+                                    wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor));
                         prevPoint = p;
                     }    
                 }
-                
-                
-            }
+            }    
+        }    
+        
+
+        if (state == STATE_SELECTED)
+        {  
 
             if (FoundStar)
                 dc.SetPen(wxPen(wxColour(100,255,90), 1, wxSOLID));  // Draw green box around primary star

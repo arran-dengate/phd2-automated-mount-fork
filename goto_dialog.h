@@ -49,6 +49,7 @@ private:
 
     int StringWidth(const wxString& string);
     void OnGoto(wxCommandEvent& event);
+    bool getAstroLocation(double &outRa, double &outDec);
 
 public:
     GotoDialog(void);

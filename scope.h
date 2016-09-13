@@ -40,6 +40,17 @@
 
 class Scope;
 
+struct Line {
+    double H;
+    double I;
+    double J;
+    Line(double x1, double y1, double x2, double y2) {
+        H = y2 - y1;
+        I = x1 - x2;
+        J = H * x1 + I * y1;
+        }
+};
+
 class ScopeConfigDialogCtrlSet : public MountConfigDialogCtrlSet
 {
     Scope* m_pScope;
@@ -129,7 +140,8 @@ class Scope : public Mount
         CALIBRATION_STATE_GO_NORTH,
         CALIBRATION_STATE_RETURN_FROM_NORTH,
         CALIBRATION_STATE_NUDGE_SOUTH,
-        CALIBRATION_STATE_COMPLETE
+        CALIBRATION_STATE_COMPLETE,
+        CALIBRATION_STATE_GO_CLOCKWISE
     };
     CALIBRATION_STATE m_calibrationState;
 
@@ -246,7 +258,9 @@ private:
     // functions with an implemenation in Scope that cannot be over-ridden
     // by a subclass
     MOVE_RESULT Move(GUIDE_DIRECTION direction, int durationMs, MountMoveType moveType, MoveResultInfo *moveResultInfo);
+    MOVE_RESULT Move(GUIDE_DIRECTION direction, int durationMs, double rotationRad, MountMoveType moveType, MoveResultInfo *moveResultInfo);
     MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration);
+    MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad);
     int CalibrationMoveSize(void);
     int CalibrationTotDistance(void);
 
