@@ -829,17 +829,27 @@ void MyFrame::SetupToolBar()
     Gamma_Slider->SetBackgroundColour(wxColor(60, 60, 60));         // Slightly darker than toolbar background
     Gamma_Slider->SetToolTip(_("Screen gamma (brightness)"));
 
-    MainToolbar->AddTool(BUTTON_GEAR, connect_bmp, connect_bmp_disabled, false, 0, _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
-    MainToolbar->AddTool(BUTTON_LOOP, loop_bmp, loop_bmp_disabled, false, 0, _("Begin looping exposures for frame and focus"));
-    MainToolbar->AddTool(BUTTON_GUIDE, guide_bmp, guide_bmp_disabled, false, 0, _("Begin guiding (PHD). Shift-click to force calibration."));
-    MainToolbar->AddTool(BUTTON_STOP, stop_bmp, stop_bmp_disabled, false, 0, _("Stop looping and guiding"));
-    MainToolbar->AddTool(BUTTON_GOTO, connect_bmp, connect_bmp_disabled, false, 0, _("Traverse mount to a star or astronomical feature"));
+/*  
+int     toolId, 
+const wxString &    label,
+const wxBitmap &    bitmap,
+const wxBitmap &    bmpDisabled,
+wxItemKind  kind = wxITEM_NORMAL,
+const wxString &    shortHelpString = wxEmptyString,
+const wxString &    longHelpString = wxEmptyString,
+wxObject *  clientData = NULL 
+) */  
+    MainToolbar->AddTool(BUTTON_GEAR, wxString::Format("Gear button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Setup equipment"), _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
+    MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
+    MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guide_bmp, guide_bmp_disabled, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
+    MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
+    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
     MainToolbar->AddSeparator();
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
-    MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, cam_setup_bmp, cam_setup_bmp_disabled, false, 0, _("Camera settings"));
+    MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
     MainToolbar->EnableTool(BUTTON_CAM_PROPERTIES, false);
     MainToolbar->Realize();
     MainToolbar->EnableTool(BUTTON_LOOP, false);

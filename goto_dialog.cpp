@@ -191,7 +191,10 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     double az = 0;
     if ( AstroSolveCurrentLocation(ra, dec) ) {
         EquatorialToHorizontal(ra, dec, alt, az);
-        pMount->HexGoto(alt, az);
+        //pMount->HexGoto(alt, az)
+        PHD_Point rotationCenter; 
+        pFrame->pGuider->GetRotationCenter(rotationCenter);
+        pMount->HexCalibrate(alt, az, 0.0, rotationCenter, 0.0);
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
                                                       wxString::Format("Astrometry current location ra %f, dec %f ; alt %f az %f", ra, dec, alt, az), 
                                                       wxString::Format("Goto"), 
