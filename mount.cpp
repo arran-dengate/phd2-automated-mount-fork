@@ -55,9 +55,9 @@
 //const double Mount::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;
 
 const char GUIDE_DIRECTORY[]         = "/dev/shm/phd2/";
-const char GUIDE_OUTPUT_DIRECTORY [] = "/dev/shm/phd2/output";
-const char TEMP_FILE_PATH[]          = "/dev/shm/phd2/temp_guide_pulse";
-const char OUTPUT_FILE_PATH[]        = "/dev/shm/phd2/output/guide_pulse";
+const char GUIDE_OUTPUT_DIRECTORY [] = "/dev/shm/phd2/output/";
+const char TEMP_FILE_PATH[]          = "/dev/shm/phd2/output/temp_mount_command";
+const char OUTPUT_FILE_PATH[]        = "/dev/shm/phd2/output/mount_command";
 
 inline static PierSide OppositeSide(PierSide p)
 {
@@ -784,46 +784,115 @@ void Mount::LogGuideStepInfo()
     m_lastStep.frameNumber = -1; // invalidate
 }
 
-bool Mount::HexMove(const PHD_Point& xyVector, double rotationVector) {
+bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
+    
     // Send a guide command (in radians) to the mount, via an atomic file shuffle.
-    // This is the raw command - transformation based on calibration results occurs
-    // at a higher level.
+    // File format for guide commands is: guide,<pitch>,<roll>,<yaw>
+    //                       For example: guide,0.00000000,-0.0003000,0.0000000
 
-    double xVector = xyVector.X;
-    double yVector = xyVector.Y;
-    char format[] = "%4.5f, %4.5f, %4.5f";
-    char guideVector[100] = {0};
+    Debug.AddLine("Started HexGuide method");
+
+    char commandType[]    = "guide";
+    double yVector        = xyVector.Y;
+    double xVector        = xyVector.X;
+    char format[]         = "%s,%.10f,%.10f,%.10f";
+    char message[100]     = {0};
 
     // Create directory if does not exist
     struct stat info;
     if( stat( GUIDE_OUTPUT_DIRECTORY, &info ) != 0 ) {
         mkdir(GUIDE_DIRECTORY, 0755);
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
-    }
-    
-    // Rotate simulator mount angle (if we're using the simulator camera)
-    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        pCamera->RotateSimMount(rotationVector);    
     }    
 
-    Debug.Write(wxString::Format("Sent %4.5f, %4.5f, %4.5f\n", xVector, yVector, rotationVector));
-    sprintf(guideVector,format,xVector, yVector, rotationVector);
+    Debug.Write(wxString::Format("Mount: Sent guide command %s,%.10f,%.10f,%.10f\n", commandType, yVector, xVector, rotationVector));
+    sprintf(message, format, commandType, yVector, xVector, rotationVector);
     ofstream pulse_output;
     pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
     if (pulse_output.fail()) {
         Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
-        exit(1);
+        throw 20;
     } else {
-        pulse_output << guideVector;
+        pulse_output << message;
         pulse_output.close();
     }
     rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
-    Debug.Write(wxString::Format("Moving xVector=%.7f yVector=%.7f\n (radians)",
-                xVector, yVector));
-
     // If the mount is moving while we're taking an exposure, this might help
     //sleep(0.3);
+
+    // Rotate simulator mount angle (if we're using the simulator camera)
+    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
+        pCamera->RotateSimMount(rotationVector);    
+    }
+
+    return true; // Change when error checking code implemented
+
+}
+
+bool Mount::HexGoto(double alt, double az) {
+    
+    // Send a goto command (in alt/az) to the mount, via an atomic file shuffle.
+    // File format for goto commands is: goto,<pitch>,<roll>,<yaw>
+    //                      For example: goto,0.00000000,-0.0003000,0.0000000
+
+    char commandType[]    = "goto";
+    char format[]         = "%s,%.10f,%.10f";
+    char message[100]     = {0};
+
+    // Create directory if does not exist
+    struct stat info;
+    if( stat( GUIDE_OUTPUT_DIRECTORY, &info ) != 0 ) {
+        mkdir(GUIDE_DIRECTORY, 0755);
+        mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
+    }    
+
+    Debug.Write(wxString::Format("Sent %s,%.10f,%.10f\n", commandType, alt, az));
+    sprintf(message, format, commandType, alt, az);
+    ofstream pulse_output;
+    pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
+    if (pulse_output.fail()) {
+        Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
+        throw 20;
+    } else {
+        pulse_output << message;
+        pulse_output.close();
+    }
+    rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
+
+    return true; // Change when error checking code implemented
+
+}
+
+bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRotationCenter, double astroAngle) {
+    
+    // Send a goto command (in alt/az) to the mount, via an atomic file shuffle.
+    // File format for goto commands is: goto,<pitch>,<roll>,<yaw>
+    //                      For example: goto,0.00000000,-0.0003000,0.0000000
+
+    char commandType[]    = "goto";
+    char format[]         = "%s,%.10f,%.10f";
+    char message[100]     = {0};
+
+    // Create directory if does not exist
+    struct stat info;
+    if( stat( GUIDE_OUTPUT_DIRECTORY, &info ) != 0 ) {
+        mkdir(GUIDE_DIRECTORY, 0755);
+        mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
+    }    
+
+    Debug.Write(wxString::Format("Sent %s,%.10f,%.10f\n", alt, az));
+    sprintf(message, format, commandType, alt, az);
+    ofstream pulse_output;
+    pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
+    if (pulse_output.fail()) {
+        Debug.Write(wxString::Format("Could not open %s", TEMP_FILE_PATH));
+        throw 20;
+    } else {
+        pulse_output << message;
+        pulse_output.close();
+    }
+    rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
     return true; // Change when error checking code implemented
 
@@ -891,7 +960,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
-            HexMove(moveVector, rotationVector);
+            HexGuide(moveVector, rotationVector);
 
             xDistance *= 100; // Just for the benefit for the simulator, which gives tiny guide pulses otherwise.
             yDistance *= 100; 

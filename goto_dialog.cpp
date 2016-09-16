@@ -44,10 +44,13 @@
 #include <unistd.h>
 #include <wx/listctrl.h>
 #include <wx/srchctrl.h>
+#include <wx/progdlg.h>
+#include "cam_simulator.h" // To determine if current camera is simulator
 
 const char IMAGE_DIRECTORY[]         = "/dev/shm/phd2/goto";
 const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
 const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fits";
+const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
 
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(800, 400), wxCAPTION | wxCLOSE_BOX)
@@ -184,24 +187,81 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME);
     double ra = 0;
     double dec = 0;
-    getAstroLocation(ra, dec);
+    double alt = 0;
+    double az = 0;
+    if ( AstroSolveCurrentLocation(ra, dec) ) {
+        EquatorialToHorizontal(ra, dec, alt, az);
+        pMount->HexGoto(alt, az);
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                      wxString::Format("Astrometry current location ra %f, dec %f ; alt %f az %f", ra, dec, alt, az), 
+                                                      wxString::Format("Goto"), 
+                                                      wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
 
-    Close(true);
+    } else {
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                      wxString::Format("Unable to work out position with astrometry! Please check that the image is in focus and current camera is not the simulator.\nGoto cannot proceed.", ra, dec), 
+                                                      wxString::Format("Goto"), 
+                                                      wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();                                                              
+    }
+
+    //    Debug.AddLine("OK");
+    //}
+    //Close(true);
 }
 
-bool GotoDialog::getAstroLocation(double &outRa, double &outDec) {
+bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz) {
+    std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec);
+    string skyOutput;
+    FILE *in;
+    char buf[200];
+
+    if(!(in = popen(command.c_str(), "r"))) {
+        Debug.AddLine(wxString::Format("Guider: Skyfield threw error while converting equatorial to horizontal coordinates"));
+        return 1;
+    }
+    while(fgets(buf, sizeof(buf), in)!=NULL) {
+        cout << buf;
+        skyOutput += buf;
+    }
+    pclose(in);
+
+    std::size_t found = skyOutput.find(",");
+    outAlt = stod(skyOutput.substr(0, found - 1 ));
+    outAz  = stod(skyOutput.substr(found+1, skyOutput.size()));
+     
+    return 0;
+}
+
+bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
 
     // Run astrometry, identify where we are,
     // and pipe the textual results from stdin into pos.ra and pos.dec.
+    
+    // The result is to call something like "/usr/local/astrometry/bin/solve-field --overwrite /dev/shm/phd2/goto/guide-image.fits"
+    char inputFilename[200];
+    strcpy(inputFilename, SOLVER_FILENAME);
+    strcat(inputFilename, " --overwrite");
+    strcat(inputFilename, IMAGE_FILENAME);
+    Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
+
+    // If simulator is being used as the camera, override with test input image
+    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                              wxString::Format("Since the current camera is the simulator, will use fake test image to determine position."), 
+                                              wxString::Format("Goto"), 
+                                              wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
+        strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite /usr/local/astrometry/examples/apod2.jpg");    
+    }
+    
+    wxProgressDialog(wxString::Format("Solving..."), wxString::Format("Solving..."), 100, this, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_ELAPSED_TIME); 
     
     string astOutput;
     FILE *in;
     char buff[512];
 
-    char inputFilename[200];
-    strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite ");
-    strcat(inputFilename, IMAGE_FILENAME);
-    Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
     if(!(in = popen(inputFilename, "r"))){
         return 1;
     }

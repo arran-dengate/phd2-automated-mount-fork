@@ -276,13 +276,13 @@ void TestGuideDialog::OnButton(wxCommandEvent &evt)
         case MGUIDE1_CW:
             {
                 PHD_Point blank(0,0);
-                pMount->HexMove(blank, 0.03);
+                pMount->HexGuide(blank, 0.03);
             }
             break;
         case MGUIDE1_CCW:
             {
                 PHD_Point blank(0,0);
-                pMount->HexMove(blank, -0.03);
+                pMount->HexGuide(blank, -0.03);
             }
             break;
         case MGUIDE1_UP:

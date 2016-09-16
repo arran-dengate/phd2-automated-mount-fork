@@ -49,7 +49,9 @@ private:
 
     int StringWidth(const wxString& string);
     void OnGoto(wxCommandEvent& event);
-    bool getAstroLocation(double &outRa, double &outDec);
+    bool AstroSolveCurrentLocation(double &outRa, double &outDec);
+    bool EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz);
+    bool PlanetToHorizontal(string p);
 
 public:
     GotoDialog(void);

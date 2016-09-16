@@ -35,6 +35,7 @@
 #include "nudge_lock.h"
 #include "comet_tool.h"
 #include "guiding_assistant.h"
+#include <sys/wait.h>
 
 // un-comment to log star deflections to a file
 //#define CAPTURE_DEFLECTIONS
@@ -659,6 +660,13 @@ void Guider::SetDefectMapPreview(const DefectMap *defectMap)
 
 bool Guider::SaveCurrentImage(const wxString& fileName)
 {
+    int ret = system("/usr/local/skyfield/sky.py --store-time");
+    Debug.AddLine(wxString::Format("Guider: return value %d", ret));
+    if (WEXITSTATUS(ret) != 0) {
+        Debug.AddLine("Guider: Skyfield threw an error while storing time");
+        throw 20;
+    }
+    
     return m_pCurrentImage->Save(fileName);
 }
 

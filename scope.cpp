@@ -586,19 +586,19 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     {
         case NORTH:
             movePoint.SetXY(0, moveAmount);
-            pMount->HexMove(movePoint, 0);
+            pMount->HexGuide(movePoint, 0);
             break;
         case SOUTH:
             movePoint.SetXY(0, -moveAmount);
-            pMount->HexMove(movePoint, 0);
+            pMount->HexGuide(movePoint, 0);
             break;
         case EAST:
             movePoint.SetXY(moveAmount, 0);
-            pMount->HexMove(movePoint, 0);
+            pMount->HexGuide(movePoint, 0);
             break;
         case WEST:
             movePoint.SetXY(-moveAmount, 0);
-            pMount->HexMove(movePoint, 0);
+            pMount->HexGuide(movePoint, 0);
             break;
         default:
             break;
@@ -728,19 +728,19 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double r
     {
         case NORTH:
             movePoint.SetXY(0, moveAmount);
-            pMount->HexMove(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationRad);
             break;
         case SOUTH:
             movePoint.SetXY(0, -moveAmount);
-            pMount->HexMove(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationRad);
             break;
         case EAST:
             movePoint.SetXY(moveAmount, 0);
-            pMount->HexMove(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationRad);
             break;
         case WEST:
             movePoint.SetXY(-moveAmount, 0);
-            pMount->HexMove(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationRad);
             break;
         default:
             break;
@@ -1413,6 +1413,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 m_calibrationDetails.cameraAngle = cameraAngle;
 
+                // More fake calibration 
                 m_calibrationDetails.raSteps.push_back(wxRealPoint(0,0));
                 m_calibrationDetails.raSteps.push_back(wxRealPoint(-5,0));
                 m_calibrationDetails.raSteps.push_back(wxRealPoint(-10,0));
@@ -1430,10 +1431,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -1));
                 m_calibrationDetails.decStepCount = 7;
                 
-                // More fake calibration 
-                //GetString("/profile/2/scope/calibration/ra_steps", "") returns "{0.0 0.0}, {-1.3 -0.0}, {-2.4 0.0}, {-3.4 0.1}, {-4.7 0.1}, {-5.8 0.2}, {-7.1 0.1}, {-8.2 0.1}, {-9.4 0.1}, {-10.4 0.2}, {-11.7 0.2}, {-12.9 0.0}, {-14.0 -0.1}, {-15.3 0.0}, {-16.3 0.0}, {-17.5 0.0}, {-18.7 0.1}, {-20.1 0.0}, {-21.2 0.1}, {-22.4 0.1}, {-23.5 -0.0}, {-24.8 0.0}, {-25.8 0.0}, {-25.8 0.0}, {-16.2 -0.0}, {-6.0 0.2}, {0.3 0.1}"
-//13:25:46.369 00.000 139725371582976 GetString("/profile/2/scope/calibration/dec_steps", "") returns "{0.0 0.0}, {-0.1 -1.1}, {-0.1 -2.4}, {-0.2 -3.9}, {-0.0 -5.1}, {-0.0 -6.5}, {-0.1 -7.7}, {-0.1 -9.0}, {-0.1 -10.3}, {-0.0 -11.7}, {-0.1 -12.9}, {-0.2 -14.3}, {0.1 -15.6}, {-0.0 -16.8}, {0.1 -18.2}, {-0.0 -19.6}, {0.0 -20.8}, {-0.2 -22.1}, {-0.1 -23.5}, {0.1 -24.7}, {0.0 -26.1}, {0.0 -26.1}, {-0.2 -16.6}, {-0.2 -5.7}, {-0.2 -1.3}"
-
+                
 
                 m_calibration.xAngle = 0;
                 m_calibration.yAngle = 90;

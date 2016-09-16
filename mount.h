@@ -240,8 +240,12 @@ public:
     bool GetGuidingEnabled(void);
     void SetGuidingEnabled(bool guidingEnabled);
 
+    bool HexGuide(const PHD_Point& xyVector, double rotationVector);
+    bool HexGoto(double alt, double az);
+    bool HexCalibrate(double alt, double az, double camAngle, PHD_Point camRotationCenter, double astroAngle);
+    
     virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType);
-    bool HexMove(const PHD_Point& xyVector, double rotationVector);
+
     bool TransformCameraCoordinatesToMountCoordinates(const PHD_Point& cameraVectorEndpoint,
                                                       PHD_Point& mountVectorEndpoint);
 

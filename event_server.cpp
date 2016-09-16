@@ -908,7 +908,7 @@ static void manual_move_mount(JObj& response, const json_value *params)
         return;
     }
  
-    if (pMount->HexMove(moveVector, 0))
+    if (pMount->HexGuide(moveVector, 0))
     {
         return;
     }
