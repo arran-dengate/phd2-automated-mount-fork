@@ -872,7 +872,7 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRo
 
     char commandType[]    = "calibrate";
     char format[]         = "%s,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f";
-    char message[100]     = {0};
+    char message[200]     = {0};
 
     // Create directory if does not exist
     struct stat info;
@@ -886,8 +886,8 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRo
     //camAngle    = radians(camAngle);
 
     Debug.Write(wxString::Format("Calibration command: %s,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f", 
-                                 alt, az));
-    sprintf(message, format, commandType, alt, az);
+                                 commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle));
+    sprintf(message, format, commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle);
     ofstream pulse_output;
     pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
     if (pulse_output.fail()) {

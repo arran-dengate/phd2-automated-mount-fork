@@ -468,10 +468,7 @@ void MyFrame::OnButtonStop(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
-    Debug.Write("Goto button clicked\n");
-
     Calibration cal;
-
 
     GotoDialog gotodlg;
     gotodlg.ShowModal();

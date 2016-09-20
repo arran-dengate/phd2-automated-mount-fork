@@ -42,6 +42,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <wx/listctrl.h>
 #include <wx/srchctrl.h>
 #include <wx/progdlg.h>
@@ -55,129 +56,245 @@ const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(800, 400), wxCAPTION | wxCLOSE_BOX)
 {   
-    wxBoxSizer *containBox = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer *mainBox = new wxBoxSizer(wxHORIZONTAL);
-    wxStaticBoxSizer *leftBox = new wxStaticBoxSizer(wxVERTICAL, this, "Search");
-    wxStaticBoxSizer *rightBox = new wxStaticBoxSizer(wxVERTICAL, this, "Description");
-    mainBox->Add(leftBox, 1, wxEXPAND);
-    mainBox->Add(rightBox, 1, wxEXPAND);
-    containBox->Add(mainBox, 1, wxEXPAND);
+    // Obtain the catalog data from a CSV file...
+
+    
+    if ( ! GetCatalogData(m_catalog) ) {
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, wxString::Format("Unable to locate or read star catalog file! Goto will not work."), 
+                                                      wxString::Format("Error"), wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
+    }
+
+    // Now set up GUI.
+
+    wxBoxSizer *containBox           = new wxBoxSizer(wxVERTICAL);
+    //wxFlexGridSizer *containBox = new wxFlexGridSizer(2, 2, 2, 9);
+    //wxBoxSizer *mainBox              = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer *lowerBox             = new wxBoxSizer(wxHORIZONTAL);
+    wxStaticBoxSizer *searchBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Search");
+    wxStaticBoxSizer *statusBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Status");
+    wxStaticBoxSizer *destinationBox = new wxStaticBoxSizer(wxVERTICAL, this, "Destination");
+
+    containBox->Add(searchBox, 1, wxEXPAND);
+    containBox->Add(lowerBox, 1, wxEXPAND);
+    lowerBox->Add(statusBox, 1, wxEXPAND);
+    lowerBox->Add(destinationBox, 1, wxEXPAND);
+    
     int borderSize = 5;
     
-    wxButton *gotoButton = new wxButton(this, wxID_ANY, _("Goto"));
-    gotoButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnGoto, this);
-    gotoButton->SetToolTip(_("Traverse mount to selected astronomical feature"));
-    Connect(wxID_EXIT, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(GotoDialog::OnGoto));
-    rightBox->Add(gotoButton);
-        
     // Autocomplete is broken for searchCtrl, so I had to use a textCtrl.
-    wxTextCtrl * searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 
+    m_searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 
                                                 0, wxDefaultValidator, wxTextCtrlNameStr);
+    m_searchBar->Bind(wxEVT_COMMAND_TEXT_UPDATED, &GotoDialog::OnSearchTextChanged, this, wxID_ANY);
+
+    wxArrayString catalog_keys;
+    for ( auto kv : m_catalog ) {
+        catalog_keys.Add(kv.first);
+    }
     
-    wxArrayString strings;
-    strings.Add( "Arcturus" );
-    strings.Add( "Sirius" );
-    strings.Add( "Rigel" );
-    strings.Add( "Canopus" );
-    strings.Add( "Achernar" );
-    searchBar->AutoComplete( strings );
+    m_searchBar->AutoComplete( catalog_keys );
 
-    leftBox->Add(searchBar, 
-                 0, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
+    searchBox->Add(m_searchBar, 0, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
 
-    rightBox->Add(new wxStaticText(this, -1, "Description"), 
-                 0, wxALL | wxALIGN_TOP, borderSize);
-    SetSizer(containBox);
+    // Get a bold font
 
-    containBox->Add(CreateButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Right().Border(wxALL, 10));
+    wxStaticText *tempText = new wxStaticText(this, -1, "");
+    wxFont boldFont = tempText->GetFont();
+    boldFont.SetWeight(wxFONTWEIGHT_BOLD);
 
-    /* Make bold 'description' label:
+    // Status sizer
     
-    m_label_info = new wxStaticText(this, -1, "blablabla");
+    wxFlexGridSizer *statusGrid = new wxFlexGridSizer(2, 2, 2, 9);
+    statusBox->Add(statusGrid);
+    
+    m_skyPosText                 = new wxStaticText(this, -1, "Waiting for astrometry");
+    m_gpsLocText                 = new wxStaticText(this, -1, "35.2809° S, 149.1300° E");
+    m_timeText                   = new wxStaticText(this, -1, "-");
+    
+    wxStaticText *skyPosHeading  = new wxStaticText(this, -1, "Sky position");
+    wxStaticText *gpsLocHeading  = new wxStaticText(this, -1, "GPS location");
+    wxStaticText *timeHeading    = new wxStaticText(this, -1, "Time");
+    skyPosHeading->SetFont(boldFont);
+    gpsLocHeading->SetFont(boldFont);
+    timeHeading->SetFont(boldFont);
+
+    statusGrid->Add(skyPosHeading, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_skyPosText, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(gpsLocHeading, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_gpsLocText, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(timeHeading, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_timeText, 0, wxALL | wxALIGN_TOP, borderSize);
+    
+    // Destination sizer
+
+    wxFlexGridSizer *destinationGrid = new wxFlexGridSizer(4, 4, 2, 4);
+    destinationBox->Add(destinationGrid);
+
+    m_destinationRa   = new wxStaticText(this, -1, "-                      ");
+    m_destinationDec  = new wxStaticText(this, -1, "-                      ");
+    m_destinationAlt  = new wxStaticText(this, -1, "-                      ");
+    m_destinationAz   = new wxStaticText(this, -1, "-                      ");
+    m_destinationType = new wxStaticText(this, -1, "-                      ");
+    wxStaticText *destinationTypeHeading = new wxStaticText(this, -1, "Type");
+    wxStaticText *destinationRaHeading   = new wxStaticText(this, -1, "RA");
+    wxStaticText *destinationDecHeading  = new wxStaticText(this, -1, "Dec");
+    wxStaticText *destinationAltHeading  = new wxStaticText(this, -1, "Alt");
+    wxStaticText *destinationAzHeading   = new wxStaticText(this, -1, "Az");
+    destinationRaHeading->SetFont(boldFont);
+    destinationDecHeading->SetFont(boldFont);
+    destinationAltHeading->SetFont(boldFont);
+    destinationAzHeading->SetFont(boldFont);
+    destinationTypeHeading->SetFont(boldFont);
+
+    destinationGrid->Add(destinationTypeHeading, 0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationType,      0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->AddSpacer(0); // An empty cell
+    destinationGrid->AddSpacer(0); // An empty cell
+    destinationGrid->Add(destinationRaHeading,   0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationRa,        0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(destinationDecHeading,  0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationDec,       0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(destinationAltHeading,  0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationAlt,       0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(destinationAzHeading,   0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationAz,        0, wxALL | wxALIGN_TOP, borderSize);
+
+    // Button sizer along the bottom with 'Cancel' and 'Goto' buttons
+
+    wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
+    containBox->Add(buttonSizer, wxSizerFlags(0).Right().Border(wxALL, 10));
+
+    wxButton *cancelButton = new wxButton(this, wxID_ANY, _("Cancel"));
+    cancelButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnClose, this);
+    buttonSizer->Add(cancelButton);
+
+    m_gotoButton = new wxButton(this, wxID_ANY, _("Go to"));
+    m_gotoButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnGoto, this);
+    m_gotoButton->SetToolTip(_("Traverse mount to selected astronomical feature"));
+    m_gotoButton->Disable();
+    buttonSizer->Add(m_gotoButton);
+
+    //containBox->Add(CreateButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Right().Border(wxALL, 10));
+ 
+    /*wxStaticText m_label_info = new wxStaticText(this, -1, "blablabla");
     wxFont font = m_label_info->GetFont();
     font.SetPointSize(10);
     font.SetWeight(wxFONTWEIGHT_BOLD);
-    m_label_info->SetFont(font);
-    /* 
+    m_label_info->SetFont(font);*/
+   
+    SetSizer(containBox);
 
-    /* Basic list ctrl code
-
-    wxListCtrl * searchResults = new wxListCtrl (this, -1, wxDefaultPosition, wxDefaultSize, wxLC_ICON, 
-                                                 wxDefaultValidator, wxListCtrlNameStr);
-    // Add first column       
-    wxListItem col0;
-    col0.SetId(0);
-    col0.SetText( _("Foo") );
-    col0.SetWidth(50);
-    searchResults->InsertColumn(0, col0);
-
-    //searchResults->SetItem(1, 0, wxT("Foo"));
-    searchResults->InsertItem(0, wxString("Balls!"));
-    leftBox->Add(searchResults, 
-                 1, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
-    */
-    
-
-    //wxTextCtrl *MainEditBox;
-    //MainEditBox = new wxTextCtrl(this, -1, "Hi!", wxDefaultPosition, wxDefaultSize,  
-    //wxTE_MULTILINE | wxTE_RICH , wxDefaultValidator, wxTextCtrlNameStr);
-
-    //mainBox->SetSizeHints(this); // If you want to set the window to the size of the contents.
     /*
-    int width = StringWidth("0.0000") + 15;
-    wxBoxSizer *pVSizer = new wxBoxSizer(wxVERTICAL);
-    wxFlexGridSizer *pGridSizer = new wxFlexGridSizer(2, 10, 10);
-
-    wxStaticText *pLabel = new wxStaticText(this, wxID_ANY, _("Camera binning:"));
-    wxArrayString opts;
-    pCamera->GetBinningOpts(&opts);
-    m_binning = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, opts);
-    m_binning->Select(cal.binning - 1);
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_binning);
-
-    pLabel = new wxStaticText(this,wxID_ANY, _("RA rate, px/sec (e.g. 5.0):"));
-    m_pXRate = new wxTextCtrl(this,wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(width, -1));
-    m_pXRate->SetValue(wxString::Format("%.3f", cal.xRate * 1000.0));
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_pXRate);
-
-    pLabel = new wxStaticText(this,wxID_ANY, _("Dec rate, px/sec (e.g. 5.0):"));
-    m_pYRate = new wxTextCtrl(this,wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(width, -1));
-    m_pYRate->SetValue(wxString::Format("%.3f", cal.yRate * 1000.0));
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_pYRate);
-
-    pLabel = new wxStaticText(this,wxID_ANY, _("RA angle (degrees):"));
-    m_pXAngle = new wxTextCtrl(this,wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(width, -1));
-    m_pXAngle->SetValue(wxString::Format("%.1f", degrees(cal.xAngle)));
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_pXAngle);
-
-    pLabel = new wxStaticText(this,wxID_ANY, _("Dec angle (degrees):"));
-    m_pYAngle = new wxTextCtrl(this,wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(width, -1));
-    m_pYAngle->SetValue(wxString::Format("%.1f", degrees(cal.yAngle)));
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_pYAngle);
-
-    pLabel = new wxStaticText(this,wxID_ANY, _("Declination (e.g. 2.1):"));
-    m_pDeclination = new wxTextCtrl(this,wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(width, -1));
-    double dec = cal.declination == UNKNOWN_DECLINATION ? 0.0 : cal.declination;
-    m_pDeclination->SetValue(wxString::Format("%.1f", dec));
-    pGridSizer->Add(pLabel);
-    pGridSizer->Add(m_pDeclination);
-
-    pVSizer->Add(pGridSizer, wxSizerFlags(0).Border(wxALL, 10));
-    pVSizer->Add(CreateButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Right().Border(wxALL, 10));
-
-    SetSizerAndFit (pVSizer);
-
-    m_pXRate->SetFocus();
+    //wxTimer timer;
+    m_timer = new wxTimer();
+    m_timer->SetOwner(this);
+    //timer.Connect( wxEVT_TIMER, wxTimerEventHandler(GotoDialog::OnTimer), NULL, this);
+    m_timer->Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this, m_timer->GetId());
+    m_timer->Start(100, wxTIMER_CONTINUOUS);
     */
+
+    m_timer = new wxTimer();
+    m_timer->SetOwner(this);
+    Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this);
+    m_timer->Start(1000); // Timer goes off every x milliseconds
+
 }
+
+void GotoDialog::OnTimer(wxTimerEvent& event) {
+    UpdateLocationText();
+}
+
+
+void GotoDialog::OnSearchTextChanged(wxCommandEvent&) {   
+    UpdateLocationText();
+}
+
+void GotoDialog::UpdateLocationText(void) {
+    if ( m_catalog.count(string(m_searchBar->GetValue())) ) {
+        //m_destinationEquatorial->SetLabel(m_catalog[string(m_searchBar->GetValue())]);
+        m_destinationType->SetLabel("Star");
+
+        string word;
+        string result = m_catalog[string(m_searchBar->GetValue())];
+        stringstream resultStream(result);
+        getline(resultStream, word, ',');
+        double ra = stod(word);
+        getline(resultStream, word, ',');
+        double dec = stod(word);
+        
+        double alt;
+        double az;
+        EquatorialToHorizontal(ra, dec, alt, az, false);
+        //Debug.AddLine(wxString::Format("ra %f dec %f alt %f az %f", ra, dec, alt, az));
+        
+        m_destinationRa->SetLabel(std::to_string(ra)); 
+        m_destinationDec->SetLabel(std::to_string(dec));
+        m_destinationAlt->SetLabel(std::to_string(alt));
+        m_destinationAz->SetLabel(std::to_string(az));
+        m_gotoButton->Enable();
+    } else {
+        m_destinationRa->SetLabel("-");
+        m_destinationDec->SetLabel("-");
+        m_destinationAlt->SetLabel("-");
+        m_destinationAz->SetLabel("-");
+        m_destinationType->SetLabel("-");
+        m_gotoButton->Disable();
+    }
+}
+
+bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
+
+    Debug.AddLine(wxString::Format("Preparing to read catalog"));
+    string line;
+    string cell;
+
+    ifstream f ("/home/arran/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
+    if (!f.is_open()) {
+        perror("error while opening file");
+        return false;
+    }
+    while(getline(f, line)) 
+        {
+            stringstream  lineStream(line);
+            getline(lineStream,cell,',');
+            string star = cell;
+            getline(lineStream,cell,',');
+            string ra = cell;
+            getline(lineStream,cell,',');
+            string dec = cell;
+            //Debug.AddLine(wxString::Format("Line %s", line));
+            //Debug.AddLine(wxString::Format("Star %s", star));
+            //Debug.AddLine(wxString::Format("RA %s", ra));
+            //Debug.AddLine(wxString::Format("Dec %s", dec));
+            outCatalog[star] = ra + "," + dec;
+        }
+    if (f.bad()) {
+        perror("error while reading file");
+        return false;
+    }
+
+    Debug.AddLine(wxString::Format("Finished reading catalog"));
+    //Debug.AddLine(wxString::Format("Catalogue contents for Wezen: %s", catalog["Wezen"]));
+
+} 
 
 void GotoDialog::OnGoto(wxCommandEvent& )
 {
+    // TODO - integrate the altitude check as a warning into the main dialog and disasbled goto button, rather than modal dialog.
+    if (std::stod(string(m_destinationAlt->GetLabel())) < 0 ) {
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                      wxString::Format("Destination is below the horizon and cannot be viewed!\n"
+                                                                       "If you believe this is not the case, check that the time and GPS location are correct."), 
+                                                      wxString::Format("Cannot goto"), 
+                                                      wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
+        return;
+    }
+
+    // --------------------
+    // Perform calibration!
+    // --------------------
+
     // Create directory if does not exist
     struct stat info;
     if( stat( IMAGE_DIRECTORY, &info ) != 0 ) {
@@ -185,37 +302,53 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         mkdir(IMAGE_DIRECTORY, 0755);
     }
     pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME);
-    double ra = 0;
-    double dec = 0;
-    double alt = 0;
-    double az = 0;
-    if ( AstroSolveCurrentLocation(ra, dec) ) {
-        EquatorialToHorizontal(ra, dec, alt, az);
+    double startRa = 0;
+    double startDec = 0;
+    double startAlt = 0;
+    double startAz = 0;
+    if ( AstroSolveCurrentLocation(startRa, startDec) ) {
+        EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
         //pMount->HexGoto(alt, az)
         PHD_Point rotationCenter; 
         pFrame->pGuider->GetRotationCenter(rotationCenter);
-        pMount->HexCalibrate(alt, az, 0.0, rotationCenter, 0.0);
+        pMount->HexCalibrate(startAlt, startAz, 0.0, rotationCenter, 0.0); // TODO - fill in missing figures!
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Astrometry current location ra %f, dec %f ; alt %f az %f", ra, dec, alt, az), 
+                                                      wxString::Format("Astrometry current location ra %f, dec %f ; alt %f az %f", startRa, startDec, startAlt, startAz), 
                                                       wxString::Format("Goto"), 
                                                       wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();
-
     } else {
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Unable to work out position with astrometry! Please check that the image is in focus and current camera is not the simulator.\nGoto cannot proceed.", ra, dec), 
+                                                      wxString::Format("Unable to work out position with astrometry!\nPlease check that the image is in focus and lens cap is off.\nGoto cannot proceed."), 
                                                       wxString::Format("Goto"), 
                                                       wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();                                                              
     }
 
-    //    Debug.AddLine("OK");
-    //}
-    //Close(true);
+    // --------------------
+    // Goto!
+    // --------------------
+
+    UpdateLocationText(); // TODO, get the time x seconds from now (calculate how long move is likely to take)
+    double destAlt = std::stod(string(m_destinationAlt->GetLabel())); // Also, getting the time from the text string is not ideal.
+    double destAz  = std::stod(string(m_destinationAz->GetLabel())); 
+
+    wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                  wxString::Format("Traversing mount to destination - %f, %f", destAlt, destAz), 
+                                                  wxString::Format("Goto"), 
+                                                  wxOK|wxCENTRE, wxDefaultPosition);
+    alert->Show();
+
+    pMount->HexGoto(destAlt, destAz);
+
+
 }
 
-bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz) {
+bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp) {
     std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec);
+    if ( useStoredTimestamp ) {
+        command += " --use-stored";
+    }
     string skyOutput;
     FILE *in;
     char buf[200];
@@ -312,20 +445,10 @@ int GotoDialog::StringWidth(const wxString& string)
     return width;
 }
 
-/*void GotoDialog::GetValues(Calibration *cal)
-{
-    double t;
-    m_pXRate->GetValue().ToDouble(&t);
-    cal->xRate = t / 1000.0;
-    m_pYRate->GetValue().ToDouble(&t);
-    cal->yRate = t / 1000.0;
-    m_pXAngle->GetValue().ToDouble(&t);
-    cal->xAngle = radians(t);
-    m_pYAngle->GetValue().ToDouble(&t);
-    cal->yAngle = radians(t);
-    m_pDeclination->GetValue().ToDouble(&cal->declination);
-    cal->binning = m_binning->GetSelection() + 1;
-}*/
+void GotoDialog::OnClose(wxCommandEvent& event) {
+    event.Skip(true);
+    //this->Destroy();
+}
 
 GotoDialog::~GotoDialog(void)
 {

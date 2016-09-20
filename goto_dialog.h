@@ -35,23 +35,37 @@
 
 #ifndef GotoDialog_h_included
 #define GotoDialog_h_included
+#include <unordered_map>
 
 class GotoDialog :
     public wxDialog
 {
 private:
-    wxChoice *m_binning;
-    wxTextCtrl *m_pXRate;
-    wxTextCtrl *m_pYRate;
-    wxTextCtrl *m_pXAngle;
-    wxTextCtrl *m_pYAngle;
-    wxTextCtrl *m_pDeclination;
+    wxTextCtrl   *m_searchBar;
+    wxStaticText *m_destinationRa;
+    wxStaticText *m_destinationDec;
+    wxStaticText *m_destinationAlt;
+    wxStaticText *m_destinationAz;
+    wxStaticText *m_destinationType;
+    wxStaticText *m_skyPosText;
+    wxStaticText *m_gpsLocText;
+    wxStaticText *m_timeText; 
+    std::unordered_map<string,string> m_catalog;
+
+    wxTimer *m_timer; 
+
+    wxButton *m_gotoButton;
 
     int StringWidth(const wxString& string);
     void OnGoto(wxCommandEvent& event);
+    void OnClose(wxCommandEvent& event);
+    void OnTimer(wxTimerEvent& event);
     bool AstroSolveCurrentLocation(double &outRa, double &outDec);
-    bool EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz);
+    bool EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp);
     bool PlanetToHorizontal(string p);
+    bool GetCatalogData(std::unordered_map<string,string>& catalog);
+    void OnSearchTextChanged(wxCommandEvent&);
+    void UpdateLocationText(void);
 
 public:
     GotoDialog(void);
