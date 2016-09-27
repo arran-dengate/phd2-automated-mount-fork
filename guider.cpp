@@ -1068,14 +1068,15 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
     // Save the image so astrometry can have a look at it.
     // Only triggered if there's a special file present (as a signal.)
 
-    char signalFilename[] = "/usr/local/goto/signal/signal.txt";
+    //char signalFilename[] = "/usr/local/goto/signal/signal.txt";
 
-    if (FILE *gotoSignal = fopen(signalFilename, "r")) {
-        fclose(gotoSignal);
-        remove(signalFilename);
-        wxString fname = "/usr/local/goto/input/guide-scope-image.fits";
+    //if (FILE *gotoSignal = fopen(signalFilename, "r")) {
+    //    fclose(gotoSignal);
+    //    remove(signalFilename);
+        wxString fname = "/dev/shm/phd2/goto/guide-scope-image.fits.temp";
         m_pCurrentImage->Save(fname);
-    }  
+        rename("/dev/shm/phd2/goto/guide-scope-image.fits.temp", "/dev/shm/phd2/goto/guide-scope-image.fits");
+    //}  
 
     try
     {

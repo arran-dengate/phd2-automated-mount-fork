@@ -54,7 +54,7 @@ const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fit
 const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
 
 GotoDialog::GotoDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(800, 400), wxCAPTION | wxCLOSE_BOX)
+    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX)
 {   
     // Obtain the catalog data from a CSV file...
 
@@ -259,7 +259,7 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     string line;
     string cell;
 
-    ifstream f ("/home/arran/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
+    ifstream f ("/home/pi/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
     if (!f.is_open()) {
         perror("error while opening file");
         return false;
@@ -320,16 +320,17 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         mkdir(IMAGE_PARENT_DIRECTORY, 0755);
         mkdir(IMAGE_DIRECTORY, 0755);
     }
-    pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME);
+    //pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME); TEMP DISABLED FOR DEBUGGING - we are saving every image at the moment
     double startRa = 0;
     double startDec = 0;
     double startAlt = 0;
     double startAz = 0;
     if ( AstroSolveCurrentLocation(startRa, startDec) ) {
         EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
-        //pMount->HexGoto(alt, az)
-        PHD_Point rotationCenter; 
-        pFrame->pGuider->GetRotationCenter(rotationCenter);
+        PHD_Point rotationCenter;
+        rotationCenter.X = 0;
+        rotationCenter.Y = 0; 
+        //pFrame->pGuider->GetRotationCenter(rotationCenter); DISABLED FOR DEBUGGING ONLY, TURN THIS BACK ON!
         Debug.AddLine(wxString::Format("Goto: rotationcenter %f %f", rotationCenter.X, rotationCenter.Y));
         pMount->HexCalibrate(startAlt, startAz, 0.0, rotationCenter, 0.0); // TODO - fill in missing figures!
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
@@ -433,7 +434,7 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
     // The result is to call something like "/usr/local/astrometry/bin/solve-field --overwrite /dev/shm/phd2/goto/guide-image.fits"
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
-    strcat(inputFilename, " --overwrite");
+    strcat(inputFilename, " --overwrite ");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 

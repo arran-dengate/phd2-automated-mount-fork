@@ -795,7 +795,7 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     char commandType[]    = "guide";
     double yVector        = xyVector.Y;
     double xVector        = xyVector.X;
-    char format[]         = "%s,%.10f,%.10f,%.10f";
+    char format[]         = "%s,%.10g,%.10g,%.10g";
     char message[100]     = {0};
 
     // Create directory if does not exist
@@ -837,7 +837,7 @@ bool Mount::HexGoto(double alt, double az) {
     //                      For example: goto,0.00000000,-0.0003000,0.0000000
 
     char commandType[]    = "goto";
-    char format[]         = "%s,%.10f,%.10f";
+    char format[]         = "%s,%.10g,%.10g";
     char message[100]     = {0};
 
     // Create directory if does not exist
@@ -847,6 +847,8 @@ bool Mount::HexGoto(double alt, double az) {
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
 
+    alt = radians(alt);
+    az = radians(az);
     Debug.Write(wxString::Format("Sent %s,%.10f,%.10f\n", commandType, alt, az));
     sprintf(message, format, commandType, alt, az);
     ofstream pulse_output;
@@ -871,7 +873,7 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRo
     //                      For example: goto,0.00000000,-0.0003000,0.0000000
 
     char commandType[]    = "calibrate";
-    char format[]         = "%s,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f";
+    char format[]         = "%s,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g";
     char message[200]     = {0};
 
     // Create directory if does not exist
