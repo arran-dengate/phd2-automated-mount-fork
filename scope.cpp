@@ -1249,8 +1249,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("North step %3d"), m_calibrationSteps);
                     pFrame->StatusMsg(wxString::Format(_("Moving north - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
-                    Debug.AddLine(wxString::Format("moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
-                    Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
+                    Debug.AddLine(wxString::Format("Scope: moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
+                    Debug.AddLine(wxString::Format("Scope: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
                     pFrame->ScheduleCalibrationMove(this, NORTH, m_calibrationDuration);
                     //pFrame->ScheduleCalibrationMove(this, NORTH, 0, 1);
@@ -1277,7 +1277,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                     }
                 }
 
-                Debug.AddLine(wxString::Format("NORTH calibration completes with angle=%.1f rate=%.3f parity=%d",
+                Debug.AddLine(wxString::Format("Scope: NORTH calibration completes with angle=%.1f rate=%.3f parity=%d",
                     degrees(m_calibration.yAngle), m_calibration.yRate * 1000.0, m_calibration.decGuideParity));
 
                 GuideLog.CalibrationDirectComplete(this, "North", m_calibration.yAngle, m_calibration.yRate, m_calibration.decGuideParity);
@@ -1286,7 +1286,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 //m_southStartingLocation = currentLocation;
 
                 // fall through
-                Debug.AddLine("Falling Through to state RETURN_FROM_NORTH");
+                Debug.AddLine("Scope: Falling Through to state RETURN_FROM_NORTH");
 
             case CALIBRATION_STATE_RETURN_FROM_NORTH:
 
@@ -1295,8 +1295,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 if (m_calibrationStepsRemaining > 0) {
                     //status0.Printf(_("South step %3d"), m_calibrationSteps);
                     pFrame->StatusMsg(wxString::Format(_("Moving south - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
-                    Debug.AddLine(wxString::Format("moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
-                    Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
+                    Debug.AddLine(wxString::Format("Scope: moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
+                    Debug.AddLine(wxString::Format("Scope: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
                     pFrame->ScheduleCalibrationMove(this, SOUTH, m_calibrationDuration);
                     break;
@@ -1304,8 +1304,9 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 m_calibrationNorthReturnLocation = PHD_Point(dX, dY);
 
-                m_calibrationState = CALIBRATION_STATE_COMPLETE;
+                m_calibrationState = CALIBRATION_STATE_GO_CLOCKWISE;
                 m_calibrationSteps = 0;
+                m_calibrationStepsRemaining = 5;
 
             case CALIBRATION_STATE_GO_CLOCKWISE:
                 Debug.AddLine("Scope: calibration going clockwise");

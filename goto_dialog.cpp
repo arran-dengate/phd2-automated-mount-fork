@@ -196,7 +196,7 @@ GotoDialog::GotoDialog(void)
     m_timer = new wxTimer();
     m_timer->SetOwner(this);
     Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this);
-    m_timer->Start(1000); // Timer goes off every x milliseconds
+    m_timer->Start(1500); // Timer goes off every x milliseconds
 
 }
 
@@ -211,20 +211,31 @@ void GotoDialog::OnSearchTextChanged(wxCommandEvent&) {
 
 void GotoDialog::UpdateLocationText(void) {
     if ( m_catalog.count(string(m_searchBar->GetValue())) ) {
+        string target = string(m_searchBar->GetValue());
         //m_destinationEquatorial->SetLabel(m_catalog[string(m_searchBar->GetValue())]);
-        m_destinationType->SetLabel("Star");
 
         string word;
         string result = m_catalog[string(m_searchBar->GetValue())];
         stringstream resultStream(result);
         getline(resultStream, word, ',');
-        double ra = stod(word);
-        getline(resultStream, word, ',');
-        double dec = stod(word);
-        
+
+        double ra;
+        double dec;
         double alt;
         double az;
-        EquatorialToHorizontal(ra, dec, alt, az, false);
+
+        if (! isdigit(word[0])) {
+            m_destinationType->SetLabel(word);
+            Debug.AddLine("Planet!");
+            LookupEphemeral(target, ra, dec, alt, az);
+        } else {
+            m_destinationType->SetLabel("Star");
+            ra = stod(word);
+            getline(resultStream, word, ',');
+            dec = stod(word);
+            EquatorialToHorizontal(ra, dec, alt, az, false);
+        }
+        
         //Debug.AddLine(wxString::Format("ra %f dec %f alt %f az %f", ra, dec, alt, az));
         
         m_destinationRa->SetLabel(std::to_string(ra)); 
@@ -255,18 +266,26 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     }
     while(getline(f, line)) 
         {
+            // If it's a star, expect format:   name,ra,dec (eg Rigel,21.04,67.32)
+            // If it's a planet, expect format: name,planet (eg Mars,planet)
+
             stringstream  lineStream(line);
             getline(lineStream,cell,',');
-            string star = cell;
+            string celestial = cell;
             getline(lineStream,cell,',');
-            string ra = cell;
-            getline(lineStream,cell,',');
-            string dec = cell;
-            //Debug.AddLine(wxString::Format("Line %s", line));
-            //Debug.AddLine(wxString::Format("Star %s", star));
-            //Debug.AddLine(wxString::Format("RA %s", ra));
-            //Debug.AddLine(wxString::Format("Dec %s", dec));
-            outCatalog[star] = ra + "," + dec;
+            if (cell == "planet") {
+                outCatalog[celestial] = cell;
+            } else {
+                string ra = cell;
+                getline(lineStream,cell,',');
+                string dec = cell;
+                //Debug.AddLine(wxString::Format("Line %s", line));
+                //Debug.AddLine(wxString::Format("celestial %s", celestial));
+                //Debug.AddLine(wxString::Format("RA %s", ra));
+                //Debug.AddLine(wxString::Format("Dec %s", dec));
+                outCatalog[celestial] = ra + "," + dec;    
+            }
+            
         }
     if (f.bad()) {
         perror("error while reading file");
@@ -311,15 +330,20 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         //pMount->HexGoto(alt, az)
         PHD_Point rotationCenter; 
         pFrame->pGuider->GetRotationCenter(rotationCenter);
+        Debug.AddLine(wxString::Format("Goto: rotationcenter %f %f", rotationCenter.X, rotationCenter.Y));
         pMount->HexCalibrate(startAlt, startAz, 0.0, rotationCenter, 0.0); // TODO - fill in missing figures!
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Astrometry current location ra %f, dec %f ; alt %f az %f", startRa, startDec, startAlt, startAz), 
+                                                      wxString::Format("Astrometry finished! Current location:\n"
+                                                                       "RA %f, Dec %f\n"
+                                                                       "Alt %f Az %f", startRa, startDec, startAlt, startAz), 
                                                       wxString::Format("Goto"), 
                                                       wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();
     } else {
         wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Unable to work out position with astrometry!\nPlease check that the image is in focus and lens cap is off.\nGoto cannot proceed."), 
+                                                      wxString::Format("Unable to work out position with astrometry!\n"
+                                                                       "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
+                                                                       "Goto cannot proceed."), 
                                                       wxString::Format("Goto"), 
                                                       wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();                                                              
@@ -334,10 +358,11 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     double destAz  = std::stod(string(m_destinationAz->GetLabel())); 
 
     wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                  wxString::Format("Traversing mount to destination - %f, %f", destAlt, destAz), 
+                                                  wxString::Format("Traversing mount to destination:\n"  
+                                                                    "Alt %f, az %f", destAlt, destAz), 
                                                   wxString::Format("Goto"), 
                                                   wxOK|wxCENTRE, wxDefaultPosition);
-    alert->Show();
+    alert->ShowModal();
 
     pMount->HexGoto(destAlt, destAz);
 
@@ -370,6 +395,36 @@ bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, d
     return 0;
 }
 
+bool GotoDialog::LookupEphemeral(string &ephemeral, double &outRa, double &outDec, double &outAlt, double &outAz) {
+    std::string command = "/usr/local/skyfield/sky.py --planet=" + ephemeral;
+    string skyOutput;
+    FILE *in;
+    char buf[200];
+
+    if(!(in = popen(command.c_str(), "r"))) {
+        Debug.AddLine(wxString::Format("Guider: Skyfield threw error while looking up ephemeral for horizontal coordinates"));
+        return 1;
+    }
+    while(fgets(buf, sizeof(buf), in)!=NULL) {
+        cout << buf;
+        skyOutput += buf;
+    }
+    pclose(in);
+
+    string word;
+    stringstream resultStream(skyOutput);
+    getline(resultStream, word, ',');
+    outAlt  = stod(word);
+    getline(resultStream, word, ',');
+    outAz   = stod(word);
+    getline(resultStream, word, ',');
+    outRa   = stod(word);
+    getline(resultStream, word, ',');
+    outDec  = stod(word);
+
+    return 0;
+}
+
 bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
 
     // Run astrometry, identify where we are,
@@ -392,7 +447,7 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
         strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite /usr/local/astrometry/examples/apod2.jpg");    
     }
     
-    wxProgressDialog(wxString::Format("Solving..."), wxString::Format("Solving..."), 100, this, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_ELAPSED_TIME); 
+    wxProgressDialog(wxString::Format("Solving current location..."), wxString::Format("Solving..."), 100, this, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_ELAPSED_TIME); 
     
     string astOutput;
     FILE *in;
@@ -431,8 +486,6 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
     outRa = stod(raResult.substr(1, raResult.size())); // Trim leading bracket
     outDec = stod(decResult.substr(0, decResult.size()-1)); // Trim ending bracket
     
-    // printf("Ra %f Dec %f", ra, dec);
-
     return true; // todo: return error code if failed
 }
 
@@ -446,10 +499,10 @@ int GotoDialog::StringWidth(const wxString& string)
 }
 
 void GotoDialog::OnClose(wxCommandEvent& event) {
-    event.Skip(true);
-    //this->Destroy();
+    this->EndModal(0);
 }
 
 GotoDialog::~GotoDialog(void)
 {
+    m_timer->Stop();
 }

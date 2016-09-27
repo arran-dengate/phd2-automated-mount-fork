@@ -468,8 +468,6 @@ void MyFrame::OnButtonStop(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
-    Calibration cal;
-
     GotoDialog gotodlg;
     gotodlg.ShowModal();
             //if (gotodlg.ShowModal () == wxID_OK)
