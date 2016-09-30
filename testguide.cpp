@@ -89,10 +89,10 @@ wxSizer *TestGuideDialog::InitMountControls()
 {
     wxSizer *sz1 = new wxBoxSizer(wxHORIZONTAL);
 
-    sz1->Add(new wxStaticText(this, wxID_ANY, _("Guide Pulse Duration (ms):")),
+    sz1->Add(new wxStaticText(this, wxID_ANY, _("Guide Pulse distance (millidegrees):")),
         wxSizerFlags().Right().Border(wxRIGHT, 5).Align(wxALIGN_CENTER_VERTICAL));
     pulseDurationSpinCtrl = new wxSpinCtrlDouble(this, ID_PULSEDURATION, wxEmptyString, wxDefaultPosition,
-        wxSize(StringWidth(GetParent(),"00000")+30,-1), wxSP_ARROW_KEYS | wxALIGN_RIGHT, 100.0, 5000.0, 100.0, 100.0);
+        wxSize(StringWidth(GetParent(),"00000")+30,-1), wxSP_ARROW_KEYS | wxALIGN_RIGHT, 100.0, 1000000.0, 100.0, 100.0);
     pulseDurationSpinCtrl->SetDigits(0);
     pulseDurationSpinCtrl->SetToolTip(_("Manual guide pulse duration (milliseconds)"));
     Mount *mnt = TheScope();
@@ -276,13 +276,13 @@ void TestGuideDialog::OnButton(wxCommandEvent &evt)
         case MGUIDE1_CW:
             {
                 PHD_Point blank(0,0);
-                pMount->HexGuide(blank, 0.03);
+                pMount->HexGuide(blank, 1.7);
             }
             break;
         case MGUIDE1_CCW:
             {
                 PHD_Point blank(0,0);
-                pMount->HexGuide(blank, -0.03);
+                pMount->HexGuide(blank, -1.7);
             }
             break;
         case MGUIDE1_UP:

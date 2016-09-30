@@ -94,6 +94,7 @@ public:
     double GetMassChangeThreshold(void);
     bool SetMassChangeThreshold(double starMassChangeThreshold);
     bool SetSearchRegion(int searchRegion);
+    bool GetRotationCenterRad(PHD_Point &outRotationCenter);
 
     friend class GuiderMultiStarConfigDialogPane;
     friend class GuiderMultiStarConfigDialogCtrlSet;

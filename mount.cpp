@@ -793,9 +793,9 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     Debug.AddLine("Started HexGuide method");
 
     char commandType[]    = "guide";
-    double yVector        = xyVector.Y;
     double xVector        = xyVector.X;
-    char format[]         = "%s,%.10g,%.10g,%.10g";
+    double yVector        = xyVector.Y;
+    char format[]         = "%s,%.10f,%.10f,%.10f";
     char message[100]     = {0};
 
     // Create directory if does not exist
@@ -833,8 +833,8 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
 bool Mount::HexGoto(double alt, double az) {
     
     // Send a goto command (in alt/az) to the mount, via an atomic file shuffle.
-    // File format for goto commands is: goto,<pitch>,<roll>,<yaw>
-    //                      For example: goto,0.00000000,-0.0003000,0.0000000
+    // File format for goto commands is: goto,<alt>,<az>
+    //                      For example: goto,0.0000,-0.0003
 
     char commandType[]    = "goto";
     char format[]         = "%s,%.10g,%.10g";
@@ -847,8 +847,6 @@ bool Mount::HexGoto(double alt, double az) {
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
 
-    alt = radians(alt);
-    az = radians(az);
     Debug.Write(wxString::Format("Sent %s,%.10f,%.10f\n", commandType, alt, az));
     sprintf(message, format, commandType, alt, az);
     ofstream pulse_output;
@@ -869,8 +867,8 @@ bool Mount::HexGoto(double alt, double az) {
 bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRotationCenter, double astroAngle) {
     
     // Send a goto command (in alt/az) to the mount, via an atomic file shuffle.
-    // File format for goto commands is: goto,<pitch>,<roll>,<yaw>
-    //                      For example: goto,0.00000000,-0.0003000,0.0000000
+    // File format is: calibrate,<alt>,<az>,<cam rotation angle>,<cam rotation center x>,<cam rotation center y>,<astrometry sky rotation angle>
+    // Eveything is in radians. Including the center x and y - that's expressed in radians from the center.
 
     char commandType[]    = "calibrate";
     char format[]         = "%s,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g";
@@ -882,10 +880,6 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRo
         mkdir(GUIDE_DIRECTORY, 0755);
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
-
-    alt         = radians(alt);
-    az          = radians(az);
-    //camAngle    = radians(camAngle);
 
     Debug.Write(wxString::Format("Calibration command: %s,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f", 
                                  commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle));
@@ -941,14 +935,13 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
 
             double rotationVector = pFrame->pGuider->RotationAngleDelta();
             
-            // Convert pixels to radians
+            // Convert pixels to degrees
             // For Starshoot Autoguide, this is...
             // 2.1701 x 1.73582 degrees
             // 1280 x 1024 pixels
             double xVector, yVector;
-            xVector = xDistance * 0.001695391 * 3.1416 / 180; // Also convert to radians
-            yVector = yDistance * 0.001695137 * 3.1416 / 180; // Also convert to radians
-
+            xVector = xDistance * 0.001695391; 
+            yVector = yDistance * 0.001695137; 
             // Roll is reversed.
             xVector *= -1;
 

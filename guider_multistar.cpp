@@ -104,6 +104,14 @@ bool GuiderMultiStar::GetRotationCenter(PHD_Point &outRotationCenter)
     return true;
 }
 
+bool GuiderMultiStar::GetRotationCenterRad(PHD_Point &outRotationCenter)
+{   
+    double scale = pFrame->GetCameraPixelScale();
+    Debug.AddLine("Guider: pixel scale %f");
+    outRotationCenter = m_rotationCenter;
+    return true;
+}
+
 void GuiderMultiStar::SetMassChangeThresholdEnabled(bool enable)
 {
     m_massChangeThresholdEnabled = enable;

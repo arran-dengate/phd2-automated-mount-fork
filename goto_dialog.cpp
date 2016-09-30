@@ -68,8 +68,6 @@ GotoDialog::GotoDialog(void)
     // Now set up GUI.
 
     wxBoxSizer *containBox           = new wxBoxSizer(wxVERTICAL);
-    //wxFlexGridSizer *containBox = new wxFlexGridSizer(2, 2, 2, 9);
-    //wxBoxSizer *mainBox              = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer *lowerBox             = new wxBoxSizer(wxHORIZONTAL);
     wxStaticBoxSizer *searchBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Search");
     wxStaticBoxSizer *statusBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Status");
@@ -83,8 +81,7 @@ GotoDialog::GotoDialog(void)
     int borderSize = 5;
     
     // Autocomplete is broken for searchCtrl, so I had to use a textCtrl.
-    m_searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 
-                                                0, wxDefaultValidator, wxTextCtrlNameStr);
+    m_searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
     m_searchBar->Bind(wxEVT_COMMAND_TEXT_UPDATED, &GotoDialog::OnSearchTextChanged, this, wxID_ANY);
 
     wxArrayString catalog_keys;
@@ -95,6 +92,11 @@ GotoDialog::GotoDialog(void)
     m_searchBar->AutoComplete( catalog_keys );
 
     searchBox->Add(m_searchBar, 0, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
+
+    // Debugging only - add text ctrl for manually setting current sky position.
+
+    m_skyAltManualSet = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
+    m_skyAzManualSet  = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
 
     // Get a bold font
 
@@ -107,49 +109,57 @@ GotoDialog::GotoDialog(void)
     wxFlexGridSizer *statusGrid = new wxFlexGridSizer(2, 2, 2, 9);
     statusBox->Add(statusGrid);
     
-    m_skyPosText                 = new wxStaticText(this, -1, "Waiting for astrometry");
-    m_gpsLocText                 = new wxStaticText(this, -1, "35.2809° S, 149.1300° E");
+    m_skyPosText                 = new wxStaticText(this, -1, "-");
+    m_gpsLocText                 = new wxStaticText(this, -1, "35.2809° S,\n149.1300° E");
     m_timeText                   = new wxStaticText(this, -1, "-");
     
-    wxStaticText *skyPosHeading  = new wxStaticText(this, -1, "Sky position");
-    wxStaticText *gpsLocHeading  = new wxStaticText(this, -1, "GPS location");
-    wxStaticText *timeHeading    = new wxStaticText(this, -1, "Time");
-    skyPosHeading->SetFont(boldFont);
-    gpsLocHeading->SetFont(boldFont);
-    timeHeading->SetFont(boldFont);
+    wxStaticText *skyPosHeading                = new wxStaticText(this, -1, "Sky position");
+    wxStaticText *skyAltManualSetHeading       = new wxStaticText(this, -1, "Set sky alt (degrees)");
+    wxStaticText *skyAzManualSetHeading       = new wxStaticText(this, -1, "Set sky az (degrees)");
+    wxStaticText *gpsLocHeading                = new wxStaticText(this, -1, "GPS location");
+    wxStaticText *timeHeading                  = new wxStaticText(this, -1, "Time");
+    skyPosHeading            ->SetFont(boldFont);
+    skyAltManualSetHeading   ->SetFont(boldFont);
+    skyAzManualSetHeading   ->SetFont(boldFont);
+    gpsLocHeading            ->SetFont(boldFont);
+    timeHeading              ->SetFont(boldFont);
 
-    statusGrid->Add(skyPosHeading, 0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(m_skyPosText, 0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(gpsLocHeading, 0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(m_gpsLocText, 0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(timeHeading, 0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(m_timeText, 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(skyPosHeading,               0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_skyPosText,                0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(skyAltManualSetHeading,      0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_skyAltManualSet,           0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(skyAzManualSetHeading,      0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_skyAzManualSet,            0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(gpsLocHeading,               0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_gpsLocText,                0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(timeHeading,                 0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_timeText,                  0, wxALL | wxALIGN_TOP, borderSize);
     
     // Destination sizer
 
     wxFlexGridSizer *destinationGrid = new wxFlexGridSizer(4, 4, 2, 4);
     destinationBox->Add(destinationGrid);
 
-    m_destinationRa   = new wxStaticText(this, -1, "-                      ");
-    m_destinationDec  = new wxStaticText(this, -1, "-                      ");
-    m_destinationAlt  = new wxStaticText(this, -1, "-                      ");
-    m_destinationAz   = new wxStaticText(this, -1, "-                      ");
-    m_destinationType = new wxStaticText(this, -1, "-                      ");
+    m_destinationRa     = new wxStaticText(this, -1, "-                      \n ");
+    m_destinationDec    = new wxStaticText(this, -1, "-                      ");
+    m_destinationAlt    = new wxStaticText(this, -1, "-                      ");
+    m_destinationAz     = new wxStaticText(this, -1, "-                      ");
+    m_destinationType   = new wxStaticText(this, -1, "-                      ");
     wxStaticText *destinationTypeHeading = new wxStaticText(this, -1, "Type");
     wxStaticText *destinationRaHeading   = new wxStaticText(this, -1, "RA");
     wxStaticText *destinationDecHeading  = new wxStaticText(this, -1, "Dec");
     wxStaticText *destinationAltHeading  = new wxStaticText(this, -1, "Alt");
     wxStaticText *destinationAzHeading   = new wxStaticText(this, -1, "Az");
-    destinationRaHeading->SetFont(boldFont);
-    destinationDecHeading->SetFont(boldFont);
-    destinationAltHeading->SetFont(boldFont);
-    destinationAzHeading->SetFont(boldFont);
-    destinationTypeHeading->SetFont(boldFont);
+    destinationRaHeading   ->SetFont(boldFont);
+    destinationDecHeading  ->SetFont(boldFont);
+    destinationAltHeading  ->SetFont(boldFont);
+    destinationAzHeading   ->SetFont(boldFont);
+    destinationTypeHeading ->SetFont(boldFont);
 
     destinationGrid->Add(destinationTypeHeading, 0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationType,      0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->AddSpacer(0); // An empty cell
-    destinationGrid->AddSpacer(0); // An empty cell
+    destinationGrid->AddSpacer(0); 
     destinationGrid->Add(destinationRaHeading,   0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationRa,        0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(destinationDecHeading,  0, wxALL | wxALIGN_TOP, borderSize);
@@ -174,24 +184,7 @@ GotoDialog::GotoDialog(void)
     m_gotoButton->Disable();
     buttonSizer->Add(m_gotoButton);
 
-    //containBox->Add(CreateButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Right().Border(wxALL, 10));
- 
-    /*wxStaticText m_label_info = new wxStaticText(this, -1, "blablabla");
-    wxFont font = m_label_info->GetFont();
-    font.SetPointSize(10);
-    font.SetWeight(wxFONTWEIGHT_BOLD);
-    m_label_info->SetFont(font);*/
-   
     SetSizer(containBox);
-
-    /*
-    //wxTimer timer;
-    m_timer = new wxTimer();
-    m_timer->SetOwner(this);
-    //timer.Connect( wxEVT_TIMER, wxTimerEventHandler(GotoDialog::OnTimer), NULL, this);
-    m_timer->Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this, m_timer->GetId());
-    m_timer->Start(100, wxTIMER_CONTINUOUS);
-    */
 
     m_timer = new wxTimer();
     m_timer->SetOwner(this);
@@ -204,6 +197,38 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
     UpdateLocationText();
 }
 
+void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
+
+    /*  RA is measured in hours, minutes and seconds. The maximum possible value is 24h (which is adjacent to zero).
+
+        24 hours is 360 degrees, so one hour is 15 degrees, one minute is 0.25 degrees, and one second is 0.004166667 degrees.
+    */
+
+    hours = degrees / 15.0;
+    double fraction;
+    fraction = modf(hours, &hours);
+    minutes = fraction * 60.0;
+    fraction = modf(minutes, &minutes);
+    seconds = fraction * 60.0; 
+
+}
+
+void GotoDialog::degreesToDMS(double input, double &degrees, double &arcMinutes, double &arcSeconds) {
+    
+    /* Declination is in degrees:arcmin:arcsec. It is signed. Max value is
+       +90 at the north celesial pole, and min -90 at the south one.
+ 
+       1 degree is 60 arcminutes
+       1 arcminute is 60 arcseconds.
+    */
+
+    double fraction;
+    fraction = modf(input, &degrees);
+    arcMinutes = fraction * 60.0;
+    fraction = modf(arcMinutes, &arcMinutes);
+    arcSeconds = fraction * 60.0;
+
+}
 
 void GotoDialog::OnSearchTextChanged(wxCommandEvent&) {   
     UpdateLocationText();
@@ -226,7 +251,6 @@ void GotoDialog::UpdateLocationText(void) {
 
         if (! isdigit(word[0])) {
             m_destinationType->SetLabel(word);
-            Debug.AddLine("Planet!");
             LookupEphemeral(target, ra, dec, alt, az);
         } else {
             m_destinationType->SetLabel("Star");
@@ -238,10 +262,43 @@ void GotoDialog::UpdateLocationText(void) {
         
         //Debug.AddLine(wxString::Format("ra %f dec %f alt %f az %f", ra, dec, alt, az));
         
-        m_destinationRa->SetLabel(std::to_string(ra)); 
-        m_destinationDec->SetLabel(std::to_string(dec));
-        m_destinationAlt->SetLabel(std::to_string(alt));
-        m_destinationAz->SetLabel(std::to_string(az));
+        //m_destinationRa->SetLabel(std::to_string(ra)); 
+        //m_destinationDec->SetLabel(std::to_string(dec));
+        //m_destinationAlt->SetLabel(std::to_string(alt));
+        //m_destinationAz->SetLabel(std::to_string(az));
+
+        double raHours;
+        double raMinutes;
+        double raSeconds;
+        degreesToHMS(ra, raHours, raMinutes, raSeconds);
+        char raBuffer[200]; 
+        sprintf(raBuffer, "%f\n%.0fh %.0fm %.0fs", ra, raHours, raMinutes, raSeconds);
+        m_destinationRa->SetLabel(raBuffer);
+
+        double decDegrees;
+        double decArcMinutes;
+        double decArcSeconds;
+        degreesToDMS(dec, decDegrees, decArcMinutes, decArcSeconds);
+        char decBuffer[200];
+        sprintf(decBuffer, "%f\n%.0fd %.0fm %.0fs", dec, decDegrees, abs(decArcMinutes), abs(decArcSeconds));
+        m_destinationDec->SetLabel(decBuffer);
+
+        double altDegrees;
+        double altArcMinutes;
+        double altArcSeconds;
+        degreesToDMS(alt, altDegrees, altArcMinutes, altArcSeconds);
+        char altBuffer[200];
+        sprintf(altBuffer, "%f\n%.0fd %.0fm %.0fs", alt, altDegrees, altArcMinutes, altArcSeconds);
+        m_destinationAlt->SetLabel(altBuffer);
+
+        double azDegrees;
+        double azArcMinutes;
+        double azArcSeconds;
+        degreesToDMS(az, azDegrees, azArcMinutes, azArcSeconds);
+        char azBuffer[200];
+        sprintf(azBuffer, "%f\n%.0fd %.0fm %.0fs", az, azDegrees, azArcMinutes, azArcSeconds);
+        m_destinationAz->SetLabel(azBuffer);
+
         m_gotoButton->Enable();
     } else {
         m_destinationRa->SetLabel("-");
@@ -259,7 +316,7 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     string line;
     string cell;
 
-    ifstream f ("/home/pi/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
+    ifstream f ("/home/arran/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
     if (!f.is_open()) {
         perror("error while opening file");
         return false;
@@ -320,43 +377,64 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         mkdir(IMAGE_PARENT_DIRECTORY, 0755);
         mkdir(IMAGE_DIRECTORY, 0755);
     }
-    //pFrame->pGuider->SaveCurrentImage(IMAGE_FILENAME); TEMP DISABLED FOR DEBUGGING - we are saving every image at the moment
-    double startRa = 0;
+    double startRa  = 0;
     double startDec = 0;
     double startAlt = 0;
-    double startAz = 0;
-    if ( AstroSolveCurrentLocation(startRa, startDec) ) {
+    double startAz  = 0;
+    if ( m_skyAltManualSet->GetValue().length() > 0 && m_skyAzManualSet->GetValue().length() > 0 ) 
+    {
+        wxString contents = wxString::Format("Bypassing astrometry and assuming sky position is alt %s az %s", m_skyAltManualSet->GetValue(), m_skyAzManualSet->GetValue());
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
+        startAlt = stod(string(m_skyAltManualSet->GetValue()));
+        startAz  = stod(string(m_skyAzManualSet ->GetValue()));
+    } else if ( AstroSolveCurrentLocation(startRa, startDec)) {
         EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
-        PHD_Point rotationCenter;
-        rotationCenter.X = 0;
-        rotationCenter.Y = 0; 
-        //pFrame->pGuider->GetRotationCenter(rotationCenter); DISABLED FOR DEBUGGING ONLY, TURN THIS BACK ON!
-        Debug.AddLine(wxString::Format("Goto: rotationcenter %f %f", rotationCenter.X, rotationCenter.Y));
-        pMount->HexCalibrate(startAlt, startAz, 0.0, rotationCenter, 0.0); // TODO - fill in missing figures!
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Astrometry finished! Current location:\n"
-                                                                       "RA %f, Dec %f\n"
-                                                                       "Alt %f Az %f", startRa, startDec, startAlt, startAz), 
-                                                      wxString::Format("Goto"), 
-                                                      wxOK|wxCENTRE, wxDefaultPosition);
+        wxString contents = wxString::Format("Astrometry finished! Current location:\n RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();
     } else {
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Unable to work out position with astrometry!\n"
-                                                                       "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
-                                                                       "Goto cannot proceed."), 
-                                                      wxString::Format("Goto"), 
-                                                      wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();                                                              
-    }
+        wxString contents = wxString("Unable to work out position with astrometry!\n"
+                                     "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
+                                     "Goto cannot proceed.");
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal(); 
+        return;                                                             
+    } 
+
+    // -- Center of rotation --
+    // Determine rotation center of image
+    PHD_Point rotationCenter;
+    pFrame->pGuider->GetRotationCenter(rotationCenter);
+
+    // Get rotation center's distance from center of image
+    usImage *pImage = pFrame->pGuider->CurrentImage();
+    double height = pImage->Size.GetHeight();
+    double width  = pImage->Size.GetWidth();
+    rotationCenter.X -= pImage->Size.GetWidth() / 2;
+    rotationCenter.Y -= pImage->Size.GetHeight() / 2;
+    
+    // Convert to degrees, using the known ratio of pixels to degrees of FOV for this camera
+    // TODO - use the GetPixelScale method on the camera, rather than relying on knowing the StarShoot Autoguide's ratios
+    rotationCenter.X *= 0.001695391; 
+    rotationCenter.Y *= 0.001695137;
+
+    // -- Camera angle --
+    CalibrationDetails calDetails; 
+    pMount->GetCalibrationDetails(&calDetails);
+
+    // -- Astrometry sky rotation angle
+    // TODO
+    
+    pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, 0.0); // TODO - fill in missing angle
 
     // --------------------
     // Goto!
     // --------------------
 
     UpdateLocationText(); // TODO, get the time x seconds from now (calculate how long move is likely to take)
-    double destAlt = std::stod(string(m_destinationAlt->GetLabel())); // Also, getting the time from the text string is not ideal.
-    double destAz  = std::stod(string(m_destinationAz->GetLabel())); 
+    double destAlt = std::stod(string(m_destinationAlt->GetLabelText())); // Also, getting the time from the text string is not ideal.
+    double destAz  = std::stod(string(m_destinationAz->GetLabelText())); 
 
     wxMessageDialog * alert = new wxMessageDialog(pFrame, 
                                                   wxString::Format("Traversing mount to destination:\n"  

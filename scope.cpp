@@ -1624,7 +1624,7 @@ ScopeConfigDialogCtrlSet::ScopeConfigDialogCtrlSet(wxWindow *pParent, Scope *pSc
     wxBoxSizer* pCalibSizer = new wxBoxSizer(wxHORIZONTAL);
     m_pCalibrationDuration = new wxSpinCtrl(GetParentWindow(AD_szCalibrationDuration), wxID_ANY, wxEmptyString, wxPoint(-1, -1),
             wxSize(width+30, -1), wxSP_ARROW_KEYS, 0, 10000, 1000,_T("Cal_Dur")); 
-    pCalibSizer->Add(MakeLabeledControl(AD_szCalibrationDuration, _("Calibration step distance (microradians)"), m_pCalibrationDuration, 
+    pCalibSizer->Add(MakeLabeledControl(AD_szCalibrationDuration, _("Calibration step distance (millidegrees)"), m_pCalibrationDuration, 
         _("How long a guide pulse should be used during calibration? Click \"Calculate\" to compute a suitable value.")));
     m_pCalibrationDuration->Enable(enableCtrls);
 

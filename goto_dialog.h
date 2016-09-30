@@ -41,9 +41,13 @@ class GotoDialog :
     public wxDialog
 {
 private:
+    wxTextCtrl   *m_skyAltManualSet;
+    wxTextCtrl   *m_skyAzManualSet;
     wxTextCtrl   *m_searchBar;
     wxStaticText *m_destinationRa;
+    //wxStaticText *m_destinationRaHMS;
     wxStaticText *m_destinationDec;
+    //wxStaticText *m_destinationDecDMS;
     wxStaticText *m_destinationAlt;
     wxStaticText *m_destinationAz;
     wxStaticText *m_destinationType;
@@ -67,6 +71,8 @@ private:
     bool GetCatalogData(std::unordered_map<string,string>& catalog);
     void OnSearchTextChanged(wxCommandEvent&);
     void UpdateLocationText(void);
+    void degreesToDMS(double input, double &degrees, double &arcMinutes, double &arcSeconds);
+    void degreesToHMS(double ra, double &hours, double &minutes, double &seconds); 
 
 public:
     GotoDialog(void);

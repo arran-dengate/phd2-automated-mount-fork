@@ -1488,7 +1488,6 @@ void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direct
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
     assert(mount);
-
     mount->IncrementRequestCount();
 
     assert(m_pPrimaryWorkerThread);

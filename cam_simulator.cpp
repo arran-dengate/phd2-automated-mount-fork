@@ -1319,7 +1319,7 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
-    double magnitude = SimCamParams::guide_rate * duration / (1000.0 * SimCamParams::image_scale);
+    double magnitude = SimCamParams::guide_rate * duration / (10000.0 * SimCamParams::image_scale);
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
     case WEST:    theta -= radians(90);      break;
@@ -1331,7 +1331,7 @@ bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 
     sim->ra_ofs += x;
     sim->dec_ofs.incr(y);
-    WorkerThread::MilliSleep(duration, WorkerThread::INT_ANY);
+    WorkerThread::MilliSleep(duration / 1000, WorkerThread::INT_ANY);
     return false;
 }
 
