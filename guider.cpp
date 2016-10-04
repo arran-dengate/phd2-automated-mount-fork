@@ -659,14 +659,7 @@ void Guider::SetDefectMapPreview(const DefectMap *defectMap)
 }
 
 bool Guider::SaveCurrentImage(const wxString& fileName)
-{
-    int ret = system("/usr/local/skyfield/sky.py --store-time");
-    Debug.AddLine(wxString::Format("Guider: return value %d", ret));
-    if (WEXITSTATUS(ret) != 0) {
-        Debug.AddLine("Guider: Skyfield threw an error while storing time");
-        throw 20;
-    }
-    
+{   
     return m_pCurrentImage->Save(fileName);
 }
 
@@ -1066,6 +1059,13 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
 
     // Save the image so astrometry can have a look at it.
     // TODO: Only trigger this when it's needed - this is gratuitously inefficient!
+
+    int ret = system("/usr/local/skyfield/sky.py --store-time");
+    //Debug.AddLine(wxString::Format("Guider: return value %d", ret));
+    if (WEXITSTATUS(ret) != 0) {
+        Debug.AddLine("Guider: Skyfield threw an error while storing time");
+        throw 20;
+    }
 
     wxString fname = "/dev/shm/phd2/goto/guide-scope-image.fits.temp";
     m_pCurrentImage->Save(fname);

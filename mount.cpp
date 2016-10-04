@@ -864,14 +864,14 @@ bool Mount::HexGoto(double alt, double az) {
 
 }
 
-bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRotationCenter, double astroAngle) {
+bool Mount::HexCalibrate(double alt, double az, double camAngle, const PHD_Point &camRotationCenter, double astroAngle, double northCelestialPoleAlt, double northCelestialPoleAz) {
     
     // Send a goto command (in alt/az) to the mount, via an atomic file shuffle.
     // File format is: calibrate,<alt>,<az>,<cam rotation angle>,<cam rotation center x>,<cam rotation center y>,<astrometry sky rotation angle>
     // Eveything is in radians. Including the center x and y - that's expressed in radians from the center.
 
     char commandType[]    = "calibrate";
-    char format[]         = "%s,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g";
+    char format[]         = "%s,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g";
     char message[200]     = {0};
 
     // Create directory if does not exist
@@ -881,9 +881,7 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, PHD_Point camRo
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
 
-    Debug.Write(wxString::Format("Calibration command: %s,%.10f,%.10f,%.10f,%.10f,%.10f,%.10f", 
-                                 commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle));
-    sprintf(message, format, commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle);
+    sprintf(message, format, commandType, alt, az, camAngle, camRotationCenter.X, camRotationCenter.Y, astroAngle, northCelestialPoleAlt, northCelestialPoleAz);
     ofstream pulse_output;
     pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
     if (pulse_output.fail()) {

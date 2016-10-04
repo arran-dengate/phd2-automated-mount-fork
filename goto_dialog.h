@@ -64,7 +64,7 @@ private:
     void OnGoto(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);
-    bool AstroSolveCurrentLocation(double &outRa, double &outDec);
+    bool AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle);
     bool EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp);
     bool LookupEphemeral(string &ephemeral, double &outRa, double &outDec, double &outAlt, double &outAz);
     bool PlanetToHorizontal(string p);

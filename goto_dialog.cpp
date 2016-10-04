@@ -57,7 +57,6 @@ GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX)
 {   
     // Obtain the catalog data from a CSV file...
-
     
     if ( ! GetCatalogData(m_catalog) ) {
         wxMessageDialog * alert = new wxMessageDialog(pFrame, wxString::Format("Unable to locate or read star catalog file! Goto will not work."), 
@@ -381,6 +380,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     double startDec = 0;
     double startAlt = 0;
     double startAz  = 0;
+    double astroRotationAngle = 0;
     if ( m_skyAltManualSet->GetValue().length() > 0 && m_skyAzManualSet->GetValue().length() > 0 ) 
     {
         wxString contents = wxString::Format("Bypassing astrometry and assuming sky position is alt %s az %s", m_skyAltManualSet->GetValue(), m_skyAzManualSet->GetValue());
@@ -388,7 +388,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         alert->ShowModal();
         startAlt = stod(string(m_skyAltManualSet->GetValue()));
         startAz  = stod(string(m_skyAzManualSet ->GetValue()));
-    } else if ( AstroSolveCurrentLocation(startRa, startDec)) {
+    } else if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
         EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
         wxString contents = wxString::Format("Astrometry finished! Current location:\n RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
         wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
@@ -423,10 +423,12 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     CalibrationDetails calDetails; 
     pMount->GetCalibrationDetails(&calDetails);
 
-    // -- Astrometry sky rotation angle
-    // TODO
+    // -- North celestial pole alt az
+    double northCelestialPoleAlt = 0;
+    double northCelestialPoleAz  = 0;
+    EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
     
-    pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, 0.0); // TODO - fill in missing angle
+    pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt, northCelestialPoleAz); // TODO - fill in missing angle
 
     // --------------------
     // Goto!
@@ -504,7 +506,7 @@ bool GotoDialog::LookupEphemeral(string &ephemeral, double &outRa, double &outDe
     return 0;
 }
 
-bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
+bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle) {
 
     // Run astrometry, identify where we are,
     // and pipe the textual results from stdin into pos.ra and pos.dec.
@@ -512,7 +514,7 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
     // The result is to call something like "/usr/local/astrometry/bin/solve-field --overwrite /dev/shm/phd2/goto/guide-image.fits"
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
-    strcat(inputFilename, " --overwrite ");
+    strcat(inputFilename, " --overwrite --no-plots ");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 
@@ -523,7 +525,7 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
                                               wxString::Format("Goto"), 
                                               wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal();
-        strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite /usr/local/astrometry/examples/apod2.jpg");    
+        strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite --no-plots /usr/local/astrometry/examples/apod2.jpg");    
     }
     
     wxProgressDialog(wxString::Format("Solving current location..."), wxString::Format("Solving..."), 100, this, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_ELAPSED_TIME); 
@@ -544,14 +546,11 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
     // FITS image is no longer needed, can be deleted.
     //remove(IMAGE_FILENAME);
 
-    Debug.AddLine(wxString::Format("About to search string"));
-    //raise(SIGINT);
-     
     unsigned int strLocation = astOutput.find("(RA,Dec)");
     if ( astOutput.find("(RA,Dec)") == string::npos) {
         return false; // Astrometry failed to solve
     }
-    const string line = astOutput.substr(strLocation, strLocation+30);
+    const string line = astOutput.substr(strLocation, strLocation+100);
     // const string line = "Field center: (RA,Dec) = (104.757911, -3.500760) deg.";
     
     regex raReg("\\(-?[[:digit:]]+(\\.[[:digit:]]+)?");
@@ -565,7 +564,19 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec) {
     outRa = stod(raResult.substr(1, raResult.size())); // Trim leading bracket
     outDec = stod(decResult.substr(0, decResult.size()-1)); // Trim ending bracket
     
-    return true; // todo: return error code if failed
+    strLocation = astOutput.find("Field rotation angle");
+    const string line2 = astOutput.substr(strLocation, strLocation+30);
+    regex angleReg("[[:digit:]]+\\.?[[:digit:]]+");
+    smatch angleMatch;
+    regex_search(line2.begin(), line2.end(), angleMatch, angleReg);
+    outAstroRotationAngle = stod(angleMatch[0]);
+    Debug.AddLine(wxString::Format("Goto: rotation angle was %f uncorrected", outAstroRotationAngle));
+    if ( line2.find("W of N") != std::string::npos ) {
+        outAstroRotationAngle *= -1;
+    }
+    Debug.AddLine(wxString::Format("Goto: rotation angle was %f corrected", outAstroRotationAngle));
+
+    return true;
 }
 
 int GotoDialog::StringWidth(const wxString& string)
