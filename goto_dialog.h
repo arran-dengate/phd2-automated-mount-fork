@@ -60,6 +60,8 @@ private:
 
     wxButton *m_gotoButton;
 
+    int prevExposureDuration;
+
     int StringWidth(const wxString& string);
     void OnGoto(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);

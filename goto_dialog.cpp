@@ -190,10 +190,27 @@ GotoDialog::GotoDialog(void)
     Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this);
     m_timer->Start(1500); // Timer goes off every x milliseconds
 
+    // Ask the guider to start saving images - astrometry may soon request one.
+    pFrame->pGuider->RequestSaveImage();
+
+    prevExposureDuration = 0;
+    //int * prevExposureDuration_ptr = &prevExposureDuration;
+    bool ignored;
+    //bool * ignored_ptr = &ignored;
+
+    // Store original exposure duration so we can go back to it.
+    // Set high exposure duration to help Astrometry get a good image.
+    // TODO: make this user-configurable (we don't know what their camera setup is like!)
+    pFrame->GetExposureInfo(&prevExposureDuration, &ignored);
+    if ( not pFrame->SetExposureDuration(3000) ) {
+        Debug.AddLine("Goto: failed to increase exposure duration");
+    }
+    
 }
 
 void GotoDialog::OnTimer(wxTimerEvent& event) {
     UpdateLocationText();
+
 }
 
 void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
@@ -307,17 +324,25 @@ void GotoDialog::UpdateLocationText(void) {
         m_destinationType->SetLabel("-");
         m_gotoButton->Disable();
     }
+
+    if ( not pFrame->pGuider->IsImageSaved() ) {
+        m_gotoButton->Disable();
+    } else {
+        m_gotoButton->Enable();
+    }
+    //Debug.AddLine(wxString::Format("Goto: %s", pFrame->pGuider->ImageSaved() ? "true" : "false"));
+    
 }
 
 bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
 
-    Debug.AddLine(wxString::Format("Preparing to read catalog"));
+    Debug.AddLine(wxString::Format("Goto: Preparing to read catalog"));
     string line;
     string cell;
 
     ifstream f ("/home/arran/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
     if (!f.is_open()) {
-        perror("error while opening file");
+        Debug.AddLine("Goto: error while opening star catalog file");
         return false;
     }
     while(getline(f, line)) 
@@ -344,13 +369,10 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
             
         }
     if (f.bad()) {
-        perror("error while reading file");
+        Debug.AddLine("Goto: error while reading star catalog file");
         return false;
     }
-
-    Debug.AddLine(wxString::Format("Finished reading catalog"));
-    //Debug.AddLine(wxString::Format("Catalogue contents for Wezen: %s", catalog["Wezen"]));
-
+    return true;
 } 
 
 void GotoDialog::OnGoto(wxCommandEvent& )
@@ -381,6 +403,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     double startAlt = 0;
     double startAz  = 0;
     double astroRotationAngle = 0;
+
     if ( m_skyAltManualSet->GetValue().length() > 0 && m_skyAzManualSet->GetValue().length() > 0 ) 
     {
         wxString contents = wxString::Format("Bypassing astrometry and assuming sky position is alt %s az %s", m_skyAltManualSet->GetValue(), m_skyAzManualSet->GetValue());
@@ -428,7 +451,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     double northCelestialPoleAz  = 0;
     EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
     
-    pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt, northCelestialPoleAz); // TODO - fill in missing angle
+    pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt); // TODO - fill in missing angle
 
     // --------------------
     // Goto!
@@ -595,4 +618,7 @@ void GotoDialog::OnClose(wxCommandEvent& event) {
 GotoDialog::~GotoDialog(void)
 {
     m_timer->Stop();
+    pFrame->SetExposureDuration(prevExposureDuration);
+    pFrame->pGuider->InvalidateSavedImage();
+
 }

@@ -136,6 +136,7 @@ public:
     virtual void LoadValues(void);
     virtual void UnloadValues(void);
 
+
 };
 
 class Guider : public wxWindow
@@ -165,6 +166,8 @@ class Guider : public wxWindow
     bool m_fastRecenterEnabled;
     LockPosShiftParams m_lockPosShift;
     bool m_measurementMode;
+    bool requestSaveImage;
+    bool imageSaved;
 
 protected:
     int m_searchRegion; // how far u/d/l/r do we do the initial search for a star
@@ -175,7 +178,10 @@ protected:
 
     // Things related to the Advanced Config Dialog
 public:
-
+    
+    bool IsImageSaved();
+    void RequestSaveImage();
+    void InvalidateSavedImage();
     
     class GuiderConfigDialogPane : public ConfigDialogPane
     {

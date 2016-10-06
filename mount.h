@@ -242,7 +242,7 @@ public:
 
     bool HexGuide(const PHD_Point& xyVector, double rotationVector);
     bool HexGoto(double alt, double az);
-    bool HexCalibrate(double alt, double az, double camAngle, const PHD_Point &camRotationCenter, double astroAngle, double northCelestialPoleAlt, double northCelestialPoleAz);
+    bool HexCalibrate(double alt, double az, double camAngle, const PHD_Point &camRotationCenter, double astroAngle, double northCelestialPoleAlt);
     
     virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType);
 

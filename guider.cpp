@@ -1050,6 +1050,22 @@ void Guider::Reset(bool fullReset)
     }
 }
 
+void Guider::RequestSaveImage() 
+{
+    requestSaveImage = true;
+    imageSaved       = false;
+}
+
+void Guider::InvalidateSavedImage()
+{
+    imageSaved       = false;
+    requestSaveImage = false;
+}
+
+bool Guider::IsImageSaved() {
+    return imageSaved;
+}
+
 /*************  A new image is ready ************************/
 
 void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
@@ -1057,19 +1073,21 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
     wxString statusMessage;
     bool someException = false;
 
-    // Save the image so astrometry can have a look at it.
-    // TODO: Only trigger this when it's needed - this is gratuitously inefficient!
+    // If asked, save the image so astrometry can have a look at it.
 
-    int ret = system("/usr/local/skyfield/sky.py --store-time");
-    //Debug.AddLine(wxString::Format("Guider: return value %d", ret));
-    if (WEXITSTATUS(ret) != 0) {
-        Debug.AddLine("Guider: Skyfield threw an error while storing time");
-        throw 20;
+    if ( requestSaveImage ) {
+        // Also store a timestamp with the image so we later know when it was taken.
+        int ret = system("/usr/local/skyfield/sky.py --store-time");
+        if (WEXITSTATUS(ret) != 0) {
+            Debug.AddLine("Guider: Skyfield threw an error while storing time");
+            throw 20;
+        }
+        wxString fname = "/dev/shm/phd2/goto/guide-scope-image.fits.temp";
+        m_pCurrentImage->Save(fname);
+        rename("/dev/shm/phd2/goto/guide-scope-image.fits.temp", "/dev/shm/phd2/goto/guide-scope-image.fits");
+        imageSaved = true;
     }
-
-    wxString fname = "/dev/shm/phd2/goto/guide-scope-image.fits.temp";
-    m_pCurrentImage->Save(fname);
-    rename("/dev/shm/phd2/goto/guide-scope-image.fits.temp", "/dev/shm/phd2/goto/guide-scope-image.fits");
+    
 
     try
     {
