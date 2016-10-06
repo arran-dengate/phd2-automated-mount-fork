@@ -130,6 +130,8 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(BUTTON_STOP, MyFrame::OnButtonStop) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_GOTO, MyFrame::OnButtonGoto)
     EVT_MENU(BUTTON_GOTO, MyFrame::OnButtonGoto) // Bit of a hack -- not actually on the menu but need an event to accelerate
+    EVT_TOOL(BUTTON_GAMMA, MyFrame::OnButtonGamma)
+    EVT_MENU(BUTTON_GAMMA, MyFrame::OnButtonGamma) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_ADVANCED, MyFrame::OnAdvanced)
     EVT_MENU(BUTTON_ADVANCED, MyFrame::OnAdvanced) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_GUIDE,MyFrame::OnGuide)
@@ -738,6 +740,13 @@ enum {
     GAMMA_DEFAULT = 100,
 };
 
+void MyFrame::GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault) {
+    currentGamma  = gammaValue;
+    gammaMin      = GAMMA_MIN;
+    gammaMax      = GAMMA_MAX;
+    gammaDefault  = GAMMA_DEFAULT;
+}
+
 void MyFrame::LoadProfileSettings(void)
 {
     int noiseReductionMethod = pConfig->Profile.GetInt("/NoiseReductionMethod", DefaultNoiseReductionMethod);
@@ -776,6 +785,7 @@ void MyFrame::LoadProfileSettings(void)
     int val = pConfig->Profile.GetInt("/Gamma", GAMMA_DEFAULT);
     if (val < GAMMA_MIN) val = GAMMA_MIN;
     if (val > GAMMA_MAX) val = GAMMA_MAX;
+    gammaValue = val;
     Stretch_gamma = (double) val / 100.0;
     Gamma_Slider->SetValue(val);
 }
@@ -846,7 +856,8 @@ wxObject *  clientData = NULL
     MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
-    MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
+    //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
+    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
     MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));

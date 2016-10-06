@@ -225,6 +225,7 @@ public:
     bool CaptureActive; // Is camera looping captures?
     bool m_exposurePending; // exposure scheduled and not completed
     double Stretch_gamma;
+    int gammaValue;
     wxLocale *m_pLocale;
     unsigned int m_frameCounter;
     unsigned int m_loggedImageFrame;
@@ -233,6 +234,9 @@ public:
     bool m_rawImageMode;
     bool m_rawImageModeWarningDone;
     wxSize m_prevDarkFrameSize;
+
+    void GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault);
+    void SetGamma(int newGamma);
 
     void RegisterTextCtrl(wxTextCtrl *ctrl);
     void OnQuit(wxCommandEvent& evt);
@@ -249,6 +253,7 @@ public:
     void OnLoopExposure(wxCommandEvent& evt);
     void OnButtonStop(wxCommandEvent& evt);
     void OnButtonGoto(wxCommandEvent& evt);
+    void OnButtonGamma(wxCommandEvent& evt);
     void OnDark(wxCommandEvent& evt);
     void OnLoadDark(wxCommandEvent& evt);
     void OnLoadDefectMap(wxCommandEvent& evt);
@@ -463,6 +468,7 @@ enum {
     BUTTON_GUIDE,
     BUTTON_STOP,
     BUTTON_GOTO,
+    BUTTON_GAMMA,
     BUTTON_DURATION,
     BUTTON_ADVANCED,
     BUTTON_CAM_PROPERTIES,

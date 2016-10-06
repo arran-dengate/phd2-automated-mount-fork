@@ -37,6 +37,7 @@
 #include "image_math.h"
 #include "darks_dialog.h"
 #include "goto_dialog.h"
+#include "gamma_dialog.h"
 #include "Refine_DefMap.h"
 #include "camcal_import_dialog.h"
 #include "aui_controls.h"
@@ -470,17 +471,23 @@ void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
     GotoDialog gotodlg;
     gotodlg.ShowModal();
-            //if (gotodlg.ShowModal () == wxID_OK)
-            //{
-            //   gotodlg.GetValues(&cal);
-            //    pMount->SetCalibration(cal);
-            //}
-    //GotoDialog dlg(cal);
-    //dlg.showModal();
+ }
+
+void MyFrame::OnButtonGamma(wxCommandEvent& WXUNUSED(event))
+{
+    GammaDialog gammaDlg;
+    gammaDlg.ShowModal();
+}
+
+void MyFrame::SetGamma(int newGamma) {
+    pConfig->Profile.SetInt("/Gamma", newGamma);
+    Stretch_gamma = (double) newGamma / 100.0;
+    pGuider->UpdateImageDisplay();
 }
 
 void MyFrame::OnGammaSlider(wxScrollEvent& WXUNUSED(event))
 {
+    // Old one based directly on the slider
     int val = Gamma_Slider->GetValue();
     pConfig->Profile.SetInt("/Gamma", val);
     Stretch_gamma = (double) val / 100.0;

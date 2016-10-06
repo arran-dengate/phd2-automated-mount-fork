@@ -409,6 +409,8 @@ set(phd2_SRC
   ${phd_src_dir}/logger.h
   ${phd_src_dir}/manualcal_dialog.cpp
   ${phd_src_dir}/manualcal_dialog.h
+  ${phd_src_dir}/gamma_dialog.cpp
+  ${phd_src_dir}/gamma_dialog.h
   ${phd_src_dir}/goto_dialog.cpp
   ${phd_src_dir}/goto_dialog.h
   ${phd_src_dir}/messagebox_proxy.cpp
