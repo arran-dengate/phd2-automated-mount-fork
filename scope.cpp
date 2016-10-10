@@ -1179,7 +1179,7 @@ static Line GetPerpendicularLine(const PHD_Point &A, const PHD_Point &B) {
 static bool GetIntersectionPoint(const Line &L1, const Line &L2, PHD_Point &outIntersection) {
     double det = L1.H * L2.I - L2.H * L1.I;
     if ( det == 0 ) {
-        printf("Lines are parallel");
+        Debug.AddLine("Scope: Found parallel lines during resection, which shouldn't happen");
         return false;
     } else {
         outIntersection.X = (L2.I * L1.J - L1.I * L2.J) / det;

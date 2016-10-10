@@ -873,7 +873,7 @@ void SimCamState::ReadDisplacements(double& incX, double& incY)
 }
 #endif
 
-void  RotateStarfield(wxVector<wxRealPoint> &starpos, double rotCenterX, double rotCenterY, double rotAngleDegrees) {
+void RotateStarfield(wxVector<wxRealPoint> &starpos, double rotCenterX, double rotCenterY, double rotAngleDegrees) {
 
     double angle   = radians(rotAngleDegrees);
     double cos_t   = cos(angle);
@@ -1319,7 +1319,8 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
-    double magnitude = SimCamParams::guide_rate * duration / (10000.0 * SimCamParams::image_scale);
+    double magnitude = SimCamParams::guide_rate * duration / (15000.0 * SimCamParams::image_scale);
+    // Note, a sensible step is 11.63
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
     case WEST:    theta -= radians(90);      break;
