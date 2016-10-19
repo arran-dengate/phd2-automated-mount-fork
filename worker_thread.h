@@ -76,7 +76,7 @@ struct MOVE_REQUEST
     Mount::MOVE_RESULT moveResult;
     PHD_Point          vectorEndpoint;
     wxSemaphore       *pSemaphore;
-    double             rotationRad;
+    double             rotationDeg;
 };
 
 class WorkerThread : public wxThread
@@ -182,8 +182,9 @@ protected:
     /*************      Guide       **************************/
 public:
     void EnqueueWorkerThreadMoveRequest(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType);
+    void EnqueueWorkerThreadMoveRequest(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg);
     void EnqueueWorkerThreadMoveRequest(Mount *pMount, const GUIDE_DIRECTION direction, int duration);
-    void EnqueueWorkerThreadMoveRequest(Mount *pMount, const GUIDE_DIRECTION direction, int duration, double rotationRad);
+    void EnqueueWorkerThreadMoveRequest(Mount *pMount, const GUIDE_DIRECTION direction, int duration, double rotationDeg);
 protected:
     Mount::MOVE_RESULT HandleMove(MOVE_REQUEST *pArgs);
     void SendWorkerThreadMoveComplete(Mount *pMount, Mount::MOVE_RESULT moveResult);

@@ -245,6 +245,7 @@ public:
     bool HexCalibrate(double alt, double az, double camAngle, const PHD_Point &camRotationCenter, double astroAngle, double northCelestialPoleAlt);
     
     virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType);
+    virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType, double rotationDeg);
 
     bool TransformCameraCoordinatesToMountCoordinates(const PHD_Point& cameraVectorEndpoint,
                                                       PHD_Point& mountVectorEndpoint);
@@ -324,7 +325,7 @@ public:
     virtual void SetCalibration(const Calibration& cal);
     virtual void SetCalibrationDetails(const CalibrationDetails& calDetails);
     void GetCalibrationDetails(CalibrationDetails *calDetails);
-    virtual MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad) {} ;
+    virtual MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationDeg) {} ;
 
     virtual bool IsConnected(void) const;
     virtual bool Connect(void);

@@ -1319,7 +1319,7 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
-    double magnitude = SimCamParams::guide_rate * duration / (15000.0 * SimCamParams::image_scale);
+    double magnitude = SimCamParams::guide_rate * duration / (250.0 * SimCamParams::image_scale);
     // Note, a sensible step is 11.63
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
@@ -1818,10 +1818,9 @@ void Camera_SimClass::ShowPropertyDialog()
     }
 }
 
-void Camera_SimClass::RotateSimMount(double angleChangeRadians)
+void Camera_SimClass::RotateSimMount(double angleChangeDeg)
 {    
-    sim->mount_rotation_deg += degrees(angleChangeRadians);
-    //Debug.Write(wxString::Format("Simulator mount angle is now %f\n", sim->mount_rotation_deg));
+    sim->mount_rotation_deg += angleChangeDeg;
 }
 
 

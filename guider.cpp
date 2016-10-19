@@ -121,6 +121,8 @@ Guider::Guider(wxWindow *parent, int xSize, int ySize) :
     m_lockPosIsSticky = false;
     m_forceFullFrame = false;
     m_measurementMode = false;
+    m_guidingPositionsInitialised = false;
+    m_rotationGuideNeeded = 0;
     m_searchRegion = 0;
     m_pCurrentImage = new usImage(); // so we always have one
 
@@ -1088,6 +1090,12 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
         imageSaved = true;
     }
     
+    // If we're not guiding, the guider position initialisation needs to be reset
+    if ( not ( GetState() == STATE_GUIDING ) and pFrame->pGuider->m_guidingPositionsInitialised ) {
+        pFrame->pGuider->m_guidingPositionsInitialised = false;
+        Debug.AddLine("Guider: initialised false");    
+    }
+    
 
     try
     {
@@ -1326,7 +1334,7 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
                 {
                     // ordinary guide step
                     s_deflectionLogger.Log(CurrentPosition());
-                    pFrame->SchedulePrimaryMove(pMount, CurrentPosition() - LockPosition(), MOVETYPE_ALGO);
+                    pFrame->SchedulePrimaryMove(pMount, CurrentPosition() - LockPosition(), MOVETYPE_ALGO, m_rotationGuideNeeded);
                 }
                 break;
 

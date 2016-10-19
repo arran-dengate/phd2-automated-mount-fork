@@ -46,6 +46,7 @@
 #include <wx/dirdlg.h>
 #include <wx/textwrapper.h>
 #include "aui_controls.h"
+#include "cam_simulator.h" // To determine if current camera is simulator
 
 #include <memory>
 
@@ -1461,6 +1462,8 @@ void MyFrame::ScheduleExposure(void)
 
 void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
 {
+    // This method is deprecated. Use the other version (which has a rotation parameter) where possible, will eventually remove this one
+
     Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
 
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
@@ -1470,6 +1473,19 @@ void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint,
 
     assert(m_pPrimaryWorkerThread);
     m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, vectorEndpoint, moveType);
+}
+
+void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg)
+{
+    Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
+    Debug.AddLine(wxString::Format("MyFrame: RotationDeg %f", rotationDeg));
+    wxCriticalSectionLocker lock(m_CSpWorkerThread);
+
+    assert(mount);
+    mount->IncrementRequestCount();
+
+    assert(m_pPrimaryWorkerThread);
+    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, vectorEndpoint, moveType, rotationDeg);
 }
 
 void MyFrame::ScheduleSecondaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
@@ -1496,16 +1512,29 @@ void MyFrame::ScheduleSecondaryMove(Mount *mount, const PHD_Point& vectorEndpoin
 
 void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration)
 {
+    // This is deprecated - should merge this method into the other version of ScheduleCalibrationMove, which takes a rotation param.
+    // TODO: Remove this entirely (and fold the simulator-specific stuff into the alternative version of this method)
+
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
     assert(mount);
     mount->IncrementRequestCount();
 
     assert(m_pPrimaryWorkerThread);
-    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration);
+
+    // TODO - find a better way to deal with the deviations between simulator response and mount response
+    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
+        // Simulator gets a fixed calibration move, regardless of settings
+        const double FIXED_SIMULATOR_MOVE_AMOUNT = 100;
+        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, FIXED_SIMULATOR_MOVE_AMOUNT);    
+    } else {
+        // Everything else is treated normally
+        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration);
+    }
+    
 }
 
-void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationRad)
+void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationDeg)
 {
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
@@ -1514,7 +1543,7 @@ void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direct
     mount->IncrementRequestCount();
 
     assert(m_pPrimaryWorkerThread);
-    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationRad);
+    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationDeg);
 }
 
 void MyFrame::StartCapturing()

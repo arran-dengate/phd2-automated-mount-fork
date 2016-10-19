@@ -66,6 +66,7 @@ GuiderMultiStar::GuiderMultiStar(wxWindow *parent)
     : Guider(parent, XWinSize, YWinSize)
 {
     SetState(STATE_UNINITIALIZED);
+    
 }
 
 GuiderMultiStar::~GuiderMultiStar()
@@ -344,7 +345,7 @@ bool GuiderMultiStar::AutoSelect(void)
             throw ERROR_INFO("Unable to set Lock Position");
         }
         m_starList.clear(); 
-        newStar.GetStarList(*pImage, edgeAllowance, m_searchRegion, m_starList); 
+        newStar.GetStarList(*pImage, edgeAllowance, m_searchRegion, m_starList);
 
         if (GetState() == STATE_SELECTING)
         {
@@ -489,6 +490,9 @@ int GuiderMultiStar::StarError(void)
 void GuiderMultiStar::InvalidateCurrentPosition(bool fullReset)
 {
     m_star.Invalidate();
+    for ( Star s : m_starList ) {
+        s.Invalidate();
+    }
 
     if (fullReset)
     {
@@ -577,13 +581,13 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
 
     std::vector<Star>::iterator s = m_starList.begin(); 
     while (s != m_starList.end()) {
-       Star newStar(*s);
+
+        Star newStar(*s);
         if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode())) {
-            // TODO: Write some error-checking code to throw out stars that fail several checks in a row.
             s->massChecker.validationChances -= 1;
             s->massChecker.currentlyValid = false;
         } else {
-            s->previousPositions.push_front(PHD_Point(s->X, s->Y));
+            s->prevPositions.push_front(PHD_Point(s->X, s->Y));
             s->X       = newStar.X;
             s->Y       = newStar.Y;
             s->Mass    = newStar.Mass;
@@ -594,8 +598,8 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
             s->massChecker.validationChances = 3;
             s->massChecker.currentlyValid = true;
         }  
-        if (s->previousPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
-            s->previousPositions.pop_back(); // Only keep the most recent
+        if (s->prevPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
+            s->prevPositions.pop_back(); // Only keep the most recent
         }
 
         if (s->massChecker.validationChances <= 0) {
@@ -607,10 +611,61 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         
             
         //Debug.Write(wxString::Format("Star: Star with mass %f:\n", s.Mass));
-        //for (PHD_Point p : s.previousPositions ) {
+        //for (PHD_Point p : s.prevPositions ) {
         //    Debug.Write(wxString::Format("Star: Previous position %f %f\n", p.X, p.Y));
         //}
     }
+
+    if ( GetState() == STATE_GUIDING and ! m_guidingPositionsInitialised) {
+        m_guidingPositionsInitialised = true;
+        for ( Star s : m_starList ) {
+            s.guidingStartPos = PHD_Point(s.X, s.Y);
+            //Debug.AddLine(wxString::Format("Guider: initialised true x %f y %f", s.X, s.Y));
+        }
+    }
+
+    // Calculate angle difference.
+    double angleSum   = 0;
+    double angleCount = 0;
+    for (Star s : m_starList ) {
+        //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
+        double currentAngle  = s.Angle(m_star);
+        double originalAngle = s.calEndPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y));
+        double angleDiff     = currentAngle - originalAngle;
+        double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
+        Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original x %f y %f", s.X, s.Y, LockPosition().X, LockPosition().Y));                    
+        Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
+        Debug.AddLine(wxString::Format("Guider: distance %f", distance));
+        angleSum   += angleDiff;
+        angleCount ++;    
+    }
+    angleSum /= angleCount;
+    m_rotationGuideNeeded = degrees(angleSum) * -1;
+    Debug.AddLine(wxString::Format("Guider: avg (degrees) %f", degrees(angleSum)));
+    
+    /*
+    // Calculate angle difference. TODO: Move this code to a more sensible location   
+    double angleSum   = 0;
+    double angleCount = 0;
+    for (Star s : m_starList ) {
+        for (Star o : m_starList) {
+            if ( s != o) {
+                //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
+                double currentAngle  = s.Angle(o);
+                double previousAngle = s.prevPositions.front().Angle(o.prevPositions.front());
+                double angleDiff     = currentAngle - previousAngle;
+                double distance      = s.Distance(o);
+                //Debug.AddLine(wxString::Format("Guider: Position x %f y %f, previous x %f y %f", s.X, s.Y, s.prevPositions.front().X, s.prevPositions.front().Y));                    
+                //Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, previousAngle, angleDiff));                    
+                //Debug.AddLine(wxString::Format("Guider: distance %f", distance));
+                angleSum   += angleDiff * distance;
+                angleCount += distance;
+            }
+        }
+    }
+    angleSum /= angleCount;
+    Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
+    */
 
     return bError;
 }
@@ -749,7 +804,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         #endif
 
 
-        /* File streaming to web interface.
+        /* TODO: File streaming to web interface.
          * Commented out because not currently using.
          * File is repeatedly overwritten to create a video stream.
          
@@ -816,15 +871,15 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                 {
                     PHD_Point prevPoint(s.X, s.Y);
                     dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));
-                    for (PHD_Point p : s.previousPositions) {
+                    for (PHD_Point p : s.prevPositions) {
                         dc.DrawLine(wxPoint(prevPoint.X * m_scaleFactor, prevPoint.Y * m_scaleFactor), 
                                     wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor));
                         prevPoint = p;
                     }    
                 }
+
             }    
-        }    
-        
+        } 
 
         if (state == STATE_SELECTED)
         {  

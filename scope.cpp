@@ -506,16 +506,16 @@ Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duratio
     return result;
 }
 
-Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad)
+Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationDeg)
 {
     MOVE_RESULT result = MOVE_OK;
 
-    Debug.AddLine(wxString::Format("Scope: calibration move dir %d dur %d rotation %f", direction, duration, rotationRad));
+    Debug.AddLine(wxString::Format("Scope: calibration move dir %d dur %d rotation %f", direction, duration, rotationDeg));
 
     try
     {
         MoveResultInfo move;
-        result = Move(direction, duration, rotationRad, MOVETYPE_DIRECT, &move);
+        result = Move(direction, duration, rotationDeg, MOVETYPE_DIRECT, &move);
 
         if (result != MOVE_OK)
         {
@@ -574,6 +574,8 @@ void Scope::AlertLimitReached(int duration, GuideAxis axis)
 
 Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMoveType moveType, MoveResultInfo *moveResult)
 {
+    // Deprecated method, use other variant with rotation in degrees
+
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
 
@@ -586,19 +588,19 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     {
         case NORTH:
             movePoint.SetXY(0, moveAmount);
-            pMount->HexGuide(movePoint, 0);
+            //pMount->HexGuide(movePoint, 0);
             break;
         case SOUTH:
             movePoint.SetXY(0, -moveAmount);
-            pMount->HexGuide(movePoint, 0);
+            //pMount->HexGuide(movePoint, 0);
             break;
         case EAST:
             movePoint.SetXY(moveAmount, 0);
-            pMount->HexGuide(movePoint, 0);
+            //pMount->HexGuide(movePoint, 0);
             break;
         case WEST:
             movePoint.SetXY(-moveAmount, 0);
-            pMount->HexGuide(movePoint, 0);
+            //pMount->HexGuide(movePoint, 0);
             break;
         default:
             break;
@@ -714,13 +716,13 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMov
     return result;
 }
 
-Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double rotationRad, MountMoveType moveType, MoveResultInfo *moveResult)
+Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResult)
 {
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
 
     // TODO actually use duration and moveType
-    Debug.Write(wxString::Format("Scope move(direction %d, duration %d, movetype %d, rotationRad %f)\n", direction, duration, moveType, rotationRad));
+    Debug.Write(wxString::Format("Scope move(direction %d, duration %d, movetype %d, rotationDeg %f)\n", direction, duration, moveType, rotationDeg));
     double moveAmount = (double)duration / 1000000;
     Debug.Write(wxString::Format("moveAmount %f\n", moveAmount));
     PHD_Point movePoint(0,0);
@@ -728,19 +730,19 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double r
     {
         case NORTH:
             movePoint.SetXY(0, moveAmount);
-            pMount->HexGuide(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationDeg);
             break;
         case SOUTH:
             movePoint.SetXY(0, -moveAmount);
-            pMount->HexGuide(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationDeg);
             break;
         case EAST:
             movePoint.SetXY(moveAmount, 0);
-            pMount->HexGuide(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationDeg);
             break;
         case WEST:
             movePoint.SetXY(-moveAmount, 0);
-            pMount->HexGuide(movePoint, rotationRad);
+            pMount->HexGuide(movePoint, rotationDeg);
             break;
         default:
             break;
@@ -1320,7 +1322,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                     pFrame->StatusMsg(wxString::Format(_("Moving clockwise - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
                     m_calibrationStepsRemaining -= 1;
-                    pFrame->ScheduleCalibrationMove(this, NORTH, 0, 0.03);
+                    pFrame->ScheduleCalibrationMove(this, NORTH, 0, 1.7);
                     break;
                 }
 
@@ -1364,6 +1366,14 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
             case CALIBRATION_STATE_COMPLETE:
 
+
+                pFrame->pGuider->m_star.calEndPos = PHD_Point(pFrame->pGuider->m_star.X, pFrame->pGuider->m_star.Y);
+                //The end position is used later when calculating rotation
+                for (Star &s : pFrame->pGuider->m_starList) {
+                    s.calEndPos = PHD_Point(s.X, s.Y);
+                    //Debug.AddLine(wxString::Format("Scope: Cal end %f x %f y", s.calEndPos.X, s.calEndPos.Y));
+                }
+
                 // Work out camera correction angle 
                 Debug.AddLine("Calibration complete.");
                 Debug.AddLine(wxString::Format("dX %f dY %f", dX, dY));
@@ -1386,11 +1396,11 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 }
                 cameraAngle *= -1;
                 
-                wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                              wxString::Format("Camera angle %f", cameraAngle), 
-                                                              wxString::Format("Calibration complete"), 
-                                                              wxOK|wxCENTRE, wxDefaultPosition);
-                alert->ShowModal();
+                //wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                //                                              wxString::Format("Camera angle %f", cameraAngle), 
+                //                                              wxString::Format("Calibration complete"), 
+                //                                              wxOK|wxCENTRE, wxDefaultPosition);
+                //alert->ShowModal();
 
                 pFrame->StatusMsg(wxString::Format("Calibration completed with angle %f", cameraAngle));
 

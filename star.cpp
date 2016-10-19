@@ -53,6 +53,14 @@ Star::~Star(void)
 {
 }
 
+bool Star::operator==(const Star &other) const {
+    return ( X == other.X and Y == other.Y );
+}
+
+bool Star::operator!=(const Star &other) const {
+    return ! ( X == other.X and Y == other.Y );
+}
+
 bool Star::WasFound(FindResult result)
 {
     bool bReturn = false;
@@ -78,6 +86,7 @@ void Star::Invalidate(void)
     HFD = 0.0;
     m_lastFindResult = STAR_ERROR;
     PHD_Point::Invalidate();
+    prevPositions.clear();
 }
 
 void Star::SetError(FindResult error)

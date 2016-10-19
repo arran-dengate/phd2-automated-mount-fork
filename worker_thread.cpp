@@ -216,6 +216,8 @@ void WorkerThread::SendWorkerThreadExposeComplete(usImage *pImage, bool bError)
 
 void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
 {
+    // Deprecated, use version with a rotation param
+
     m_interruptRequested &= ~INT_STOP;
 
     WORKER_THREAD_REQUEST message;
@@ -232,9 +234,29 @@ void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point&
 
     EnqueueMessage(message);
 }
+void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg)
+{
+    m_interruptRequested &= ~INT_STOP;
 
+    WORKER_THREAD_REQUEST message;
+    memset(&message, 0, sizeof(message));
+
+    Debug.Write(wxString::Format("Enqueuing Move request for %s (%.2f, %.2f)\n", mount->GetMountClassName(), vectorEndpoint.X, vectorEndpoint.Y));
+
+    message.request                   = REQUEST_MOVE;
+    message.args.move.pMount          = mount;
+    message.args.move.calibrationMove = false;
+    message.args.move.vectorEndpoint  = vectorEndpoint;
+    message.args.move.moveType        = moveType;
+    message.args.move.pSemaphore      = NULL;
+    message.args.move.rotationDeg     = rotationDeg;
+
+    EnqueueMessage(message);
+}
 void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRECTION direction, int duration)
 {
+    // Deprecated, use version with a rotation param
+
     m_interruptRequested &= ~INT_STOP;
 
     WORKER_THREAD_REQUEST message;
@@ -253,7 +275,7 @@ void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRE
     EnqueueMessage(message);
 }
 
-void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationRad)
+void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationDeg)
 {
     m_interruptRequested &= ~INT_STOP;
 
@@ -269,7 +291,7 @@ void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRE
     message.args.move.duration        = duration;
     message.args.move.moveType        = MOVETYPE_DIRECT;
     message.args.move.pSemaphore      = NULL;
-    message.args.move.rotationRad     = rotationRad;
+    message.args.move.rotationDeg     = rotationDeg;
 
     EnqueueMessage(message);
 }
@@ -289,9 +311,9 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
             if (pArgs->calibrationMove)
             {
                 Debug.AddLine("Calibration move");
-                if (pArgs->rotationRad > 0) {
-                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationRad));
-                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationRad);
+                if (pArgs->rotationDeg != 0) {
+                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationDeg));
+                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationDeg);
                 } else {
                     Debug.AddLine(wxString::Format("Worker_thread: Calibration move doesn't have rotational component"));
                     result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
@@ -307,8 +329,15 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
             {
                 Debug.Write(wxString::Format("endpoint = (%.2f, %.2f)\n",
                     pArgs->vectorEndpoint.X, pArgs->vectorEndpoint.Y));
+                
+                if (pArgs->rotationDeg != 0) {
+                    Debug.AddLine(wxString::Format("Worker_thread: move has rotational component %f", pArgs->rotationDeg));
+                    result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType, pArgs->rotationDeg);
+                } else {
+                    Debug.AddLine(wxString::Format("Worker_thread: move doesn't have rotational component"));
+                    result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType, 0);
+                }
 
-                result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType);
                 if (result != Mount::MOVE_OK)
                 {
                     throw ERROR_INFO("Move failed");

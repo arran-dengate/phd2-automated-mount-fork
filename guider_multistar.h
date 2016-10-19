@@ -60,6 +60,7 @@ public:
     virtual void LoadValues(void);
     virtual void UnloadValues(void);
     void OnStarMassEnableChecked(wxCommandEvent& event);
+
 };
 
 class GuiderMultiStar : public Guider
@@ -71,6 +72,7 @@ private:
     double m_massChangeThreshold;
     double m_originalRotationAngle;
     PHD_Point m_rotationCenter;
+
 
 public:
 
@@ -108,6 +110,7 @@ public:
     bool IsLocked(void);
     bool AutoSelect(void);
     const PHD_Point& CurrentPosition(void);
+    
     wxRect GetBoundingBox(void);
     int GetMaxMovePixels(void);
     double StarMass(void);

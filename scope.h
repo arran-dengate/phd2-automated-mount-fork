@@ -258,9 +258,9 @@ private:
     // functions with an implemenation in Scope that cannot be over-ridden
     // by a subclass
     MOVE_RESULT Move(GUIDE_DIRECTION direction, int durationMs, MountMoveType moveType, MoveResultInfo *moveResultInfo);
-    MOVE_RESULT Move(GUIDE_DIRECTION direction, int durationMs, double rotationRad, MountMoveType moveType, MoveResultInfo *moveResultInfo);
+    MOVE_RESULT Move(GUIDE_DIRECTION direction, int durationMs, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResultInfo);
     MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration);
-    MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationRad);
+    MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration, double rotationDeg);
     int CalibrationMoveSize(void);
     int CalibrationTotDistance(void);
 

@@ -466,10 +466,9 @@ void GotoDialog::OnGoto(wxCommandEvent& )
                                                                     "Alt %f, az %f", destAlt, destAz), 
                                                   wxString::Format("Goto"), 
                                                   wxOK|wxCENTRE, wxDefaultPosition);
-    alert->ShowModal();
+    alert->ShowModal(); 
 
     pMount->HexGoto(destAlt, destAz);
-
 
 }
 

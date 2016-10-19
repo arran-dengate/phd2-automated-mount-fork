@@ -68,9 +68,10 @@ public:
     double SNR;
     double HFD;
     unsigned short PeakVal;
-    std::deque<PHD_Point> previousPositions;
+    std::deque<PHD_Point> prevPositions;
     PHD_Point calStartPos;
-    PHD_Point calEndPos; 
+    PHD_Point calEndPos;
+    PHD_Point guidingStartPos;
 
     Star(void);
     ~Star();
@@ -90,6 +91,9 @@ public:
     void Invalidate(void);
     void SetError(FindResult error);
     FindResult GetError(void) const;
+
+    bool operator==(const Star &other) const; 
+    bool operator!=(const Star &other) const;
 
 private:
     FindResult m_lastFindResult;

@@ -218,6 +218,8 @@ protected:
 public:
     Star m_star; // Primary guiding star
     std::vector<Star> m_starList; // Secondary stars
+    bool m_guidingPositionsInitialised;
+    double m_rotationGuideNeeded;
 
     bool IsPaused(void) const;
     PauseType GetPauseType(void) const;
