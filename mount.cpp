@@ -49,6 +49,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <cmath>
+#include <algorithm>
 #include "cam_simulator.h" // Temporarily and for debugging only!!
 
 // enable dec compensation when calibration declination is less than this
@@ -900,7 +901,7 @@ bool Mount::HexCalibrate(double alt, double az, double camAngle, const PHD_Point
 
 Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType, double rotationAngleDeg)
 {
-
+    // This method is only triggered by guiding - note the vector endpoint rather than a N/S/E/W direction and duration.
     MOVE_RESULT result = MOVE_OK;
 
     try
@@ -910,6 +911,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
 
         if (moveType == MOVETYPE_DEDUCED)
         {
+            // TODO - actually move for deduced movetype.
             xDistance = m_pXGuideAlgorithm ? m_pXGuideAlgorithm->deduceResult() : 0.0;
             yDistance = m_pYGuideAlgorithm ? m_pYGuideAlgorithm->deduceResult() : 0.0;
             if (xDistance == 0.0 && yDistance == 0.0)
@@ -938,30 +940,35 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             // 1280 x 1024 pixels
             double xVector, yVector;
             xVector = xDistance * 0.001695391; 
-            yVector = yDistance * 0.001695137; 
-            // Roll is reversed.
-            xVector *= -1;
+            yVector = yDistance * 0.001695137;  
 
             // If debugging value set in profile, scale movements by this value.
-            const double MOVE_SCALE_FACTOR = pConfig->Profile.GetDouble("/debug/MoveScaleFactor", 1.0); 
-            xVector *= MOVE_SCALE_FACTOR;
-            yVector *= MOVE_SCALE_FACTOR;
+            //const double MOVE_SCALE_FACTOR = pConfig->Profile.GetDouble("/debug/MoveScaleFactor", 1.0); 
+            //xVector *= MOVE_SCALE_FACTOR;
+            //yVector *= MOVE_SCALE_FACTOR;i
 
             // If this debugging value is set in the profile, put an upper limit on the distance of a single move.
-            const double MAX_MOVE_DISTANCE = pConfig->Profile.GetDouble("/debug/MaxMoveCommandRadians", -1.0);
-            if ( MAX_MOVE_DISTANCE > 0 ) {
-                Debug.AddLine(wxString::Format("Mount: capping max move distance at %f", MAX_MOVE_DISTANCE));
-                xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
-                yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
+            //const double MAX_MOVE_DISTANCE = pConfig->Profile.GetDouble("/debug/MaxMoveCommandRadians", -1.0);
+            //const double MAX_MOVE_DISTANCE = 0.02;
+            //if ( MAX_MOVE_DISTANCE > 0 ) {
+            //    Debug.AddLine(wxString::Format("Mount: capping max move distance at %f", MAX_MOVE_DISTANCE));
+            //    xVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(xVector, MAX_MOVE_DISTANCE));
+            //    yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
+            //}
+            
+            const double MAX_ROTATION_DISTANCE = 0.7;
+            if (abs(rotationAngleDeg) > MAX_ROTATION_DISTANCE) {
+                Debug.AddLine(wxString::Format("Mount: rotation distance of %f was capped at %f", rotationAngleDeg, MAX_ROTATION_DISTANCE));    
+                rotationAngleDeg = std::max(std::min(rotationAngleDeg, MAX_ROTATION_DISTANCE), MAX_ROTATION_DISTANCE*-1);
             }
             
+                
+
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
             Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
             HexGuide(moveVector, rotationAngleDeg);
 
-            xDistance *= 100; // Just for the benefit for the simulator, which gives tiny guide pulses otherwise.
-            yDistance *= 100; 
             // Arran: the rest of this method not currently used, left in for now.
             if (moveType == MOVETYPE_ALGO)
             {
@@ -986,15 +993,16 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                     m_backlashComp->ResetBaseline();
             }
         }
-
+        /*
         // Figure out the guide directions based on the (possibly) updated distances
         GUIDE_DIRECTION xDirection = xDistance > 0.0 ? LEFT : RIGHT;
         GUIDE_DIRECTION yDirection = yDistance > 0.0 ? DOWN : UP;
 
         int requestedXAmount = (int) floor(fabs(xDistance / m_xRate) + 0.5);
         MoveResultInfo xMoveResult;
-        result = Move(xDirection, requestedXAmount, 0, moveType, &xMoveResult);
-
+        //result = Move(xDirection, requestedXAmount, 0, moveType, &xMoveResult); 
+        result == MOVE_OK;
+        
         MoveResultInfo yMoveResult;
         if (result == MOVE_OK || result == MOVE_ERROR)
         {
@@ -1030,6 +1038,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
         info.starSNR = pFrame->pGuider->SNR();
         info.avgDist = pFrame->pGuider->CurrentError();
         info.starError = pFrame->pGuider->StarError();
+        */
     }
     catch (const wxString& errMsg)
     {

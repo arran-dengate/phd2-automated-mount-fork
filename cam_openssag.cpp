@@ -138,8 +138,8 @@ bool Camera_OpenSSAGClass::ST4PulseGuideScope(int direction, int duration)
         default: return true; // bad direction passed in
     }
 
-    wxMilliSleep(duration + 10);
-
+    //wxMilliSleep(duration + 10);
+    wxMilliSleep(100);
     return false;
 }
 

@@ -38,6 +38,7 @@
 #include "calstep_dialog.h"
 #include "image_math.h"
 #include "socket_server.h"
+#include "gperftools/profiler.h" // Google profiler - needed for debugging only!
 
 #include <wx/textfile.h>
 
@@ -1102,6 +1103,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
             case CALIBRATION_STATE_GO_NORTH:
 
+                ProfilerStart("PHD2.prof"); // For Google perf tools - debugging only
+
                 GuideLog.CalibrationStep(this, "North", m_calibrationSteps, dX, dY, currentLocation, dist);
 
                 if (m_calibrationStepsRemaining > 0) {
@@ -1164,7 +1167,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                 m_calibrationState = CALIBRATION_STATE_GO_CLOCKWISE;
                 m_calibrationSteps = 0;
-                m_calibrationStepsRemaining = 5;
+                m_calibrationStepsRemaining = 10;
 
             case CALIBRATION_STATE_GO_CLOCKWISE:
                 Debug.AddLine("Scope: calibration going clockwise");
@@ -1178,7 +1181,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
                     pFrame->StatusMsg(wxString::Format(_("Moving clockwise - steps remaining %3d, dx %f dy %f"), m_calibrationStepsRemaining, dX, dY));
                     m_calibrationStepsRemaining -= 1;
-                    pFrame->ScheduleCalibrationMove(this, NORTH, 0, 1.7);
+                    pFrame->ScheduleCalibrationMove(this, NORTH, 0, 0.6);
                     break;
                 }
 
@@ -1277,7 +1280,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 cal.binning = pCamera->Binning;
                 SetCalibration(cal);
                 
-
                 m_calibrationDetails.cameraAngle = cameraAngle;
 
                 // More fake calibration 
@@ -1297,8 +1299,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -5));
                 m_calibrationDetails.decSteps.push_back(wxRealPoint(0, -1));
                 m_calibrationDetails.decStepCount = 7;
-                
-                
 
                 m_calibration.xAngle = 0;
                 m_calibration.yAngle = 90;
@@ -1310,6 +1310,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 GuideLog.CalibrationComplete(this);
                 EvtServer.NotifyCalibrationComplete(this);
                 Debug.AddLine("Calibration Complete");
+                ProfilerStop(); // Google perf tools debugging
                 break;
         }
     }
@@ -1489,7 +1490,7 @@ ScopeConfigDialogCtrlSet::ScopeConfigDialogCtrlSet(wxWindow *pParent, Scope *pSc
 
     wxBoxSizer* pCalibSizer = new wxBoxSizer(wxHORIZONTAL);
     m_pCalibrationDuration = new wxSpinCtrl(GetParentWindow(AD_szCalibrationDuration), wxID_ANY, wxEmptyString, wxPoint(-1, -1),
-            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0, 10000, 1000,_T("Cal_Dur")); 
+            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0, 100000, 1000,_T("Cal_Dur")); 
     pCalibSizer->Add(MakeLabeledControl(AD_szCalibrationDuration, _("Calibration step distance (millidegrees)"), m_pCalibrationDuration, 
         _("How long a guide pulse should be used during calibration? Click \"Calculate\" to compute a suitable value.")));
     m_pCalibrationDuration->Enable(enableCtrls);

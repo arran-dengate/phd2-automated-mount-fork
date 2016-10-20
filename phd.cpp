@@ -36,7 +36,6 @@
 
 #include <wx/cmdline.h>
 #include <wx/snglinst.h>
-#include "gperftools/profiler.h" // Google profiler - needed for debugging only!
 
 #ifdef  __linux__
     #include <X11/Xlib.h>
@@ -94,7 +93,6 @@ PhdApp::PhdApp(void)
     m_instanceNumber = 1;
 #ifdef  __linux__
     XInitThreads();
-    ProfilerStart("PHD2.prof"); // For Google perf tools - debugging only
 #endif
 };
 
@@ -194,7 +192,6 @@ bool PhdApp::OnInit()
 
 int PhdApp::OnExit(void)
 {
-    ProfilerStop(); // Google perf tools debugging
     assert(pMount == NULL);
     assert(pSecondaryMount == NULL);
     assert(pCamera == NULL);
