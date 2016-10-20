@@ -433,7 +433,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 // Get things moving with the first clearing pulse
                 Debug.Write(wxString::Format("BLT starting North backlash clearing using pulse width of %d,"
                     " looking for moves >= %d px\n", m_pulseWidth, BACKLASH_EXPECTED_DISTANCE));
-                pFrame->ScheduleCalibrationMove(m_scope, NORTH, m_pulseWidth);
+                pFrame->ScheduleCalibrationMove(m_scope, NORTH, 0, m_pulseWidth);
                 m_stepCount = 1;
                 m_lastStatus = wxString::Format(_("Clearing North backlash, step %d"), m_stepCount);
                 break;
@@ -468,7 +468,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                     {
                         if (!OutOfRoom(pCamera->FullSize, currentCamLoc.X, currentCamLoc.Y, pFrame->pGuider->GetMaxMovePixels()))
                         {
-                            pFrame->ScheduleCalibrationMove(m_scope, NORTH, m_pulseWidth);
+                            pFrame->ScheduleCalibrationMove(m_scope, NORTH, 0, m_pulseWidth);
                             m_stepCount++;
                             m_markerPoint = currMountLocation;
                             m_lastClearRslt = decDelta;
@@ -510,7 +510,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 m_lastStatus = wxString::Format(_("Moving North for %d ms, step %d / %d"), m_pulseWidth, m_stepCount + 1, m_northPulseCount);
                 Debug.Write(wxString::Format("BLT: %s, DecLoc = %0.2f\n", m_lastStatus, currMountLocation.Y));
                 m_northBLSteps.push_back(currMountLocation.Y);
-                pFrame->ScheduleCalibrationMove(m_scope, NORTH, m_pulseWidth);
+                pFrame->ScheduleCalibrationMove(m_scope, NORTH, 0, m_pulseWidth);
                 m_stepCount++;
                 break;
             }
@@ -541,7 +541,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                 m_lastStatus = wxString::Format(_("Moving South for %d ms, step %d / %d"), m_pulseWidth, m_stepCount + 1, m_northPulseCount);
                 Debug.Write(wxString::Format("BLT: %s, DecLoc = %0.2f\n", m_lastStatus, currMountLocation.Y));
                 m_southBLSteps.push_back(currMountLocation.Y);
-                pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_pulseWidth);
+                pFrame->ScheduleCalibrationMove(m_scope, SOUTH, 0, m_pulseWidth);
                 m_stepCount++;
                 break;
             }
@@ -571,14 +571,14 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
                     m_lastStatus = wxString::Format(_("Issuing test backlash correction of %d ms"), m_backlashResultMs);
                     Debug.Write(m_lastStatus + "\n");
                     // This should put us back roughly to where we issued the big North pulse unless the backlash is very large
-                    pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_backlashResultMs);
+                    pFrame->ScheduleCalibrationMove(m_scope, SOUTH, 0, m_backlashResultMs);
                     m_stepCount++;
                 }
                 else
                 {
                     int maxFrameMove = (int)floor((double)pFrame->pGuider->GetMaxMovePixels() / m_northRate);
                     Debug.Write(wxString::Format("BLT: Clearing pulse is very large, issuing max S move of %d\n", maxFrameMove));
-                    pFrame->ScheduleCalibrationMove(m_scope, SOUTH, maxFrameMove);       // One more pulse to cycle the state machine
+                    pFrame->ScheduleCalibrationMove(m_scope, SOUTH, 0, maxFrameMove);       // One more pulse to cycle the state machine
                     m_bltState = BLT_STATE_RESTORE;
                 }
                 break;
@@ -625,7 +625,7 @@ void BacklashTool::DecMeasurementStep(const PHD_Point& currentCamLoc)
             if (m_stepCount < m_restoreCount)
             {
 
-                pFrame->ScheduleCalibrationMove(m_scope, SOUTH, m_pulseWidth);
+                pFrame->ScheduleCalibrationMove(m_scope, SOUTH, 0, m_pulseWidth);
                 m_stepCount++;
                 m_lastStatus = _("Restoring star position");
                 Debug.Write(wxString::Format("BLT: Issuing restore pulse count %d of %d ms\n", m_stepCount, m_pulseWidth));

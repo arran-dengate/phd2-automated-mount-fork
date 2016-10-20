@@ -1422,7 +1422,7 @@ void MyFrame::OnRequestMountMove(wxCommandEvent& evt)
     }
     else
     {
-        pRequest->moveResult = pRequest->pMount->Move(pRequest->vectorEndpoint, pRequest->moveType);
+        pRequest->moveResult = pRequest->pMount->Move(pRequest->vectorEndpoint, pRequest->moveType, 0);
     }
 
     pRequest->pSemaphore->Post();
@@ -1460,21 +1460,6 @@ void MyFrame::ScheduleExposure(void)
     m_pPrimaryWorkerThread->EnqueueWorkerThreadExposeRequest(img, exposureDuration, exposureOptions, subframe);
 }
 
-void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
-{
-    // This method is deprecated. Use the other version (which has a rotation parameter) where possible, will eventually remove this one
-
-    Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
-
-    wxCriticalSectionLocker lock(m_CSpWorkerThread);
-
-    assert(mount);
-    mount->IncrementRequestCount();
-
-    assert(m_pPrimaryWorkerThread);
-    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, vectorEndpoint, moveType);
-}
-
 void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg)
 {
     Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
@@ -1499,22 +1484,20 @@ void MyFrame::ScheduleSecondaryMove(Mount *mount, const PHD_Point& vectorEndpoin
     if (mount->SynchronousOnly())
     {
         // some mounts must run on the Primary thread even if the secondary is requested.
-        SchedulePrimaryMove(mount, vectorEndpoint, moveType);
+        SchedulePrimaryMove(mount, vectorEndpoint, moveType, 0);
     }
     else
     {
         mount->IncrementRequestCount();
 
         assert(m_pSecondaryWorkerThread);
-        m_pSecondaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, vectorEndpoint, moveType);
+        m_pSecondaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, vectorEndpoint, moveType, 0);
     }
 }
 
-void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration)
+void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationDeg)
 {
-    // This is deprecated - should merge this method into the other version of ScheduleCalibrationMove, which takes a rotation param.
-    // TODO: Remove this entirely (and fold the simulator-specific stuff into the alternative version of this method)
-
+ 
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
     assert(mount);
@@ -1526,24 +1509,12 @@ void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direct
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
         // Simulator gets a fixed calibration move, regardless of settings
         const double FIXED_SIMULATOR_MOVE_AMOUNT = 100;
-        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, FIXED_SIMULATOR_MOVE_AMOUNT);    
+        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, FIXED_SIMULATOR_MOVE_AMOUNT, rotationDeg);    
     } else {
         // Everything else is treated normally
-        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration);
+        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationDeg);
     }
     
-}
-
-void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direction, int duration, double rotationDeg)
-{
-    wxCriticalSectionLocker lock(m_CSpWorkerThread);
-
-    assert(mount);
-
-    mount->IncrementRequestCount();
-
-    assert(m_pPrimaryWorkerThread);
-    m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationDeg);
 }
 
 void MyFrame::StartCapturing()

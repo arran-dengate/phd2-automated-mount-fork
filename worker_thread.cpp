@@ -214,26 +214,6 @@ void WorkerThread::SendWorkerThreadExposeComplete(usImage *pImage, bool bError)
 
 /*************      Move       **************************/
 
-void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
-{
-    // Deprecated, use version with a rotation param
-
-    m_interruptRequested &= ~INT_STOP;
-
-    WORKER_THREAD_REQUEST message;
-    memset(&message, 0, sizeof(message));
-
-    Debug.Write(wxString::Format("Enqueuing Move request for %s (%.2f, %.2f)\n", mount->GetMountClassName(), vectorEndpoint.X, vectorEndpoint.Y));
-
-    message.request                   = REQUEST_MOVE;
-    message.args.move.pMount          = mount;
-    message.args.move.calibrationMove = false;
-    message.args.move.vectorEndpoint  = vectorEndpoint;
-    message.args.move.moveType        = moveType;
-    message.args.move.pSemaphore      = NULL;
-
-    EnqueueMessage(message);
-}
 void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg)
 {
     m_interruptRequested &= ~INT_STOP;
@@ -250,27 +230,6 @@ void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const PHD_Point&
     message.args.move.moveType        = moveType;
     message.args.move.pSemaphore      = NULL;
     message.args.move.rotationDeg     = rotationDeg;
-
-    EnqueueMessage(message);
-}
-void WorkerThread::EnqueueWorkerThreadMoveRequest(Mount *mount, const GUIDE_DIRECTION direction, int duration)
-{
-    // Deprecated, use version with a rotation param
-
-    m_interruptRequested &= ~INT_STOP;
-
-    WORKER_THREAD_REQUEST message;
-    memset(&message, 0, sizeof(message));
-
-    Debug.Write(wxString::Format("Enqueuing Calibration Move request for direction %d\n", direction));
-
-    message.request                   = REQUEST_MOVE;
-    message.args.move.pMount          = mount;
-    message.args.move.calibrationMove = true;
-    message.args.move.direction       = direction;
-    message.args.move.duration        = duration;
-    message.args.move.moveType        = MOVETYPE_DIRECT;
-    message.args.move.pSemaphore      = NULL;
 
     EnqueueMessage(message);
 }

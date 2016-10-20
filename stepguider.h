@@ -195,7 +195,7 @@ public:
     // by a subclass
 private:
     virtual MOVE_RESULT Move(const PHD_Point& vectorEndpoint, MountMoveType moveType);
-    MOVE_RESULT Move(GUIDE_DIRECTION direction, int amount, MountMoveType moveType, MoveResultInfo *moveResultInfo);
+    MOVE_RESULT Move(GUIDE_DIRECTION direction, int amount, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResultInfo);
     MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int steps);
     int CalibrationMoveSize(void);
     int CalibrationTotDistance(void);

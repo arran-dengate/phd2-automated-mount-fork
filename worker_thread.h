@@ -181,9 +181,7 @@ protected:
 
     /*************      Guide       **************************/
 public:
-    void EnqueueWorkerThreadMoveRequest(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType);
     void EnqueueWorkerThreadMoveRequest(Mount *pMount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg);
-    void EnqueueWorkerThreadMoveRequest(Mount *pMount, const GUIDE_DIRECTION direction, int duration);
     void EnqueueWorkerThreadMoveRequest(Mount *pMount, const GUIDE_DIRECTION direction, int duration, double rotationDeg);
 protected:
     Mount::MOVE_RESULT HandleMove(MOVE_REQUEST *pArgs);

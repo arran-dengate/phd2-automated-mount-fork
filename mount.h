@@ -244,7 +244,6 @@ public:
     bool HexGoto(double alt, double az);
     bool HexCalibrate(double alt, double az, double camAngle, const PHD_Point &camRotationCenter, double astroAngle, double northCelestialPoleAlt);
     
-    virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType);
     virtual MOVE_RESULT Move(const PHD_Point& cameraVectorEndpoint, MountMoveType moveType, double rotationDeg);
 
     bool TransformCameraCoordinatesToMountCoordinates(const PHD_Point& cameraVectorEndpoint,
@@ -276,7 +275,7 @@ public:
     // pure virtual functions -- these MUST be overridden by a subclass
 public:
     // move the requested direction, return the actual amount of the move
-    virtual MOVE_RESULT Move(GUIDE_DIRECTION direction, int amount, MountMoveType moveType, MoveResultInfo *moveResultInfo) = 0;
+    virtual MOVE_RESULT Move(GUIDE_DIRECTION direction, int amount, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResultInfo) = 0;
     virtual MOVE_RESULT CalibrationMove(GUIDE_DIRECTION direction, int duration) = 0;
     virtual int CalibrationMoveSize(void) = 0;
     virtual int CalibrationTotDistance(void) = 0;

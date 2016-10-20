@@ -491,7 +491,7 @@ Mount::MOVE_RESULT Scope::CalibrationMove(GUIDE_DIRECTION direction, int duratio
     try
     {
         MoveResultInfo move;
-        result = Move(direction, duration, MOVETYPE_DIRECT, &move);
+        result = Move(direction, duration, 0, MOVETYPE_DIRECT, &move);
 
         if (result != MOVE_OK)
         {
@@ -570,150 +570,6 @@ void Scope::AlertLimitReached(int duration, GuideAxis axis)
                 SuppressLimitReachedWarning, axis, false, wxICON_INFORMATION);
         }
     }
-}
-
-Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, MountMoveType moveType, MoveResultInfo *moveResult)
-{
-    // Deprecated method, use other variant with rotation in degrees
-
-    MOVE_RESULT result = MOVE_OK;
-    bool limitReached = false;
-
-    // TODO actually use duration and moveType
-    Debug.Write(wxString::Format("Scope move(%d, %d, %d)\n", direction, duration, moveType));
-    double moveAmount = (double)duration / 1000000;
-    Debug.Write(wxString::Format("moveAmount %f\n", moveAmount));
-    PHD_Point movePoint(0,0);
-    switch (direction)
-    {
-        case NORTH:
-            movePoint.SetXY(0, moveAmount);
-            //pMount->HexGuide(movePoint, 0);
-            break;
-        case SOUTH:
-            movePoint.SetXY(0, -moveAmount);
-            //pMount->HexGuide(movePoint, 0);
-            break;
-        case EAST:
-            movePoint.SetXY(moveAmount, 0);
-            //pMount->HexGuide(movePoint, 0);
-            break;
-        case WEST:
-            movePoint.SetXY(-moveAmount, 0);
-            //pMount->HexGuide(movePoint, 0);
-            break;
-        default:
-            break;
-    }
-    
-    try
-    {
-        Debug.Write(wxString::Format("Move(%d, %d, %d)\n", direction, duration, moveType));
-
-        if (!m_guidingEnabled)
-        {
-            throw THROW_INFO("Guiding disabled");
-        }
-
-        // Compute the actual guide durations
-
-        switch (direction)
-        {
-            case NORTH:
-            case SOUTH:
-
-                // Do not enforce dec guiding mode and max dec duration for direct moves
-                if (moveType != MOVETYPE_DIRECT)
-                {
-                    if ((m_decGuideMode == DEC_NONE) ||
-                        (direction == SOUTH && m_decGuideMode == DEC_NORTH) ||
-                        (direction == NORTH && m_decGuideMode == DEC_SOUTH))
-                    {
-                        duration = 0;
-                        Debug.AddLine("duration set to 0 by GuideMode");
-                    }
-
-                    if (duration > m_maxDecDuration)
-                    {
-                        duration = m_maxDecDuration;
-                        Debug.Write(wxString::Format("duration set to %d by maxDecDuration\n", duration));
-                        limitReached = true;
-                    }
-
-                    if (limitReached && direction == m_decLimitReachedDirection)
-                    {
-                        if (++m_decLimitReachedCount >= LIMIT_REACHED_WARN_COUNT)
-                            AlertLimitReached(duration, GUIDE_DEC);
-                    }
-                    else
-                        m_decLimitReachedCount = 0;
-
-                    if (limitReached)
-                        m_decLimitReachedDirection = direction;
-                    else
-                        m_decLimitReachedDirection = NONE;
-                }
-                break;
-            case EAST:
-            case WEST:
-
-                // Do not enforce max dec duration for direct moves
-                if (moveType != MOVETYPE_DIRECT)
-                {
-                    if (duration > m_maxRaDuration)
-                    {
-                        duration = m_maxRaDuration;
-                        Debug.Write(wxString::Format("duration set to %d by maxRaDuration\n", duration));
-                        limitReached = true;
-                    }
-
-                    if (limitReached && direction == m_raLimitReachedDirection)
-                    {
-                        if (++m_raLimitReachedCount >= LIMIT_REACHED_WARN_COUNT)
-                            AlertLimitReached(duration, GUIDE_RA);
-                    }
-                    else
-                        m_raLimitReachedCount = 0;
-
-                    if (limitReached)
-                        m_raLimitReachedDirection = direction;
-                    else
-                        m_raLimitReachedDirection = NONE;
-                }
-                break;
-
-            case NONE:
-                break;
-        }
-
-        // Actually do the guide
-        assert(duration >= 0);
-        if (duration > 0)
-        {
-            result = Guide(direction, duration);
-            if (result != MOVE_OK)
-            {
-                throw ERROR_INFO("guide failed");
-            }
-        }
-    }
-    catch (const wxString& Msg)
-    {
-        POSSIBLY_UNUSED(Msg);
-        if (result == MOVE_OK)
-            result = MOVE_ERROR;
-        duration = 0;
-    }
-
-    Debug.Write(wxString::Format("Move returns status %d, amount %d\n", result, duration));
-
-    if (moveResult)
-    {
-        moveResult->amountMoved = duration;
-        moveResult->limited = limitReached;
-    }
-
-    return result;
 }
 
 Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResult)
@@ -1254,7 +1110,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                     Debug.AddLine(wxString::Format("Scope: moving north, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("Scope: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
-                    pFrame->ScheduleCalibrationMove(this, NORTH, m_calibrationDuration);
+                    pFrame->ScheduleCalibrationMove(this, NORTH, m_calibrationDuration, 0);
                     //pFrame->ScheduleCalibrationMove(this, NORTH, 0, 1);
                     break;
                 }
@@ -1300,7 +1156,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                     Debug.AddLine(wxString::Format("Scope: moving south, cal steps remaining %d, m_calibrationDuration %d", m_calibrationStepsRemaining, m_calibrationDuration));
                     Debug.AddLine(wxString::Format("Scope: dX %f dY %f", dX, dY));
                     m_calibrationStepsRemaining -= 1;
-                    pFrame->ScheduleCalibrationMove(this, SOUTH, m_calibrationDuration);
+                    pFrame->ScheduleCalibrationMove(this, SOUTH, m_calibrationDuration, 0);
                     break;
                 }
 

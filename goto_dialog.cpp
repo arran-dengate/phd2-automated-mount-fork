@@ -52,6 +52,7 @@ const char IMAGE_DIRECTORY[]         = "/dev/shm/phd2/goto";
 const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
 const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fits";
 const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
+const char CATALOG_FILENAME[]        = "/usr/local/phd2/goto/catalog.csv";
 
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX)
@@ -340,7 +341,7 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     string line;
     string cell;
 
-    ifstream f ("/home/arran/src/phd2/goto/catalog.csv"); // TODO: Get application executable path & use that, rather than absolute path! 
+    ifstream f (CATALOG_FILENAME); // TODO: Get application executable path & use that, rather than absolute path! 
     if (!f.is_open()) {
         Debug.AddLine("Goto: error while opening star catalog file");
         return false;

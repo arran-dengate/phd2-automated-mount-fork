@@ -369,7 +369,7 @@ bool StepGuider::MoveToCenter()
         if (positionUpDown > 0)
         {
             MoveResultInfo result;
-            Move(DOWN, positionUpDown, MOVETYPE_DIRECT, &result);
+            Move(DOWN, positionUpDown, 0, MOVETYPE_DIRECT, &result);
             if (result.amountMoved != positionUpDown)
             {
                 throw ERROR_INFO("MoveToCenter() failed to step DOWN");
@@ -380,7 +380,7 @@ bool StepGuider::MoveToCenter()
             positionUpDown = -positionUpDown;
 
             MoveResultInfo result;
-            Move(UP, positionUpDown, MOVETYPE_DIRECT, &result);
+            Move(UP, positionUpDown, 0, MOVETYPE_DIRECT, &result);
             if (result.amountMoved != positionUpDown)
             {
                 throw ERROR_INFO("MoveToCenter() failed to step UP");
@@ -392,7 +392,7 @@ bool StepGuider::MoveToCenter()
         if (positionLeftRight > 0)
         {
             MoveResultInfo result;
-            Move(RIGHT, positionLeftRight, MOVETYPE_DIRECT, &result);
+            Move(RIGHT, positionLeftRight, 0, MOVETYPE_DIRECT, &result);
             if (result.amountMoved != positionLeftRight)
             {
                 throw ERROR_INFO("MoveToCenter() failed to step RIGHT");
@@ -403,7 +403,7 @@ bool StepGuider::MoveToCenter()
             positionLeftRight = -positionLeftRight;
 
             MoveResultInfo result;
-            Move(LEFT, positionLeftRight, MOVETYPE_DIRECT, &result);
+            Move(LEFT, positionLeftRight, 0, MOVETYPE_DIRECT, &result);
             if (result.amountMoved != positionLeftRight)
             {
                 throw ERROR_INFO("MoveToCenter() failed to step LEFT");
@@ -713,25 +713,25 @@ bool StepGuider::UpdateCalibrationState(const PHD_Point& currentLocation)
         if (moveUp)
         {
             assert(!moveDown);
-            pFrame->ScheduleCalibrationMove(this, UP, m_calibrationStepsPerIteration);
+            pFrame->ScheduleCalibrationMove(this, UP, m_calibrationStepsPerIteration, 0);
         }
 
         if (moveDown)
         {
             assert(!moveUp);
-            pFrame->ScheduleCalibrationMove(this, DOWN, m_calibrationStepsPerIteration);
+            pFrame->ScheduleCalibrationMove(this, DOWN, m_calibrationStepsPerIteration, 0);
         }
 
         if (moveRight)
         {
             assert(!moveLeft);
-            pFrame->ScheduleCalibrationMove(this, RIGHT, m_calibrationStepsPerIteration);
+            pFrame->ScheduleCalibrationMove(this, RIGHT, m_calibrationStepsPerIteration, 0);
         }
 
         if (moveLeft)
         {
             assert(!moveRight);
-            pFrame->ScheduleCalibrationMove(this, LEFT, m_calibrationStepsPerIteration);
+            pFrame->ScheduleCalibrationMove(this, LEFT, m_calibrationStepsPerIteration, 0);
         }
 
         if (m_calibrationState != CALIBRATION_STATE_COMPLETE)
@@ -810,7 +810,7 @@ Mount::MOVE_RESULT StepGuider::CalibrationMove(GUIDE_DIRECTION direction, int st
     try
     {
         MoveResultInfo move;
-        result = Move(direction, steps, MOVETYPE_DIRECT, &move);
+        result = Move(direction, steps, 0, MOVETYPE_DIRECT, &move);
 
         if (move.amountMoved != steps)
         {
@@ -841,7 +841,7 @@ int StepGuider::CalibrationTotDistance(void)
     return AO_CALIBRATION_PIXELS_NEEDED;
 }
 
-Mount::MOVE_RESULT StepGuider::Move(GUIDE_DIRECTION direction, int steps, MountMoveType moveType, MoveResultInfo *moveResult)
+Mount::MOVE_RESULT StepGuider::Move(GUIDE_DIRECTION direction, int steps, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResult)
 {
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
@@ -943,7 +943,7 @@ Mount::MOVE_RESULT StepGuider::Move(const PHD_Point& cameraVectorEndpoint, Mount
 
     try
     {
-        MOVE_RESULT mountResult = Mount::Move(cameraVectorEndpoint, moveType);
+        MOVE_RESULT mountResult = Mount::Move(cameraVectorEndpoint, moveType, 0);
         if (mountResult != MOVE_OK)
             Debug.Write("StepGuider::Move: Mount::Move failed!\n");
 

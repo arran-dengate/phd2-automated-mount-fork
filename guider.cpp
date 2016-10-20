@@ -1167,7 +1167,7 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
                     pFrame->pGraphLog->AppendData(info);
 
                     // allow guide algorithms to attempt dead reckoning
-                    pFrame->SchedulePrimaryMove(pMount, PHD_Point(0., 0.), MOVETYPE_DEDUCED);
+                    pFrame->SchedulePrimaryMove(pMount, PHD_Point(0., 0.), MOVETYPE_DEDUCED, 0);
 
                     wxColor prevColor = GetBackgroundColour();
                     SetBackgroundColour(wxColour(64,0,0));
@@ -1324,7 +1324,7 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
                     PHD_Point mountCoords(step.X * m_ditherRecenterDir.x, step.Y * m_ditherRecenterDir.y);
                     PHD_Point cameraCoords;
                     pMount->TransformMountCoordinatesToCameraCoordinates(mountCoords, cameraCoords);
-                    pFrame->SchedulePrimaryMove(pMount, cameraCoords, MOVETYPE_DIRECT);
+                    pFrame->SchedulePrimaryMove(pMount, cameraCoords, MOVETYPE_DIRECT, 0);
                 }
                 else if (m_measurementMode)
                 {
