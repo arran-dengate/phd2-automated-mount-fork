@@ -66,8 +66,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # options
 option(GUIDING_GAUSSIAN_PROCESS "Includes the Gaussian Process guiding algorithm" OFF)
 
-
-
 #################################################################################
 #
 # main project
@@ -691,12 +689,13 @@ elseif(UNIX)
    ${guiding_SRC}
    ${phd2_SRC}
    )
-  target_link_libraries(phd2 X11)
+  target_link_libraries(phd2 X11 profiler)
 
   set_target_properties(
     phd2 
     PROPERTIES 
       OUTPUT_NAME phd2  # lower case on linux
+      LINK_FLAGS "-lprofiler"
     )  
   
 else()
