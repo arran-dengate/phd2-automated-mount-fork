@@ -519,7 +519,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         Star newStar(m_star);
 
         if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode()))
-        {
+        {   
             errorInfo->starError = newStar.GetError();
             errorInfo->starMass = 0.0;
             errorInfo->starSNR = 0.0;
@@ -616,10 +616,51 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         //}
     }
 
+    // Second chance! We calculate average position difference and use it to recover lost stars.
+    // TODO: Improve this. It's not very good currently.
+    /*
+    double xDiffSum     = 0;
+    double yDiffSum     = 0;
+    double posCount     = 0;
+    for (Star s : m_starList ) {
+        if ( s.massChecker.currentlyValid ) {
+            xDiffSum += s.X - s.prevPositions.front().X;
+            yDiffSum += s.Y - s.prevPositions.front().Y;
+            posCount ++;     
+        }
+    }
+    double xDiffAvg = xDiffSum / posCount;
+    double yDiffAvg = yDiffSum / posCount;
+    Debug.AddLine(wxString::Format("Guider: save avg posdiff x %f y %f", xDiffAvg, yDiffAvg));
+
+    std::vector<Star>::iterator s2 = m_starList.begin(); 
+    while (s2 != m_starList.end()) {
+        Star newStar(*s2);
+        if ( ! s2->massChecker.currentlyValid )  {
+            Debug.AddLine(wxString::Format("Guider: Retrying to save star last seen %f, %f, looking at %f, %f", s2->X, s2->Y, s2->X + xDiffAvg * 1.5, s2->Y + yDiffAvg * 1.5));
+            if ( newStar.Find(pImage, m_searchRegion, s2->X + xDiffAvg * 1.5, s2->Y + yDiffAvg * 1.5, pFrame->GetStarFindMode())) {
+                s2->prevPositions.push_front(PHD_Point(s2->X, s2->Y));
+                s2->X       = newStar.X;
+                s2->Y       = newStar.Y;
+                s2->Mass    = newStar.Mass;
+                s2->SNR     = newStar.SNR;
+                s2->HFD     = newStar.HFD;
+                s2->PeakVal = newStar.PeakVal;
+                s2->massChecker.AppendData(newStar.Mass);
+                s2->massChecker.validationChances = 3;
+                s2->massChecker.currentlyValid = true;
+                Debug.AddLine(wxString::Format("Guider: Last minute save at %f, %f!", s2->X, s2->Y));
+            }       
+        }
+        s2++;
+    }    
+    */
+
+    // TODO: Actually use this! Currently we're only using the calendpos!
     if ( GetState() == STATE_GUIDING and ! m_guidingPositionsInitialised) {
         m_guidingPositionsInitialised = true;
         for ( Star s : m_starList ) {
-            s.guidingStartPos = PHD_Point(s.X, s.Y);
+            s.guidingStartPos =  PHD_Point(s.X, s.Y);
             //Debug.AddLine(wxString::Format("Guider: initialised true x %f y %f", s.X, s.Y));
         }
     }
@@ -628,16 +669,19 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
     double angleSum   = 0;
     double angleCount = 0;
     for (Star s : m_starList ) {
-        //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
-        double currentAngle  = s.Angle(m_star);
-        double originalAngle = s.calEndPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y));
-        double angleDiff     = currentAngle - originalAngle;
-        double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
-        Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original x %f y %f", s.X, s.Y, LockPosition().X, LockPosition().Y));                    
-        Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
-        Debug.AddLine(wxString::Format("Guider: distance %f", distance));
-        angleSum   += angleDiff;
-        angleCount ++;    
+        if ( s.massChecker.currentlyValid ) {
+            //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
+            double currentAngle  = s.Angle(m_star);
+            double originalAngle = s.calEndPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y));
+            double angleDiff     = currentAngle - originalAngle;
+            double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
+            Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original x %f y %f", s.X, s.Y, LockPosition().X, LockPosition().Y));                    
+            Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
+            Debug.AddLine(wxString::Format("Guider: distance %f", distance));
+            angleSum   += angleDiff;
+            angleCount ++;
+        }
+
     }
     angleSum /= angleCount;
     m_rotationGuideNeeded = degrees(angleSum) * -1;
@@ -794,9 +838,11 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         wxBitmap SubBmp(60,60,-1);
         wxMemoryDC tmpMdc;
         tmpMdc.SelectObject(SubBmp);
-        memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
-        memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
-        memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
+        
+        // Draw a giant crosshair over the lock position.
+        //memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
+        //memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
+        //memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
         #ifdef __APPLEX__
             tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
         #else
@@ -850,14 +896,14 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         // Secondary stars are drawn under most circumstances
         if (FoundStar && (state == STATE_SELECTED | STATE_CALIBRATING_PRIMARY | STATE_CALIBRATING_SECONDARY | STATE_CALIBRATED | STATE_GUIDING)) {
             
-            dc.SetPen(wxPen(wxColour(200,200,24), 1, wxSOLID));
+            dc.SetPen(wxPen(wxColour(0,0,0), 1, wxSOLID));
             dc.DrawCircle(m_rotationCenter.X * m_scaleFactor, m_rotationCenter.Y *m_scaleFactor, 5);
             for (Star s : m_starList) 
             {   
                 if ( s.X > m_star.X + border || s.X < m_star.X - border || s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
                     if ( s.massChecker.currentlyValid ) {
-                        // Draw yellow boxes if valid
-                        dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));    
+                        // Draw blue boxes if valid
+                        dc.SetPen(wxPen(wxColour(0,191,255), 1, wxSOLID));    
                     } else {
                         // Otherwise red
                         dc.SetPen(wxPen(wxColour(255,0,0), 1, wxSOLID));

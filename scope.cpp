@@ -1203,16 +1203,19 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                     {
                         for (Star &j : pFrame->pGuider->m_starList) 
                         {
-                            Line perpAB = GetPerpendicularLine(PHD_Point(i.calStartPos.X, i.calStartPos.Y), PHD_Point(i.calEndPos.X, i.calEndPos.Y));
-                            Line perpCD = GetPerpendicularLine(PHD_Point(j.calStartPos.X, j.calStartPos.Y), PHD_Point(j.calEndPos.X, j.calEndPos.Y));
-                            PHD_Point intersection(0,0);
-                            if ( GetIntersectionPoint(perpAB, perpCD, intersection)) {
-                                Debug.AddLine(wxString::Format("Scope: intersection at %.2f, %.2f", intersection.X, intersection.Y));
-                                xSum += intersection.X;
-                                ySum += intersection.Y;
-                                pointCount += 1;
+                            if ( i != j ) 
+                            {
+                                Line perpAB = GetPerpendicularLine(PHD_Point(i.calStartPos.X, i.calStartPos.Y), PHD_Point(i.calEndPos.X, i.calEndPos.Y));
+                                Line perpCD = GetPerpendicularLine(PHD_Point(j.calStartPos.X, j.calStartPos.Y), PHD_Point(j.calEndPos.X, j.calEndPos.Y));
+                                PHD_Point intersection(0,0);
+                                if ( GetIntersectionPoint(perpAB, perpCD, intersection)) 
+                                {
+                                    Debug.AddLine(wxString::Format("Scope: intersection at %.2f, %.2f", intersection.X, intersection.Y));
+                                    xSum += intersection.X;
+                                    ySum += intersection.Y;
+                                    pointCount += 1;    
+                                }
                             }
-
                         }
                      }
                     PHD_Point averageCenter(xSum / pointCount, ySum / pointCount);
