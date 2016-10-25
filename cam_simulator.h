@@ -56,9 +56,10 @@ public:
     bool    SetCoolerSetpoint(double temperature);
     bool    GetCoolerStatus(bool *on, double *setpoint, double *power, double *temperature);
     bool     ST4PulseGuideScope (int direction, int duration);
+    bool     HexGuide(PHD_Point moveVector, double rotationDeg);
     PierSide SideOfPier() const;
     void     FlipPierSide();
-    void     RotateSimMount(double angleChangeDeg);
+    //void     RotateSimMount(double angleChangeDeg);
 };
 
 #endif

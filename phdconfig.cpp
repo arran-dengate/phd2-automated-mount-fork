@@ -69,7 +69,7 @@ bool ConfigSection::GetBoolean(const wxString& name, bool defaultValue)
         m_pConfig->Read(path, &bReturn, defaultValue);
     }
 
-    Debug.AddLine(wxString::Format("GetBoolean(\"%s\", %d) returns %d", path, defaultValue, bReturn));
+    //Debug.AddLine(wxString::Format("GetBoolean(\"%s\", %d) returns %d", path, defaultValue, bReturn));
 
     return bReturn;
 }
@@ -84,7 +84,7 @@ wxString ConfigSection::GetString(const wxString& name, const wxString& defaultV
         m_pConfig->Read(path, &sReturn, defaultValue);
     }
 
-    Debug.AddLine(wxString::Format("GetString(\"%s\", \"%s\") returns \"%s\"", path, defaultValue, sReturn));
+    //Debug.AddLine(wxString::Format("GetString(\"%s\", \"%s\") returns \"%s\"", path, defaultValue, sReturn));
 
     return sReturn;
 }
@@ -99,7 +99,7 @@ double ConfigSection::GetDouble(const wxString& name, double defaultValue)
         m_pConfig->Read(path, &dReturn, defaultValue);
     }
 
-    Debug.AddLine(wxString::Format("GetDouble(\"%s\", %lf) returns %lf", path, defaultValue, dReturn));
+    //Debug.AddLine(wxString::Format("GetDouble(\"%s\", %lf) returns %lf", path, defaultValue, dReturn));
 
     return dReturn;
 }
@@ -114,7 +114,7 @@ long ConfigSection::GetLong(const wxString& name, long defaultValue)
         m_pConfig->Read(path, &lReturn, defaultValue);
     }
 
-    Debug.AddLine(wxString::Format("GetLong(\"%s\", %ld) returns %ld", path, defaultValue, lReturn));
+    //Debug.AddLine(wxString::Format("GetLong(\"%s\", %ld) returns %ld", path, defaultValue, lReturn));
 
     return lReturn;
 }
@@ -129,7 +129,7 @@ int ConfigSection::GetInt(const wxString& name, int defaultValue)
         m_pConfig->Read(path, &lReturn, defaultValue);
     }
 
-    Debug.AddLine(wxString::Format("GetInt(\"%s\", %d) returns %d", path, defaultValue, (int)lReturn));
+    //Debug.AddLine(wxString::Format("GetInt(\"%s\", %d) returns %d", path, defaultValue, (int)lReturn));
 
     return (int)lReturn;
 }

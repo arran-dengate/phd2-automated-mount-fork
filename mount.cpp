@@ -806,7 +806,6 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
 
-    //Debug.Write(wxString::Format("Mount: Sent guide command %s,%.10f,%.10f,%.10f\n", commandType, yVector, xVector, rotationVector));
     sprintf(message, format, commandType, yVector, xVector, rotationVector);
     Debug.AddLine(wxString::Format("Mount: Sent guide command %s", message));
     ofstream pulse_output;
@@ -820,15 +819,14 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     }
     rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
-    // If the mount is moving while we're taking an exposure, this might help
-    //sleep(0.3); Should probably have used wxMillsleep anyway ... if we ever uncomment this.
-
-    // Rotate simulator mount angle (if we're using the simulator camera)
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        pCamera->RotateSimMount(rotationVector);    
+        // If we're using the simulator, rotate sim camera
+       // pCamera->RotateSimMount(rotationDeg);
+        pCamera->HexGuide(xyVector, rotationVector);
+
     }
 
-    return true; // Change when error checking code implemented
+    return true; // TODO: Implement error checking code
 
 }
 
@@ -962,13 +960,13 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                 rotationAngleDeg = std::max(std::min(rotationAngleDeg, MAX_ROTATION_DISTANCE), MAX_ROTATION_DISTANCE*-1);
             }
             
-                
-
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
             Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
             HexGuide(moveVector, rotationAngleDeg);
-
+            
+        }
+            /*
             // Arran: the rest of this method not currently used, left in for now.
             if (moveType == MOVETYPE_ALGO)
             {
@@ -993,7 +991,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                     m_backlashComp->ResetBaseline();
             }
         }
-        /*
+        
         // Figure out the guide directions based on the (possibly) updated distances
         GUIDE_DIRECTION xDirection = xDistance > 0.0 ? LEFT : RIGHT;
         GUIDE_DIRECTION yDirection = yDistance > 0.0 ? DOWN : UP;
@@ -1017,7 +1015,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
         // Record the info about the guide step. The info will be picked up back in the main UI thread.
         // We don't want to do anything with the info here in the worker thread since UI operations are
         // not allowed outside the main UI thread.
-
+        */
         GuideStepInfo& info = m_lastStep;
 
         info.moveType = moveType;
@@ -1027,18 +1025,18 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
         info.mountOffset = mountVectorEndpoint;
         info.guideDistanceRA = xDistance;
         info.guideDistanceDec = yDistance;
-        info.durationRA = xMoveResult.amountMoved;
-        info.directionRA = xDirection;
-        info.durationDec = yMoveResult.amountMoved;
-        info.directionDec = yDirection;
-        info.raLimited = xMoveResult.limited;
-        info.decLimited = yMoveResult.limited;
+        info.durationRA = xDistance; // xMoveResult.amountMoved;
+        info.directionRA = RIGHT;//xDirection;
+        info.durationDec = yDistance; //yMoveResult.amountMoved;
+        info.directionDec = UP; //yDirectioni;
+        info.raLimited = false; //xMoveResult.limited;
+        info.decLimited = false; // yMoveResult.limited;
         info.aoPos = GetAoPos();
         info.starMass = pFrame->pGuider->StarMass();
         info.starSNR = pFrame->pGuider->SNR();
         info.avgDist = pFrame->pGuider->CurrentError();
         info.starError = pFrame->pGuider->StarError();
-        */
+        
     }
     catch (const wxString& errMsg)
     {

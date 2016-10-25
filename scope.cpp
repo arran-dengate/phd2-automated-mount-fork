@@ -39,6 +39,7 @@
 #include "image_math.h"
 #include "socket_server.h"
 #include "gperftools/profiler.h" // Google profiler - needed for debugging only!
+#include "cam_simulator.h"
 
 #include <wx/textfile.h>
 
@@ -575,13 +576,15 @@ void Scope::AlertLimitReached(int duration, GuideAxis axis)
 
 Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double rotationDeg, MountMoveType moveType, MoveResultInfo *moveResult)
 {
+    // This method is now only triggered during calibration moves.
+
     MOVE_RESULT result = MOVE_OK;
     bool limitReached = false;
 
-    // TODO actually use duration and moveType
-    Debug.Write(wxString::Format("Scope move(direction %d, duration %d, movetype %d, rotationDeg %f)\n", direction, duration, moveType, rotationDeg));
+    Debug.AddLine(wxString::Format("Scope: scope move triggered"));
+
+    Debug.Write(wxString::Format("Scope: move(direction %d, duration %d, movetype %d, rotationDeg %f)\n", direction, duration, moveType, rotationDeg));
     double moveAmount = (double)duration / 1000000;
-    Debug.Write(wxString::Format("moveAmount %f\n", moveAmount));
     PHD_Point movePoint(0,0);
     switch (direction)
     {
@@ -607,8 +610,6 @@ Mount::MOVE_RESULT Scope::Move(GUIDE_DIRECTION direction, int duration, double r
     
     try
     {
-        Debug.Write(wxString::Format("Move(%d, %d, %d)\n", direction, duration, moveType));
-
         if (!m_guidingEnabled)
         {
             throw THROW_INFO("Guiding disabled");

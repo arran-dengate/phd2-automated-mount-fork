@@ -270,15 +270,9 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
             if (pArgs->calibrationMove)
             {
                 Debug.AddLine("Calibration move");
-                if (pArgs->rotationDeg != 0) {
-                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationDeg));
-                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationDeg);
-                } else {
-                    Debug.AddLine(wxString::Format("Worker_thread: Calibration move doesn't have rotational component"));
-                    result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
-                }
+                Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationDeg));
+                result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationDeg);
 
-                //result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration);
                 if (result != Mount::MOVE_OK)
                 {
                     throw ERROR_INFO("CalibrationMove failed");
@@ -286,16 +280,8 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
             }
             else
             {
-                Debug.Write(wxString::Format("endpoint = (%.2f, %.2f)\n",
-                    pArgs->vectorEndpoint.X, pArgs->vectorEndpoint.Y));
-                
-                if (pArgs->rotationDeg != 0) {
-                    Debug.AddLine(wxString::Format("Worker_thread: move has rotational component %f", pArgs->rotationDeg));
-                    result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType, pArgs->rotationDeg);
-                } else {
-                    Debug.AddLine(wxString::Format("Worker_thread: move doesn't have rotational component"));
-                    result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType, 0);
-                }
+                //Debug.Write(wxString::Format("endpoint = (%.2f, %.2f)\n", pArgs->vectorEndpoint.X, pArgs->vectorEndpoint.Y));
+                result = pArgs->pMount->Move(pArgs->vectorEndpoint, pArgs->moveType, pArgs->rotationDeg);
 
                 if (result != Mount::MOVE_OK)
                 {

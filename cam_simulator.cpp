@@ -1003,7 +1003,6 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
     
     double rotX = -float(width/2);
     double rotY = -float(height/2);
-    Debug.AddLine(wxString::Format("Simulator: -float(width/2) %f", rotX));
     RotateStarfield(pos, rotX, rotY, skyRotation);
 
     // Apply shifts caused by drift + manual movement 
@@ -1320,6 +1319,7 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
     double magnitude = SimCamParams::guide_rate * duration / (250.0 * SimCamParams::image_scale);
+    Debug.AddLine(wxString::Format("Simulator: Magnitude %f", magnitude));
     // Note, a sensible step is 11.63
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
@@ -1334,6 +1334,21 @@ bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
     sim->dec_ofs.incr(y);
     WorkerThread::MilliSleep(duration / 1000, WorkerThread::INT_ANY);
     return false;
+}
+
+bool Camera_SimClass::HexGuide(PHD_Point moveVector, double rotationDeg)
+{
+    //double magnitude = SimCamParams::guide_rate  (250.0 * SimCamParams::image_scale);
+    Debug.AddLine(wxString::Format("Simulator: Guiding by x %f y %f r %f", moveVector.X, moveVector.Y, rotationDeg));
+    const double SCALE_FACTOR = 200;
+    moveVector.X *= -1;
+    moveVector.Y *= -1;
+    sim->ra_ofs += moveVector.X * SCALE_FACTOR;
+    sim->dec_ofs.incr(moveVector.Y * SCALE_FACTOR);
+    WorkerThread::MilliSleep(moveVector.X + moveVector.Y / 10, WorkerThread::INT_ANY);
+
+    sim->mount_rotation_deg += rotationDeg;
+    
 }
 
 bool Camera_SimClass::SetCoolerOn(bool on)
@@ -1817,11 +1832,5 @@ void Camera_SimClass::ShowPropertyDialog()
         sim->Initialize();
     }
 }
-
-void Camera_SimClass::RotateSimMount(double angleChangeDeg)
-{    
-    sim->mount_rotation_deg += angleChangeDeg;
-}
-
 
 #endif // SIMULATOR

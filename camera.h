@@ -185,8 +185,8 @@ public:
 
     virtual const wxSize& DarkFrameSize() { return FullSize; }
 
-    virtual void RotateSimMount(double angleChangeRadians) {}; // For cam angle at runtime in simulator. Overridden there only.
-
+    //virtual void RotateSimMount(double angleChangeRadians) {}; // For cam angle at runtime in simulator. Overridden there only.
+    virtual bool HexGuide(PHD_Point moveVector, double rotationDeg) {}; // For cam angle at runtime in simulator. Overridden there only.
 
 protected:
 

@@ -1507,9 +1507,15 @@ void MyFrame::ScheduleCalibrationMove(Mount *mount, const GUIDE_DIRECTION direct
 
     // TODO - find a better way to deal with the deviations between simulator response and mount response
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        // Simulator gets a fixed calibration move, regardless of settings
+        // Simulator gets a fixed calibration move, regardless of settings.  
         const double FIXED_SIMULATOR_MOVE_AMOUNT = 50;
-        m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, FIXED_SIMULATOR_MOVE_AMOUNT, rotationDeg);    
+        if ( duration != 0 ) {
+            m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, FIXED_SIMULATOR_MOVE_AMOUNT, rotationDeg);    
+        } else {
+            m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, 0, rotationDeg); // Unless it's purely a rotational move.
+        }
+        
+        //pCamera->RotateSimMount(rotationDeg);    
     } else {
         // Everything else is treated normally
         m_pPrimaryWorkerThread->EnqueueWorkerThreadMoveRequest(mount, direction, duration, rotationDeg);
