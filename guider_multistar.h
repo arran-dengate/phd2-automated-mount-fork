@@ -132,6 +132,7 @@ private:
     void InvalidateCurrentPosition(bool fullReset = false);
     bool UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *errorInfo);
     bool SetCurrentPosition(usImage *pImage, const PHD_Point& position);
+    void UpdateStar(Star &s, Star &newStar);
 
     void OnLClick(wxMouseEvent& evt);
 

@@ -66,7 +66,7 @@ GuiderMultiStar::GuiderMultiStar(wxWindow *parent)
     : Guider(parent, XWinSize, YWinSize)
 {
     SetState(STATE_UNINITIALIZED);
-    
+    m_rotationCenter.SetXY(-10, -10);
 }
 
 GuiderMultiStar::~GuiderMultiStar()
@@ -587,19 +587,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
             s->massChecker.validationChances -= 1;
             s->massChecker.currentlyValid = false;
         } else {
-            s->prevPositions.push_front(PHD_Point(s->X, s->Y));
-            s->X       = newStar.X;
-            s->Y       = newStar.Y;
-            s->Mass    = newStar.Mass;
-            s->SNR     = newStar.SNR;
-            s->HFD     = newStar.HFD;
-            s->PeakVal = newStar.PeakVal;
-            s->massChecker.AppendData(newStar.Mass);
-            s->massChecker.validationChances = 3;
-            s->massChecker.currentlyValid = true;
-        }  
-        if (s->prevPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
-            s->prevPositions.pop_back(); // Only keep the most recent
+            UpdateStar(*s, newStar);
         }
 
         if (s->massChecker.validationChances <= 0) {
@@ -607,91 +595,99 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 m_starList.erase(s);
         } else {
                 s++;
+        }        
+    }
+
+    // Star recovery! Keep track of where stars should be, based on initial position and the motion of the other secondaries.
+    
+    if ( ! ( GetState() == STATE_GUIDING ) )  {    
+        double calAngleSum   = 0;
+        double calAngleCount = 0;
+        for (Star &s : m_starList ) {
+            if ( s.massChecker.currentlyValid and s != m_star) {
+                double currentAngle  = degrees(s.Angle(m_star));
+                double originalAngle = s.preCalAngle;
+                double angleDiff     = currentAngle - originalAngle;
+                if (angleDiff >  180) angleDiff -= 360;
+                if (angleDiff < -180) angleDiff += 360;
+                double distance = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
+                calAngleSum    += angleDiff;
+                calAngleCount ++;
+            }
         }
+        Debug.AddLine(wxString::Format("Guider: calAngleSum %f calAngleCount %f", calAngleSum, calAngleCount));
+        calAngleSum /= calAngleCount;
+        Debug.AddLine(wxString::Format("Guider: cal avg %f", calAngleSum));
         
-            
-        //Debug.Write(wxString::Format("Star: Star with mass %f:\n", s.Mass));
-        //for (PHD_Point p : s.prevPositions ) {
-        //    Debug.Write(wxString::Format("Star: Previous position %f %f\n", p.X, p.Y));
-        //}
-    }
-
-    // Second chance! We calculate average position difference and use it to recover lost stars.
-    // TODO: Improve this. It's not very good currently.
-    /*
-    double xDiffSum     = 0;
-    double yDiffSum     = 0;
-    double posCount     = 0;
-    for (Star s : m_starList ) {
-        if ( s.massChecker.currentlyValid ) {
-            xDiffSum += s.X - s.prevPositions.front().X;
-            yDiffSum += s.Y - s.prevPositions.front().Y;
-            posCount ++;     
+        // Now find the lost ones, using this info
+        for ( Star &s : m_starList ) {
+            if ( s != m_star && ! s.massChecker.currentlyValid ) {
+                double expectedAngle = s.preCalAngle + calAngleSum;
+                if ( expectedAngle >  360 ) expectedAngle -= 360;
+                if ( expectedAngle < -360 ) expectedAngle += 360;
+                s.lastAngleDiff = expectedAngle;
+                double expectedX = m_star.X + (s.preCalDistance * cos(radians(expectedAngle)));
+                double expectedY = m_star.Y + (s.preCalDistance * sin(radians(expectedAngle)));
+                
+                Star newStar(s);
+                //Debug.AddLine(wxString::Format("Guider: lost star last seen %f %f, searching at %f %f.", s.X, s.Y, expectedX, expectedY));
+                s.lastExpectedPos.SetXY(expectedX, expectedY); 
+                if ( newStar.Find(pImage, m_searchRegion, expectedX, expectedY, pFrame->GetStarFindMode())) {
+                    Debug.AddLine(wxString::Format("Guider: Recovered star at %f, %f", expectedX, expectedY));
+                    //UpdateStar(s, newStar);
+                    s.X = expectedX;
+                    s.Y = expectedY;
+                }
+                Debug.AddLine(wxString::Format("Guider: s.preCalDistance %f s.preCalAngle %f, expected X %f Y %f", s.preCalDistance, s.preCalAngle, expectedX, expectedY));
+            }
         }
     }
-    double xDiffAvg = xDiffSum / posCount;
-    double yDiffAvg = yDiffSum / posCount;
-    Debug.AddLine(wxString::Format("Guider: save avg posdiff x %f y %f", xDiffAvg, yDiffAvg));
-
-    std::vector<Star>::iterator s2 = m_starList.begin(); 
-    while (s2 != m_starList.end()) {
-        Star newStar(*s2);
-        if ( ! s2->massChecker.currentlyValid )  {
-            Debug.AddLine(wxString::Format("Guider: Retrying to save star last seen %f, %f, looking at %f, %f", s2->X, s2->Y, s2->X + xDiffAvg * 1.5, s2->Y + yDiffAvg * 1.5));
-            if ( newStar.Find(pImage, m_searchRegion, s2->X + xDiffAvg * 1.5, s2->Y + yDiffAvg * 1.5, pFrame->GetStarFindMode())) {
-                s2->prevPositions.push_front(PHD_Point(s2->X, s2->Y));
-                s2->X       = newStar.X;
-                s2->Y       = newStar.Y;
-                s2->Mass    = newStar.Mass;
-                s2->SNR     = newStar.SNR;
-                s2->HFD     = newStar.HFD;
-                s2->PeakVal = newStar.PeakVal;
-                s2->massChecker.AppendData(newStar.Mass);
-                s2->massChecker.validationChances = 3;
-                s2->massChecker.currentlyValid = true;
-                Debug.AddLine(wxString::Format("Guider: Last minute save at %f, %f!", s2->X, s2->Y));
-            }       
-        }
-        s2++;
-    }    
-    */
 
     if ( GetState() == STATE_GUIDING ) {
         if ( ! m_guidingPositionsInitialised ) {
             for ( Star &s : m_starList ) {
             s.guidingStartPos = PHD_Point(s.X, s.Y);
-            Debug.AddLine(wxString::Format("Guider: initialised true x %f y %f", s.guidingStartPos.X, s.guidingStartPos.Y));
             }
         }
         m_guidingPositionsInitialised = true;    
         
-        // Calculate angle difference.
+        // Calculate angle difference for tracking. Uses weighted average (stars further away from center have relatively less jitter.)
         double angleSum   = 0;
         double angleCount = 0;
         for (Star &s : m_starList ) {
             if ( s.massChecker.currentlyValid and s != m_star) {
-                //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
                 double currentAngle  = degrees(s.Angle(m_star));
                 double originalAngle = degrees(s.guidingStartPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y)));
                 double angleDiff     = currentAngle - originalAngle;
                 if (angleDiff >  180) angleDiff -= 360;
                 if (angleDiff < -180) angleDiff += 360;
                 double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
-                Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original pos x %f y %f, lock x %f y %f", s.X, s.Y, 
-                                               s.guidingStartPos.X, s.guidingStartPos.Y, LockPosition().X, LockPosition().Y));                    
-                Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
-                Debug.AddLine(wxString::Format("Guider: distance %f", distance));
                 s.lastAngleDiff = angleDiff;
                 angleSum   += angleDiff;
                 angleCount ++;
             }
         }
-        Debug.AddLine(wxString::Format("Guider: angleSum %f angleCount %f", angleSum, angleCount));
         angleSum /= angleCount;
         m_rotationGuideNeeded = angleSum * -1;
-        Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
+        //Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
     }
     return bError;
+}
+
+void GuiderMultiStar::UpdateStar(Star &s, Star &newStar) {
+    s.prevPositions.push_front(PHD_Point(s.X, s.Y));
+    s.X       = newStar.X;
+    s.Y       = newStar.Y;
+    s.Mass    = newStar.Mass;
+    s.SNR     = newStar.SNR;
+    s.HFD     = newStar.HFD;
+    s.PeakVal = newStar.PeakVal;
+    s.massChecker.AppendData(newStar.Mass);
+    s.massChecker.validationChances = 7;
+    s.massChecker.currentlyValid = true;  
+    if (s.prevPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
+        s.prevPositions.pop_back(); // Only keep the most recent
+    }
 }
 
 bool GuiderMultiStar::IsValidLockPosition(const PHD_Point& pt)
@@ -903,16 +899,27 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                     }    
                 }
 
-                // Also debugging info!
-                if ( s != m_star  && state == STATE_GUIDING) {
-                    wxString strAngle = wxString::Format(wxT("%f"),s.lastAngleDiff);
+                // Also show when star recovery is being attempted
+                if ( s != m_star and ! s.massChecker.currentlyValid and GetState() == STATE_CALIBRATING_PRIMARY ) {
+                    
+                    // Boxes
+                    Star tempStar;
+                    tempStar.SetXY(s.lastExpectedPos.X, s.lastExpectedPos.Y);
+                    dc.SetPen(wxPen(wxColour(250,127,227), 1, wxSOLID));    
+                    DrawBox(dc, tempStar, m_searchRegion, m_scaleFactor);    
+                }
+
+                // Debugging info
+
+                if ( GetState() == STATE_GUIDING and s != m_star ) {
+                    //Place text near stars
+                    wxString strAngle = wxString::Format(wxT("%.3f"),s.lastAngleDiff);
                     wxColour original = dc.GetTextForeground();
                     dc.SetTextForeground(wxColour(255, 255, 255));
                     dc.DrawText(strAngle, s.X * m_scaleFactor + 10, s.Y * m_scaleFactor + 10);
-                    dc.SetTextForeground(original);    
+                    dc.SetTextForeground(original);
                 }
                 
-
             }    
         } 
 

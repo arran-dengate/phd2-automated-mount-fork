@@ -854,11 +854,11 @@ wxObject *  clientData = NULL
     MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
     MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guide_bmp, guide_bmp_disabled, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
     MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
-    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
+    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), brain_bmp, brain_bmp, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
-    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
+    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), brain_bmp, brain_bmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
     MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));

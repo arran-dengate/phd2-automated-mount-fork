@@ -409,7 +409,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
 
                 if (newWidth > 0 && newHeight > 0)
                 {
-                    m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_HIGH);
+                    m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
                 }
             }
             else

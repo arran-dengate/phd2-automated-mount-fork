@@ -1077,6 +1077,11 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
             m_calibrationStartingLocation = currentLocation;
             GetRADecCoordinates(&m_calibrationStartingCoords);
 
+            for ( Star &s : pFrame->pGuider->m_starList ) {
+                s.preCalAngle    = degrees(s.Angle(PHD_Point(pFrame->pGuider->LockPosition().X, pFrame->pGuider->LockPosition().Y)));
+                s.preCalDistance = s.Distance(PHD_Point(pFrame->pGuider->LockPosition().X, pFrame->pGuider->LockPosition().Y));
+            }
+
             Debug.Write(wxString::Format("Scope::UpdateCalibrationstate: starting location = %.2f,%.2f coords = %s\n",
                 currentLocation.X, currentLocation.Y,
                 m_calibrationStartingCoords.IsValid() ?
