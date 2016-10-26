@@ -71,8 +71,11 @@ public:
     std::deque<PHD_Point> prevPositions;
     PHD_Point calStartPos;
     PHD_Point calEndPos;
-    PHD_Point guidingStartPos;
-    double lastAngleDiff;
+    PHD_Point guidingStartPos; 
+    double preCalAngle;
+    double preCalDistance;
+    double lastAngleDiff; // Only needed for debugging
+    PHD_Point lastExpectedPos; // Only needed for debugging
 
     Star(void);
     ~Star();
