@@ -656,61 +656,41 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
     }    
     */
 
-    // TODO: Actually use this! Currently we're only using the calendpos!
-    if ( GetState() == STATE_GUIDING and ! m_guidingPositionsInitialised) {
-        m_guidingPositionsInitialised = true;
-        for ( Star s : m_starList ) {
-            s.guidingStartPos =  PHD_Point(s.X, s.Y);
-            //Debug.AddLine(wxString::Format("Guider: initialised true x %f y %f", s.X, s.Y));
-        }
-    }
-
-    // Calculate angle difference.
-    double angleSum   = 0;
-    double angleCount = 0;
-    for (Star s : m_starList ) {
-        if ( s.massChecker.currentlyValid ) {
-            //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
-            double currentAngle  = s.Angle(m_star);
-            double originalAngle = s.calEndPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y));
-            double angleDiff     = currentAngle - originalAngle;
-            double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
-            Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original x %f y %f", s.X, s.Y, LockPosition().X, LockPosition().Y));                    
-            Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
-            Debug.AddLine(wxString::Format("Guider: distance %f", distance));
-            angleSum   += angleDiff;
-            angleCount ++;
-        }
-
-    }
-    angleSum /= angleCount;
-    m_rotationGuideNeeded = degrees(angleSum) * -1;
-    Debug.AddLine(wxString::Format("Guider: avg (degrees) %f", degrees(angleSum)));
-    
-    /*
-    // Calculate angle difference. TODO: Move this code to a more sensible location   
-    double angleSum   = 0;
-    double angleCount = 0;
-    for (Star s : m_starList ) {
-        for (Star o : m_starList) {
-            if ( s != o) {
-                //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
-                double currentAngle  = s.Angle(o);
-                double previousAngle = s.prevPositions.front().Angle(o.prevPositions.front());
-                double angleDiff     = currentAngle - previousAngle;
-                double distance      = s.Distance(o);
-                //Debug.AddLine(wxString::Format("Guider: Position x %f y %f, previous x %f y %f", s.X, s.Y, s.prevPositions.front().X, s.prevPositions.front().Y));                    
-                //Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, previousAngle, angleDiff));                    
-                //Debug.AddLine(wxString::Format("Guider: distance %f", distance));
-                angleSum   += angleDiff * distance;
-                angleCount += distance;
+    if ( GetState() == STATE_GUIDING ) {
+        if ( ! m_guidingPositionsInitialised ) {
+            for ( Star &s : m_starList ) {
+            s.guidingStartPos = PHD_Point(s.X, s.Y);
+            Debug.AddLine(wxString::Format("Guider: initialised true x %f y %f", s.guidingStartPos.X, s.guidingStartPos.Y));
             }
         }
+        m_guidingPositionsInitialised = true;    
+        
+        // Calculate angle difference.
+        double angleSum   = 0;
+        double angleCount = 0;
+        for (Star &s : m_starList ) {
+            if ( s.massChecker.currentlyValid and s != m_star) {
+                //Debug.AddLine(wxString::Format("Guider: Angle %f Star x %f y %f, other x %f y %f", degrees(s.Angle(o)), s.X, s.Y, o.X, o.Y));
+                double currentAngle  = degrees(s.Angle(m_star));
+                double originalAngle = degrees(s.guidingStartPos.Angle(PHD_Point(LockPosition().X, LockPosition().Y)));
+                double angleDiff     = currentAngle - originalAngle;
+                if (angleDiff >  180) angleDiff -= 360;
+                if (angleDiff < -180) angleDiff += 360;
+                double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
+                Debug.AddLine(wxString::Format("Guider: Position x %f y %f, original pos x %f y %f, lock x %f y %f", s.X, s.Y, 
+                                               s.guidingStartPos.X, s.guidingStartPos.Y, LockPosition().X, LockPosition().Y));                    
+                Debug.AddLine(wxString::Format("Guider: currentAngle %7.5f prevAngle %7.5f, diff %7.5f", currentAngle, originalAngle, angleDiff));                    
+                Debug.AddLine(wxString::Format("Guider: distance %f", distance));
+                s.lastAngleDiff = angleDiff;
+                angleSum   += angleDiff;
+                angleCount ++;
+            }
+        }
+        Debug.AddLine(wxString::Format("Guider: angleSum %f angleCount %f", angleSum, angleCount));
+        angleSum /= angleCount;
+        m_rotationGuideNeeded = angleSum * -1;
+        Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
     }
-    angleSum /= angleCount;
-    Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
-    */
-
     return bError;
 }
 
@@ -824,7 +804,6 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         // now decorate the image to show the selection
 
         // Arran: This is how to draw something on the screen!
-        
         //wxString strAngle = wxString::Format(wxT("%f"),RotationAngleDelta());
         //wxColour original = dc.GetTextForeground();
         //dc.SetTextForeground(wxColour(255, 255, 255));
@@ -923,6 +902,16 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                         prevPoint = p;
                     }    
                 }
+
+                // Also debugging info!
+                if ( s != m_star  && state == STATE_GUIDING) {
+                    wxString strAngle = wxString::Format(wxT("%f"),s.lastAngleDiff);
+                    wxColour original = dc.GetTextForeground();
+                    dc.SetTextForeground(wxColour(255, 255, 255));
+                    dc.DrawText(strAngle, s.X * m_scaleFactor + 10, s.Y * m_scaleFactor + 10);
+                    dc.SetTextForeground(original);    
+                }
+                
 
             }    
         } 

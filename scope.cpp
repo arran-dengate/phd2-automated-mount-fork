@@ -1229,13 +1229,8 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
             case CALIBRATION_STATE_COMPLETE:
 
-
                 pFrame->pGuider->m_star.calEndPos = PHD_Point(pFrame->pGuider->m_star.X, pFrame->pGuider->m_star.Y);
-                //The end position is used later when calculating rotation
-                for (Star &s : pFrame->pGuider->m_starList) {
-                    s.calEndPos = PHD_Point(s.X, s.Y);
-                    //Debug.AddLine(wxString::Format("Scope: Cal end %f x %f y", s.calEndPos.X, s.calEndPos.Y));
-                }
+                pFrame->pGuider->m_guidingPositionsInitialised = false;
 
                 // Work out camera correction angle 
                 Debug.AddLine("Calibration complete.");

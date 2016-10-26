@@ -1340,8 +1340,8 @@ bool Camera_SimClass::HexGuide(PHD_Point moveVector, double rotationDeg)
 {
     //double magnitude = SimCamParams::guide_rate  (250.0 * SimCamParams::image_scale);
     Debug.AddLine(wxString::Format("Simulator: Guiding by x %f y %f r %f", moveVector.X, moveVector.Y, rotationDeg));
-    const double SCALE_FACTOR = 200;
-    moveVector.X *= -1;
+    const double SCALE_FACTOR = 250;
+    //moveVector.X *= -1;
     moveVector.Y *= -1;
     sim->ra_ofs += moveVector.X * SCALE_FACTOR;
     sim->dec_ofs.incr(moveVector.Y * SCALE_FACTOR);

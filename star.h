@@ -72,6 +72,7 @@ public:
     PHD_Point calStartPos;
     PHD_Point calEndPos;
     PHD_Point guidingStartPos;
+    double lastAngleDiff;
 
     Star(void);
     ~Star();

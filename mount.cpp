@@ -940,13 +940,12 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             xVector = xDistance * 0.001695391; 
             yVector = yDistance * 0.001695137;  
 
-            // If debugging value set in profile, scale movements by this value.
-            //const double MOVE_SCALE_FACTOR = pConfig->Profile.GetDouble("/debug/MoveScaleFactor", 1.0); 
+            // Scale movements by this value.
+            //const double MOVE_SCALE_FACTOR = 0.5; 
             //xVector *= MOVE_SCALE_FACTOR;
             //yVector *= MOVE_SCALE_FACTOR;i
 
-            // If this debugging value is set in the profile, put an upper limit on the distance of a single move.
-            //const double MAX_MOVE_DISTANCE = pConfig->Profile.GetDouble("/debug/MaxMoveCommandRadians", -1.0);
+            // Put an upper limit on the distance of a single move.
             //const double MAX_MOVE_DISTANCE = 0.02;
             //if ( MAX_MOVE_DISTANCE > 0 ) {
             //    Debug.AddLine(wxString::Format("Mount: capping max move distance at %f", MAX_MOVE_DISTANCE));
@@ -954,12 +953,17 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             //    yVector = std::max(MAX_MOVE_DISTANCE * -1, std::min(yVector, MAX_MOVE_DISTANCE));
             //}
             
-            const double MAX_ROTATION_DISTANCE = 0.7;
+            // For debugging, this can be set to zero to disable rotation guiding.
+            const double MAX_ROTATION_DISTANCE = 0.5;
             if (abs(rotationAngleDeg) > MAX_ROTATION_DISTANCE) {
                 Debug.AddLine(wxString::Format("Mount: rotation distance of %f was capped at %f", rotationAngleDeg, MAX_ROTATION_DISTANCE));    
                 rotationAngleDeg = std::max(std::min(rotationAngleDeg, MAX_ROTATION_DISTANCE), MAX_ROTATION_DISTANCE*-1);
             }
             
+            // Reverse as needed.
+            xVector *= -1;
+            //yVector *= -1;
+
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
             Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
