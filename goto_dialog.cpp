@@ -186,7 +186,7 @@ GotoDialog::GotoDialog(void)
     m_gotoButton = new wxButton(this, wxID_ANY, _("Go to"));
     m_gotoButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnGoto, this);
     m_gotoButton->SetToolTip(_("Traverse mount to selected astronomical feature"));
-    m_gotoButton->Disable();
+    //m_gotoButton->Disable(); TODO - fix this so it only disables when no valid destination
     buttonSizer->Add(m_gotoButton);
 
     SetSizer(containBox);
@@ -328,7 +328,7 @@ void GotoDialog::UpdateLocationText(void) {
         m_destinationAlt->SetLabel("-");
         m_destinationAz->SetLabel("-");
         m_destinationType->SetLabel("-");
-        m_gotoButton->Disable();
+        //m_gotoButton->Disable(); TODO fix this
     }
 
     if ( not pFrame->pGuider->IsImageSaved() ) {
@@ -442,6 +442,7 @@ void GotoDialog::OnCalibrate(wxCommandEvent& )
     EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
     
     pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt); // TODO - fill in missing angle
+    Debug.AddLine("Goto: Ending onCalibrate");
 }
 
 void GotoDialog::OnGoto(wxCommandEvent& )

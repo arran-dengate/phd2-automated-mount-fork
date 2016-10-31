@@ -51,7 +51,7 @@ public:
     void OnDitherScaleChange(wxSpinDoubleEvent& evt);
     void OnRAOnlyChecked(wxCommandEvent& evt);
     void OnDither(wxCommandEvent& evt);
-    void OnClose(wxCloseEvent& evt);
+    void OnClose(wxCommandEvent& event);
     void OnAppStateNotify(wxCommandEvent& evt);
     DECLARE_EVENT_TABLE()
 };
@@ -78,7 +78,6 @@ wxBEGIN_EVENT_TABLE(TestGuideDialog, wxDialog)
     EVT_BUTTON(MGUIDE2_RIGHT,TestGuideDialog::OnButton)
     EVT_BUTTON(MGUIDE2_LEFT,TestGuideDialog::OnButton)
     EVT_BUTTON(ID_RESET, TestGuideDialog::OnReset)
-    EVT_CLOSE(TestGuideDialog::OnClose)
     EVT_COMMAND(wxID_ANY, APPSTATE_NOTIFY_EVENT, TestGuideDialog::OnAppStateNotify)
     EVT_SPINCTRLDOUBLE(ID_DITHERSCALE, TestGuideDialog::OnDitherScaleChange)
     EVT_CHECKBOX(ID_RAONLY, TestGuideDialog::OnRAOnlyChecked)
@@ -220,6 +219,9 @@ TestGuideDialog::TestGuideDialog() :
         pOuterSizer->Add(pWrapperSizer,wxSizerFlags().Border(wxALL,3).Center().Expand());
     }
 
+    wxButton *cancelButton = new wxButton(this, wxID_ANY, _("Cancel"));
+    cancelButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &TestGuideDialog::OnClose, this);
+    pOuterSizer->Add(cancelButton, wxSizerFlags().Border(wxALL,3).Right().Expand());
     pOuterSizer->SetSizeHints(this);
     SetSizerAndFit(pOuterSizer);
 }
@@ -229,7 +231,7 @@ TestGuideDialog::~TestGuideDialog(void)
     pFrame->pManualGuide = 0;
 }
 
-void TestGuideDialog::OnClose(wxCloseEvent& evt)
+void TestGuideDialog::OnClose(wxCommandEvent& evt)
 {
     int val = (int) floor(pulseDurationSpinCtrl->GetValue());
     pConfig->Profile.SetInt("/ManualGuide/duration", val);
