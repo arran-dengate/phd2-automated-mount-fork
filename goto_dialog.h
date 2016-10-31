@@ -58,11 +58,13 @@ private:
 
     wxTimer *m_timer; 
 
+    wxButton *m_calibrateButton;
     wxButton *m_gotoButton;
 
     int prevExposureDuration;
 
     int StringWidth(const wxString& string);
+    void OnCalibrate(wxCommandEvent& event);
     void OnGoto(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);

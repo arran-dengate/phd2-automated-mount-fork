@@ -178,6 +178,11 @@ GotoDialog::GotoDialog(void)
     cancelButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnClose, this);
     buttonSizer->Add(cancelButton);
 
+    m_calibrateButton = new wxButton(this, wxID_ANY, _("Calibrate"));
+    m_calibrateButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnCalibrate, this);
+    m_calibrateButton->SetToolTip(_("Take an exposure and work out where mount is currently pointing"));
+    buttonSizer->Add(m_calibrateButton);
+
     m_gotoButton = new wxButton(this, wxID_ANY, _("Go to"));
     m_gotoButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnGoto, this);
     m_gotoButton->SetToolTip(_("Traverse mount to selected astronomical feature"));
@@ -337,7 +342,6 @@ void GotoDialog::UpdateLocationText(void) {
 
 bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
 
-    Debug.AddLine(wxString::Format("Goto: Preparing to read catalog"));
     string line;
     string cell;
 
@@ -376,23 +380,8 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     return true;
 } 
 
-void GotoDialog::OnGoto(wxCommandEvent& )
+void GotoDialog::OnCalibrate(wxCommandEvent& )
 {
-    // TODO - integrate the altitude check as a warning into the main dialog and disasbled goto button, rather than modal dialog.
-    if (std::stod(string(m_destinationAlt->GetLabel())) < 0 ) {
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                      wxString::Format("Destination is below the horizon and cannot be viewed!\n"
-                                                                       "If you believe this is not the case, check that the time and GPS location are correct."), 
-                                                      wxString::Format("Cannot goto"), 
-                                                      wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();
-        return;
-    }
-
-    // --------------------
-    // Perform calibration!
-    // --------------------
-
     // Create directory if does not exist
     struct stat info;
     if( stat( IMAGE_DIRECTORY, &info ) != 0 ) {
@@ -453,6 +442,20 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
     
     pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt); // TODO - fill in missing angle
+}
+
+void GotoDialog::OnGoto(wxCommandEvent& )
+{
+    // TODO - integrate the altitude check as a warning into the main dialog and disasbled goto button, rather than modal dialog.
+    if (std::stod(string(m_destinationAlt->GetLabel())) < 0 ) {
+        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+                                                      wxString::Format("Destination is below the horizon and cannot be viewed!\n"
+                                                                       "If you believe this is not the case, check that the time and GPS location are correct."), 
+                                                      wxString::Format("Cannot goto"), 
+                                                      wxOK|wxCENTRE, wxDefaultPosition);
+        alert->ShowModal();
+        return;
+    }
 
     // --------------------
     // Goto!
