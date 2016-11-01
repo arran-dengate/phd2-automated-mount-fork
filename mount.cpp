@@ -961,7 +961,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             }
             
             // Reverse as needed.
-            xVector *= -1;
+            //xVector *= -1;
             //yVector *= -1;
 
             // Make the mount move.

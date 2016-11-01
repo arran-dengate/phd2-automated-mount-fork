@@ -593,15 +593,10 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double
     
     strLocation = astOutput.find("Field rotation angle");
     const string line2 = astOutput.substr(strLocation, strLocation+30);
-    regex angleReg("[[:digit:]]+\\.?[[:digit:]]+");
+    regex angleReg("-?[[:digit:]]+\\.?[[:digit:]]+");
     smatch angleMatch;
     regex_search(line2.begin(), line2.end(), angleMatch, angleReg);
     outAstroRotationAngle = stod(angleMatch[0]);
-    Debug.AddLine(wxString::Format("Goto: rotation angle was %f uncorrected", outAstroRotationAngle));
-    if ( line2.find("W of N") != std::string::npos ) {
-        outAstroRotationAngle *= -1;
-    }
-    Debug.AddLine(wxString::Format("Goto: rotation angle was %f corrected", outAstroRotationAngle));
 
     return true;
 }
