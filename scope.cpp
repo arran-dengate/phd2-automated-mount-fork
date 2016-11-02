@@ -58,7 +58,7 @@ static const GUIDE_ALGORITHM DefaultDecGuideAlgorithm = GUIDE_ALGORITHM_RESIST_S
 
 static const double DEC_BACKLASH_DISTANCE = 3.0;
 static const int MAX_CALIBRATION_STEPS = 60;
-static const double MAX_CALIBRATION_DISTANCE = 25.0;
+static const double MAX_CALIBRATION_DISTANCE = 40.0;
 static const int CAL_ALERT_MINSTEPS = 4;
 static const double CAL_ALERT_ORTHOGONALITY_TOLERANCE = 12.5;               // Degrees
 static const double CAL_ALERT_DECRATE_DIFFERENCE = 0.20;                    // Ratio tolerance
@@ -990,7 +990,7 @@ bool Scope::DecCompensationActive(void) const
 
 static double CalibrationDistance(void)
 {
-    return wxMin(pCamera->FullSize.GetHeight() * 0.05, MAX_CALIBRATION_DISTANCE);
+    return wxMin(pCamera->FullSize.GetHeight() * 0.10, MAX_CALIBRATION_DISTANCE);
 }
 
 int Scope::CalibrationTotDistance(void)

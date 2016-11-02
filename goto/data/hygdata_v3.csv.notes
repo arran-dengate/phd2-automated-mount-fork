@@ -1,0 +1,11 @@
+Obtained from http://astronexus.com/node/34
+See also https://github.com/astronexus/HYG-Database/blob/master/README.md
+
+About the HYG Database
+The database is a subset of the data in three major catalogs: the Hipparcos Catalog,the Yale Bright Star Catalog (5th Edition), and the Gliese Catalog of Nearby Stars (3rd Edition). Each of these catalogs contains information useful to amateur astronomers:
+
+The Hipparcos catalog is the largest collection of high-accuracy stellar positional data, particularly parallaxes, which makes it useful as a starting point for stellar distance data.
+The Yale Bright Star Catalog contains basic data on essentially all naked-eye stars, including much information (such as the traditional Bayer Greek letters and Flamsteed numbers) missing from many other catalogs
+The Gliese catalog is the most comprehensive catalog of nearby stars (those within 75 light years of the Sun). It contains many fainter stars not found in Hipparcos.
+The name of the database comes from the three catalogs comprising its data: Hipparcos, Yale, and Gliese.
+

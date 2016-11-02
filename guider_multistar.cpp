@@ -323,9 +323,9 @@ bool GuiderMultiStar::AutoSelect(void)
         int edgeAllowance = 0;
         if (pMount && pMount->IsConnected() && !pMount->IsCalibrated())
             edgeAllowance = wxMax(edgeAllowance, pMount->CalibrationTotDistance());
-        if (pSecondaryMount && pSecondaryMount->IsConnected() && !pSecondaryMount->IsCalibrated())
-            edgeAllowance = wxMax(edgeAllowance, pSecondaryMount->CalibrationTotDistance());
-        
+
+        Debug.AddLine(wxString::Format("Guider: calibration edge allowance %d (because not calibrated)", edgeAllowance));
+
         Star newStar;
         if (!newStar.AutoFind(*pImage, edgeAllowance, m_searchRegion))
         {

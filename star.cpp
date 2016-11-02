@@ -829,7 +829,7 @@ bool Star::GetStarList(const usImage& image, int extraEdgeAllowance, int searchR
     // exclude stars too close to the edge
     {
         enum { MIN_EDGE_DIST = 40 };
-        int edgeDist = MIN_EDGE_DIST + extraEdgeAllowance;
+        int edgeDist = MIN_EDGE_DIST; // + extraEdgeAllowance ; // Since these are secondary stars, it's not such a big deal if we lose them
 
         std::set<Peak>::iterator it = stars.begin();
         while (it != stars.end())
