@@ -58,13 +58,21 @@ private:
 
     wxTimer *m_timer; 
 
+    wxButton *m_debugButton;
     wxButton *m_calibrateButton;
     wxButton *m_gotoButton;
 
     int prevExposureDuration;
 
+    // Accuracy map
+    std::vector<std::pair<double,double>> m_pointsToVisit;
+    bool m_doAccuracyMap = false;
+    int m_solveTriesRemaining;
+
     int StringWidth(const wxString& string);
+    void AccuracyMap();
     void OnCalibrate(wxCommandEvent& event);
+    void OnDebug(wxCommandEvent& event);
     void OnGoto(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);

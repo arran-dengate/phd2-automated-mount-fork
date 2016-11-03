@@ -57,6 +57,8 @@ const char CATALOG_FILENAME[]        = "/usr/local/phd2/goto/catalog.csv";
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX)
 {   
+    m_doAccuracyMap = false;
+
     // Obtain the catalog data from a CSV file...
     
     if ( ! GetCatalogData(m_catalog) ) {
@@ -115,20 +117,20 @@ GotoDialog::GotoDialog(void)
     
     wxStaticText *skyPosHeading                = new wxStaticText(this, -1, "Sky position");
     wxStaticText *skyAltManualSetHeading       = new wxStaticText(this, -1, "Set sky alt (degrees)");
-    wxStaticText *skyAzManualSetHeading       = new wxStaticText(this, -1, "Set sky az (degrees)");
+    wxStaticText *skyAzManualSetHeading        = new wxStaticText(this, -1, "Set sky az (degrees)");
     wxStaticText *gpsLocHeading                = new wxStaticText(this, -1, "GPS location");
     wxStaticText *timeHeading                  = new wxStaticText(this, -1, "Time");
-    skyPosHeading            ->SetFont(boldFont);
-    skyAltManualSetHeading   ->SetFont(boldFont);
-    skyAzManualSetHeading   ->SetFont(boldFont);
-    gpsLocHeading            ->SetFont(boldFont);
-    timeHeading              ->SetFont(boldFont);
+    skyPosHeading          ->SetFont(boldFont);
+    skyAltManualSetHeading ->SetFont(boldFont);
+    skyAzManualSetHeading  ->SetFont(boldFont);
+    gpsLocHeading          ->SetFont(boldFont);
+    timeHeading            ->SetFont(boldFont);
 
     statusGrid->Add(skyPosHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyPosText,                0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(skyAltManualSetHeading,      0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyAltManualSet,           0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(skyAzManualSetHeading,      0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(skyAzManualSetHeading,       0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyAzManualSet,            0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(gpsLocHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_gpsLocText,                0, wxALL | wxALIGN_TOP, borderSize);
@@ -178,6 +180,11 @@ GotoDialog::GotoDialog(void)
     cancelButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnClose, this);
     buttonSizer->Add(cancelButton);
 
+    m_debugButton = new wxButton(this, wxID_ANY, _("Debug"));
+    m_debugButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnDebug, this);
+    m_debugButton->SetToolTip(_("Take a series of exposures at different positions to map goto error"));
+    buttonSizer->Add(m_debugButton);
+
     m_calibrateButton = new wxButton(this, wxID_ANY, _("Calibrate"));
     m_calibrateButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnCalibrate, this);
     m_calibrateButton->SetToolTip(_("Take an exposure and work out where mount is currently pointing"));
@@ -208,7 +215,7 @@ GotoDialog::GotoDialog(void)
     // Set high exposure duration to help Astrometry get a good image.
     // TODO: make this user-configurable (we don't know what their camera setup is like!)
     pFrame->GetExposureInfo(&prevExposureDuration, &ignored);
-    if ( not pFrame->SetExposureDuration(3000) ) {
+    if ( not pFrame->SetExposureDuration(2000) ) {
         Debug.AddLine("Goto: failed to increase exposure duration");
     }
     
@@ -216,7 +223,7 @@ GotoDialog::GotoDialog(void)
 
 void GotoDialog::OnTimer(wxTimerEvent& event) {
     UpdateLocationText();
-
+    if ( m_doAccuracyMap ) AccuracyMap();
 }
 
 void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
@@ -378,7 +385,61 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
         return false;
     }
     return true;
-} 
+}
+
+void GotoDialog::AccuracyMap() {
+    if ( not pFrame->pGuider->IsImageSaved() ) {
+        pFrame->pGuider->RequestSaveImage();
+        Debug.AddLine("Goto: image not ready yet");
+        return;
+    }
+
+    double ra, dec, astroRotationAngle;
+    if ( m_solveTriesRemaining > 0) {
+        if ( ! AstroSolveCurrentLocation(ra, dec, astroRotationAngle) ) {
+            m_solveTriesRemaining --;
+            pFrame->pGuider->RequestSaveImage();
+            Debug.AddLine("Goto accMap: failed to solve");
+            return; 
+        } else {
+            Debug.AddLine(wxString::Format("Goto accMap: solved ra %f dec %f rot %f", ra, dec, astroRotationAngle));
+            double alt, az;
+            EquatorialToHorizontal(ra, dec, alt, az, false);
+            Debug.AddLine(wxString::Format("Goto accMap: sky.py alt %f az %f", alt, az));
+        }
+    }
+
+    m_solveTriesRemaining = 3;
+    
+    Debug.AddLine("Goto: points remaining:");
+    for (std::pair<double,double> p : m_pointsToVisit) {
+        Debug.AddLine(wxString::Format("Goto: point %f %f", std::get<0>(p), std::get<1>(p)));
+    }
+
+    if ( m_pointsToVisit.size() > 0 ) {
+        std::pair<double,double> destination = m_pointsToVisit.back();
+        m_pointsToVisit.pop_back();
+        pMount->HexGoto(std::get<0>(destination), std::get<1>(destination));
+        Debug.AddLine(wxString::Format("Goto accMap: Goto %f %f", std::get<0>(destination), std::get<1>(destination)));
+        sleep(10);
+        pFrame->pGuider->RequestSaveImage();
+    } else {
+        Debug.AddLine("Goto accMap: finished");
+        m_doAccuracyMap = false;
+        return;
+    }
+}
+
+void GotoDialog::OnDebug(wxCommandEvent&) {
+    // Line up some points to visit
+    for (int i = 90; i > 30; i -= 10) {
+        m_pointsToVisit.push_back(std::make_pair(i, 0));
+    }
+    Debug.AddLine(wxString::Format("Goto accMap: Goto 90, 0"));
+    pMount->HexGoto(90, 0);
+    m_solveTriesRemaining = 3;
+    m_doAccuracyMap = true;
+}
 
 void GotoDialog::OnCalibrate(wxCommandEvent& )
 {
@@ -480,7 +541,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
 bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp) {
     std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec);
     if ( useStoredTimestamp ) {
-        command += " --use-stored";
+        // command += " --use-stored"; TODO re-enable this if it's not the cause of our problems...
     }
     string skyOutput;
     FILE *in;
@@ -542,17 +603,13 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
     // TODO: Detect arcsecperpix ratio from the first astrometry output, instead of hardcoding it here
-    strcat(inputFilename, " --overwrite --no-plots --scale-low=6.08 --scale-high=6.14 --scale-units="arcsecperpix" --no-fits2fits --fits-image");
+    strcat(inputFilename, " --overwrite --no-plots --scale-low=6.08 --scale-high=6.14 --scale-units=arcsecperpix --no-fits2fits --fits-image");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 
     // If simulator is being used as the camera, override with test input image
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                              wxString::Format("Since the current camera is the simulator, will use fake test image to determine position."), 
-                                              wxString::Format("Goto"), 
-                                              wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();
+        pFrame->Alert(wxString::Format("Since the current camera is the simulator, will use fake test image to determine position."));
         strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite --no-plots /usr/local/astrometry/examples/apod2.jpg");    
     }
     
