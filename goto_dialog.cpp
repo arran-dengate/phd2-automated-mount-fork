@@ -541,7 +541,8 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double
     // The result is to call something like "/usr/local/astrometry/bin/solve-field --overwrite /dev/shm/phd2/goto/guide-image.fits"
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
-    strcat(inputFilename, " --overwrite --no-plots ");
+    // TODO: Detect arcsecperpix ratio from the first astrometry output, instead of hardcoding it here
+    strcat(inputFilename, " --overwrite --no-plots --scale-low=6.08 --scale-high=6.14 --scale-units="arcsecperpix" --no-fits2fits --fits-image");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 

@@ -209,10 +209,10 @@ GuideAlgorithmLowpass2ConfigDialogPane(wxWindow *pParent, GuideAlgorithmLowpass2
     DoAdd(_("Aggressiveness"), m_pAggressiveness,
         wxString::Format(_("Aggressiveness factor, percent. Default = %.f%%"), DefaultAggressiveness));
 
-    width = StringWidth(_T("000.00"));
+    width = StringWidth(_T("000.000"));
     m_pMinMove = new wxSpinCtrlDouble(pParent, wxID_ANY, _T("foo2"), wxPoint(-1, -1),
-        wxSize(width + 30, -1), wxSP_ARROW_KEYS, 0.0, 20.0, 0.0, 0.05, _T("MinMove"));
-    m_pMinMove->SetDigits(2);
+        wxSize(width + 30, -1), wxSP_ARROW_KEYS, 0.0, 20.0, 0.0, 0.000001, _T("MinMove"));
+    m_pMinMove->SetDigits(4);
 
     DoAdd(_("Minimum Move (pixels)"), m_pMinMove,
         wxString::Format(_("How many (fractional) pixels must the star move to trigger a guide pulse? \n"

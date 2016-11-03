@@ -139,7 +139,7 @@ bool Camera_OpenSSAGClass::ST4PulseGuideScope(int direction, int duration)
     }
 
     //wxMilliSleep(duration + 10);
-    wxMilliSleep(100);
+    wxMilliSleep(300);
     return false;
 }
 

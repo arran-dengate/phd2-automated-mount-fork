@@ -227,10 +227,10 @@ GuideAlgorithmHysteresisConfigDialogPane(wxWindow *pParent, GuideAlgorithmHyster
     DoAdd(_("Aggressiveness"), m_pAggression,
           wxString::Format(_("What percent of the measured error should be applied? Default = %.f%%, adjust if responding too much or too slowly"), DefaultAggression * 100.0));
 
-    width = StringWidth(_T("00.00"));
+    width = StringWidth(_T("00.000"));
     m_pMinMove = new wxSpinCtrlDouble(pParent, wxID_ANY,_T("foo2"), wxPoint(-1,-1),
-            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0.0, 20.0, 0.0, 0.05, _T("MinMove"));
-    m_pMinMove->SetDigits(2);
+            wxSize(width+30, -1), wxSP_ARROW_KEYS, 0.0, 20.0, 0.0, 0.000001, _T("MinMove"));
+    m_pMinMove->SetDigits(4);
 
     DoAdd(_("Minimum Move (pixels)"), m_pMinMove,
           wxString::Format(_("How many (fractional) pixels must the star move to trigger a guide pulse? \n" 

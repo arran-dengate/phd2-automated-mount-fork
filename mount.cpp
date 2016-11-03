@@ -791,6 +791,11 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     // File format for guide commands is: guide,<pitch>,<roll>,<yaw>
     //                       For example: guide,0.00000000,-0.0003000,0.0000000
 
+    if (std::isnan(rotationVector)) { 
+        rotationVector = 0;
+        Debug.AddLine("Mount: rotationvector was NAN, set to 0");
+    } 
+
     Debug.AddLine(wxString::Format("rotationVector %f", rotationVector));
 
     char commandType[]    = "guide";
@@ -905,6 +910,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
     try
     {
         double xDistance, yDistance;
+        double xVector, yVector;
         PHD_Point mountVectorEndpoint;
 
         if (moveType == MOVETYPE_DEDUCED)
@@ -936,7 +942,6 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             // For Starshoot Autoguide, this is...
             // 2.1701 x 1.73582 degrees
             // 1280 x 1024 pixels
-            double xVector, yVector;
             xVector = xDistance * 0.001695391; 
             yVector = yDistance * 0.001695137;  
 
@@ -964,20 +969,16 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             //xVector *= -1;
             //yVector *= -1;
 
-            // Make the mount move.
-            PHD_Point moveVector(xVector, yVector);
-            Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
-            HexGuide(moveVector, rotationAngleDeg);
-            
-        }
-            /*
-            // Arran: the rest of this method not currently used, left in for now.
+            // Apply guide algorithms... 
+
+            Debug.AddLine(wxString::Format("Mount: raw guide distances %f, %f", xVector, yVector));
+
             if (moveType == MOVETYPE_ALGO)
             {
                 // Feed the raw distances to the guide algorithms
                 if (m_pXGuideAlgorithm)
                 {
-                    xDistance = m_pXGuideAlgorithm->result(xDistance);
+                    xVector = m_pXGuideAlgorithm->result(xVector);
                 }
 
                 // Let BLC track the raw offsets in Dec
@@ -986,7 +987,7 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
 
                 if (m_pYGuideAlgorithm)
                 {
-                    yDistance = m_pYGuideAlgorithm->result(yDistance);
+                    yVector = m_pYGuideAlgorithm->result(yVector);
                 }
             }
             else
@@ -994,8 +995,19 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
                 if (m_backlashComp)
                     m_backlashComp->ResetBaseline();
             }
-        }
         
+            Debug.AddLine(wxString::Format("Mount: algo guide distances %f, %f", xVector, yVector));
+            
+            // Make the mount move.
+            PHD_Point moveVector(xVector, yVector);
+            Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
+            HexGuide(moveVector, rotationAngleDeg);
+            
+            
+        }
+            
+
+        /*
         // Figure out the guide directions based on the (possibly) updated distances
         GUIDE_DIRECTION xDirection = xDistance > 0.0 ? LEFT : RIGHT;
         GUIDE_DIRECTION yDirection = yDistance > 0.0 ? DOWN : UP;

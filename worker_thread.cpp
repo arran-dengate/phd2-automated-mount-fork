@@ -272,6 +272,7 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
                 Debug.AddLine("Calibration move");
                 Debug.AddLine(wxString::Format("Worker_thread: Calibration move has rotational component %f", pArgs->rotationDeg));
                 result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationDeg);
+                wxMilliSleep(500 + ( 4000 * pArgs->rotationDeg));
 
                 if (result != Mount::MOVE_OK)
                 {

@@ -634,9 +634,9 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 s.lastExpectedPos.SetXY(expectedX, expectedY); 
                 if ( newStar.Find(pImage, m_searchRegion, expectedX, expectedY, pFrame->GetStarFindMode())) {
                     Debug.AddLine(wxString::Format("Guider: Recovered star at %f, %f", expectedX, expectedY));
-                    //UpdateStar(s, newStar);
-                    s.X = expectedX;
-                    s.Y = expectedY;
+                    UpdateStar(s, newStar);
+                    //s.X = expectedX;
+                    //s.Y = expectedY;
                 }
                 Debug.AddLine(wxString::Format("Guider: s.preCalDistance %f s.preCalAngle %f, expected X %f Y %f", s.preCalDistance, s.preCalAngle, expectedX, expectedY));
             }
