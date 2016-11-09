@@ -39,7 +39,7 @@
 
 #include "phd.h"
 
-static const double DefaultMinMove = 0.2;
+static const double DefaultMinMove = 0;
 static const double DefaultAggressiveness = 80.0;
 
 GuideAlgorithmLowpass2::GuideAlgorithmLowpass2(Mount *pMount, GuideAxis axis)

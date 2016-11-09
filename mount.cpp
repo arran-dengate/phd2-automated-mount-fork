@@ -827,6 +827,7 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
         // If we're using the simulator, rotate sim camera
        // pCamera->RotateSimMount(rotationDeg);
+        Debug.AddLine("Simulator: Moved by mount.cpp");
         pCamera->HexGuide(xyVector, rotationVector);
 
     }

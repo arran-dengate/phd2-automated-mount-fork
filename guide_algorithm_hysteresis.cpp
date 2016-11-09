@@ -39,7 +39,7 @@
 
 #include "phd.h"
 
-static const double DefaultMinMove    = 0.2;
+static const double DefaultMinMove    = 0;
 static const double DefaultHysteresis = 0.1;
 static const double DefaultAggression = 0.7;
 static const double MaxAggression = 2.0;

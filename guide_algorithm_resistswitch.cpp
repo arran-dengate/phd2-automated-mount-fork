@@ -39,7 +39,7 @@
 
 #include "phd.h"
 
-static const double DefaultMinMove = 0.2;
+static const double DefaultMinMove = 0;
 static const double DefaultAggression = 1.0;
 
 GuideAlgorithmResistSwitch::GuideAlgorithmResistSwitch(Mount *pMount, GuideAxis axis)
