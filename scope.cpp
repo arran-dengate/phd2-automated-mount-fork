@@ -1067,7 +1067,13 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
     //                                   /   |    \
     // m_calibrationStartingLocation -> 1____|_____3 <- m_calibrationNorthReturnLocation;
     //                                       ^4, midpoint
-    
+    //
+    // The rotational calibration afterwards is simpler.
+    // We send a series of rotational pulses, draw a line between the start and end points of each star,
+    // make a perpendicular line, and then for each pair of stars, find the intersection. Average intersection
+    // point is the center.
+
+
     bool bError = false;
 
     try
