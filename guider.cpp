@@ -405,7 +405,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
 
                 m_scaleFactor = newScaleFactor;
 
-                Debug.Write(wxString::Format("Resizing image to %d,%d\n", newWidth, newHeight));
+                //Debug.Write(wxString::Format("Resizing image to %d,%d\n", newWidth, newHeight));
 
                 if (newWidth > 0 && newHeight > 0)
                 {
@@ -646,8 +646,8 @@ void Guider::UpdateImageDisplay(usImage *pImage)
         pImage = m_pCurrentImage;
     }
 
-    Debug.Write(wxString::Format("UpdateImageDisplay: Size=(%d,%d) min=%d, max=%d, FiltMin=%d, FiltMax=%d\n",
-        pImage->Size.x, pImage->Size.y, pImage->Min, pImage->Max, pImage->FiltMin, pImage->FiltMax));
+//    Debug.Write(wxString::Format("UpdateImageDisplay: Size=(%d,%d) min=%d, max=%d, FiltMin=%d, FiltMax=%d\n",
+//        pImage->Size.x, pImage->Size.y, pImage->Min, pImage->Max, pImage->FiltMin, pImage->FiltMax));
 
     Refresh();
     Update();
@@ -1089,17 +1089,15 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
         rename("/dev/shm/phd2/goto/guide-scope-image.fits.temp", "/dev/shm/phd2/goto/guide-scope-image.fits");
         imageSaved = true;
     }
-    
+
     // If we're not guiding, the guider position initialisation needs to be reset
     if ( not ( GetState() == STATE_GUIDING ) and pFrame->pGuider->m_guidingPositionsInitialised ) {
-        pFrame->pGuider->m_guidingPositionsInitialised = false;
-        Debug.AddLine("Guider: initialised false");    
+        pFrame->pGuider->m_guidingPositionsInitialised = false;    
     }
-    
 
     try
     {
-        Debug.Write(wxString::Format("UpdateGuideState(): m_state=%d\n", m_state));
+        //Debug.Write(wxString::Format("UpdateGuideState(): m_state=%d\n", m_state));
 
         if (pImage)
         {
@@ -1185,9 +1183,10 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
 
             statusMessage = info.status;
             throw THROW_INFO("unable to update current position");
-        }
-        else
+        } else {
             statusMessage = info.status;
+            
+        }
 
         // we have a star selected, so re-enable subframes
         if (m_forceFullFrame)
@@ -1365,7 +1364,7 @@ void Guider::UpdateGuideState(usImage *pImage, bool bStopping)
 
     UpdateImageDisplay(pImage);
 
-    Debug.AddLine("UpdateGuideState exits: " + statusMessage);
+    //Debug.AddLine("UpdateGuideState exits: " + statusMessage);
 }
 
 bool Guider::ShiftLockPosition(void)

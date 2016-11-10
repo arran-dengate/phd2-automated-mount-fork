@@ -1319,7 +1319,6 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
     double magnitude = SimCamParams::guide_rate * duration / (250.0 * SimCamParams::image_scale);
-    Debug.AddLine(wxString::Format("Simulator: Magnitude %f", magnitude));
     // Note, a sensible step is 11.63
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
@@ -1338,8 +1337,6 @@ bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 
 bool Camera_SimClass::HexGuide(PHD_Point moveVector, double rotationDeg)
 {
-    //double magnitude = SimCamParams::guide_rate  (250.0 * SimCamParams::image_scale);
-    Debug.AddLine(wxString::Format("Simulator: Guiding by x %f y %f r %f", moveVector.X, moveVector.Y, rotationDeg));
     const double SCALE_FACTOR = 350;
     moveVector.X *= -1;
     moveVector.Y *= -1;

@@ -337,7 +337,7 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
 {
     try
     {
-        Debug.Write("OnExposeComplete: enter\n");
+        //Debug.Write("OnExposeComplete: enter\n");
 
         m_exposurePending = false;
 
@@ -393,8 +393,8 @@ void MyFrame::OnExposeComplete(usImage *pNewFrame, bool err)
 
         PhdController::UpdateControllerState();
 
-        Debug.Write(wxString::Format("OnExposeComplete: CaptureActive=%d m_continueCapturing=%d\n",
-            CaptureActive, m_continueCapturing));
+        //Debug.Write(wxString::Format("OnExposeComplete: CaptureActive=%d m_continueCapturing=%d\n",
+        //    CaptureActive, m_continueCapturing));
 
         CaptureActive = m_continueCapturing;
 

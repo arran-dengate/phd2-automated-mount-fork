@@ -825,9 +825,7 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     rename(TEMP_FILE_PATH, OUTPUT_FILE_PATH);
 
     if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        // If we're using the simulator, rotate sim camera
-       // pCamera->RotateSimMount(rotationDeg);
-        Debug.AddLine("Simulator: Moved by mount.cpp");
+        // If we're using the simulator, move sim camera
         pCamera->HexGuide(xyVector, rotationVector);
 
     }
@@ -1001,7 +999,6 @@ Mount::MOVE_RESULT Mount::Move(const PHD_Point& cameraVectorEndpoint, MountMoveT
             
             // Make the mount move.
             PHD_Point moveVector(xVector, yVector);
-            Debug.AddLine(wxString::Format("RotationDeg %f", rotationAngleDeg));
             HexGuide(moveVector, rotationAngleDeg);
             
             
@@ -1129,9 +1126,9 @@ bool Mount::TransformCameraCoordinatesToMountCoordinates(const PHD_Point& camera
         Mount::GetCalibrationDetails(&calDetails);
         Debug.Write(wxString::Format("Camera angle %f", calDetails.cameraAngle));
         double cameraAngleRad = calDetails.cameraAngle * 3.14159 / 180;
-        Debug.AddLine(wxString::Format("transform angle deg %f", calDetails.cameraAngle));
-        Debug.AddLine(wxString::Format("cameraVectorEndpoint %f %f", 
-                                       cameraVectorEndpoint.X, cameraVectorEndpoint.Y));
+//        Debug.AddLine(wxString::Format("transform angle deg %f", calDetails.cameraAngle));
+//        Debug.AddLine(wxString::Format("cameraVectorEndpoint %f %f", 
+//                                       cameraVectorEndpoint.X, cameraVectorEndpoint.Y));
         double camCos = cos(cameraAngleRad);
         double camSin = sin(cameraAngleRad);
         double x = cameraVectorEndpoint.X;

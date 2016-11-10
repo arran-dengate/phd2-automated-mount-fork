@@ -41,13 +41,14 @@
 class Scope;
 
 struct Line {
-    double H;
-    double I;
+    // H, I and J are 
+    double yDiff;
+    double xDiff;
     double J;
     Line(double x1, double y1, double x2, double y2) {
-        H = y2 - y1;
-        I = x1 - x2;
-        J = H * x1 + I * y1;
+        yDiff = y2 - y1;
+        xDiff = x1 - x2;
+        J = yDiff * x1 + xDiff * y1;
         }
 };
 

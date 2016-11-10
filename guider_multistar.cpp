@@ -519,7 +519,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         Star newStar(m_star);
 
         if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode()))
-        {   
+        {    
             errorInfo->starError = newStar.GetError();
             errorInfo->starMass = 0.0;
             errorInfo->starSNR = 0.0;
@@ -531,11 +531,9 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         // check to see if it seems like the star we just found was the
         // same as the original star.  We do this by comparing the
         // mass
-        Debug.AddLine("About to set exposure");
         m_star.massChecker.SetExposure(pFrame->RequestedExposureDuration());
         double limits[3];
-        if (m_massChangeThresholdEnabled &&
-            m_star.massChecker.CheckMass(newStar.Mass, m_massChangeThreshold, limits))
+        if (m_massChangeThresholdEnabled && m_star.massChecker.CheckMass(newStar.Mass, m_massChangeThreshold, limits))
         {
             m_star.SetError(Star::STAR_MASSCHANGE);
             errorInfo->starError = Star::STAR_MASSCHANGE;
@@ -548,14 +546,10 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
             throw THROW_INFO("massChangeThreshold error");
         }
 
-        // update the star position, mass, etc.
-        m_star.X       = newStar.X;
-        m_star.Y       = newStar.Y;
-        m_star.Mass    = newStar.Mass;
-        m_star.SNR     = newStar.SNR;
-        m_star.HFD     = newStar.HFD;
-        m_star.PeakVal = newStar.PeakVal;
-        m_star.massChecker.AppendData(newStar.Mass);
+        // update the star position
+        newStar.massChecker = m_star.massChecker;
+        newStar.massChecker.AppendData(newStar.Mass);
+        m_star = newStar; 
 
         const PHD_Point& lockPos = LockPosition();
         if (lockPos.IsValid())
@@ -578,24 +572,24 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
     }
 
     // Also update positions for the secondary stars
+    if ( m_star.WasFound() ) {
+        std::vector<Star>::iterator s = m_starList.begin(); 
+        while (s != m_starList.end()) {
+            Star newStar(*s);
+            if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode())) {
+                s->massChecker.validationChances -= 1;
+                s->massChecker.currentlyValid = false;
+            } else {
+                UpdateStar(*s, newStar);
+            }
 
-    std::vector<Star>::iterator s = m_starList.begin(); 
-    while (s != m_starList.end()) {
-
-        Star newStar(*s);
-        if (!newStar.Find(pImage, m_searchRegion, pFrame->GetStarFindMode())) {
-            s->massChecker.validationChances -= 1;
-            s->massChecker.currentlyValid = false;
-        } else {
-            UpdateStar(*s, newStar);
+            if (s->massChecker.validationChances <= 0) {
+                    Debug.Write(wxString::Format("Star: Failed to find secondary star at %f %f, removing from list\n", s->X, s->Y));
+                    m_starList.erase(s);
+            } else {
+                    s++;
+            }        
         }
-
-        if (s->massChecker.validationChances <= 0) {
-                Debug.Write(wxString::Format("Star: Failed to find secondary star at %f %f, removing from list\n", s->X, s->Y));
-                m_starList.erase(s);
-        } else {
-                s++;
-        }        
     }
 
     // Star recovery! Keep track of where stars should be, based on initial position and the motion of the other secondaries.
@@ -615,9 +609,9 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 calAngleCount ++;
             }
         }
-        Debug.AddLine(wxString::Format("Guider: calAngleSum %f calAngleCount %f", calAngleSum, calAngleCount));
+        //Debug.AddLine(wxString::Format("Guider: calAngleSum %f calAngleCount %f", calAngleSum, calAngleCount));
         calAngleSum /= calAngleCount;
-        Debug.AddLine(wxString::Format("Guider: cal avg %f", calAngleSum));
+        //Debug.AddLine(wxString::Format("Guider: cal avg %f", calAngleSum));
         
         // Now find the lost ones, using this info
         for ( Star &s : m_starList ) {
@@ -633,12 +627,12 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 //Debug.AddLine(wxString::Format("Guider: lost star last seen %f %f, searching at %f %f.", s.X, s.Y, expectedX, expectedY));
                 s.lastExpectedPos.SetXY(expectedX, expectedY); 
                 if ( newStar.Find(pImage, m_searchRegion, expectedX, expectedY, pFrame->GetStarFindMode())) {
-                    Debug.AddLine(wxString::Format("Guider: Recovered star at %f, %f", expectedX, expectedY));
+                    //Debug.AddLine(wxString::Format("Guider: Recovered star at %f, %f", expectedX, expectedY));
                     UpdateStar(s, newStar);
                     //s.X = expectedX;
                     //s.Y = expectedY;
                 }
-                Debug.AddLine(wxString::Format("Guider: s.preCalDistance %f s.preCalAngle %f, expected X %f Y %f", s.preCalDistance, s.preCalAngle, expectedX, expectedY));
+                //Debug.AddLine(wxString::Format("Guider: s.preCalDistance %f s.preCalAngle %f, expected X %f Y %f", s.preCalDistance, s.preCalAngle, expectedX, expectedY));
             }
         }
     }
@@ -867,7 +861,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         GUIDER_STATE state = GetState();
         bool FoundStar = m_star.WasFound();
         int border = 20;
-
+             
         // Secondary stars are drawn under most circumstances
         if (FoundStar && (state == STATE_SELECTED | STATE_CALIBRATING_PRIMARY | STATE_CALIBRATING_SECONDARY | STATE_CALIBRATED | STATE_GUIDING)) {
             

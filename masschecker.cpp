@@ -71,7 +71,6 @@ void MassChecker::SetExposure(int exposure)
 
 void MassChecker::AppendData(double mass)
 {
-    Debug.Write(wxString::Format("Appending data\n"));
     wxLongLong_t now = ::wxGetUTCTimeMillis().GetValue();
     wxLongLong_t oldest = now - m_timeWindow;
 

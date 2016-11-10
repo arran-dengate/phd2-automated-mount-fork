@@ -1027,23 +1027,23 @@ static Line GetPerpendicularLine(const PHD_Point &A, const PHD_Point &B) {
     PHD_Point extraPointPerpAB(midAB.X + X_DISTANCE, midAB.Y + slopePerpAB * X_DISTANCE);
     Line perpAB(midAB.X, midAB.Y, extraPointPerpAB.X, extraPointPerpAB.Y);
     
-    //printf("midAB              x %.2f y %.2f\n", midAB.X, midAB.Y);
-    //printf("slopeAB            %.2f\n", slopeAB);
-    //printf("slopePerpAB        %.2f\n", slopePerpAB);
-    //printf("extraPointPerpAB   x %.2f y %.2f\n", extraPointPerpAB.X, extraPointPerpAB.Y);
-    //printf("perpAB values      lA %.2f lB %.2f lC %.2f\n", perpAB.H, perpAB.I, perpAB.J);
+    //printf("Scope: midAB              x %.2f y %.2f\n", midAB.X, midAB.Y);
+    //printf("Scope: slopeAB            %.2f\n", slopeAB);
+    //printf("Scope: slopePerpAB        %.2f\n", slopePerpAB);
+    //printf("Scope: extraPointPerpAB   x %.2f y %.2f\n", extraPointPerpAB.X, extraPointPerpAB.Y);
+    //printf("Scope: perpAB values      lA %.2f lB %.2f lC %.2f\n", perpAB.H, perpAB.I, perpAB.J);
 
     return perpAB;
 }
 
 static bool GetIntersectionPoint(const Line &L1, const Line &L2, PHD_Point &outIntersection) {
-    double det = L1.H * L2.I - L2.H * L1.I;
+    double det = L1.yDiff * L2.xDiff - L2.yDiff * L1.xDiff;
     if ( det == 0 ) {
         Debug.AddLine("Scope: Found parallel lines during resection, which shouldn't happen");
         return false;
     } else {
-        outIntersection.X = (L2.I * L1.J - L1.I * L2.J) / det;
-        outIntersection.Y = (L1.H * L2.J - L2.H * L1.J) / det;
+        outIntersection.X = (L2.xDiff * L1.J - L1.xDiff * L2.J) / det;
+        outIntersection.Y = (L1.yDiff * L2.J - L2.yDiff * L1.J) / det;
         return true;
     }
 }

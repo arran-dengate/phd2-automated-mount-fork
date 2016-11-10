@@ -1303,8 +1303,8 @@ void MyFrame::UpdateCalibrationStatus(void)
 
 void MyFrame::UpdateGuiderInfo(const GuideStepInfo& info)
 {
-    Debug.Write(wxString::Format("GuideStep: %.1f px %d ms %s, %.1f px %d ms %s\n", info.mountOffset.X, info.durationRA, info.directionRA == EAST ? "EAST" : "WEST",
-        info.mountOffset.Y, info.durationDec, info.directionRA == NORTH ? "NORTH" : "SOUTH"));
+//    Debug.Write(wxString::Format("GuideStep: %.1f px %d ms %s, %.1f px %d ms %s\n", info.mountOffset.X, info.durationRA, info.directionRA == EAST ? "EAST" : "WEST",
+//        info.mountOffset.Y, info.durationDec, info.directionRA == NORTH ? "NORTH" : "SOUTH"));
 
     assert(wxThread::IsMain());
     m_statusbar->UpdateGuiderInfo(info);
@@ -1445,8 +1445,8 @@ void MyFrame::ScheduleExposure(void)
     int exposureOptions = GetRawImageMode() ? CAPTURE_BPM_REVIEW : CAPTURE_LIGHT;
     const wxRect& subframe = pGuider->GetBoundingBox();
 
-    Debug.Write(wxString::Format("ScheduleExposure(%d,%x,%d) exposurePending=%d\n",
-        exposureDuration, exposureOptions, !subframe.IsEmpty(), m_exposurePending));
+    //Debug.Write(wxString::Format("ScheduleExposure(%d,%x,%d) exposurePending=%d\n",
+    //    exposureDuration, exposureOptions, !subframe.IsEmpty(), m_exposurePending));
 
     assert(wxThread::IsMain()); // m_exposurePending only updated in main thread
     assert(!m_exposurePending);
@@ -1462,8 +1462,7 @@ void MyFrame::ScheduleExposure(void)
 
 void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType, double rotationDeg)
 {
-    Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
-    Debug.AddLine(wxString::Format("MyFrame: RotationDeg %f", rotationDeg));
+    //Debug.Write(wxString::Format("SchedulePrimaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
     assert(mount);
@@ -1475,7 +1474,7 @@ void MyFrame::SchedulePrimaryMove(Mount *mount, const PHD_Point& vectorEndpoint,
 
 void MyFrame::ScheduleSecondaryMove(Mount *mount, const PHD_Point& vectorEndpoint, MountMoveType moveType)
 {
-    Debug.Write(wxString::Format("ScheduleSecondaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
+    //Debug.Write(wxString::Format("ScheduleSecondaryMove(%p, x=%.2f, y=%.2f, type=%d)\n", mount, vectorEndpoint.X, vectorEndpoint.Y, moveType));
 
     wxCriticalSectionLocker lock(m_CSpWorkerThread);
 
