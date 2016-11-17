@@ -771,11 +771,11 @@ void GuiderMultiStar::OnLClick(wxMouseEvent &mevent)
     }
 }
 
-inline static void DrawBox(wxDC& dc, const PHD_Point& star, int halfW, double scale)
+inline static void DrawBox(wxDC& dc, const PHD_Point& star, int halfW, double scale, double xOffset, double yOffset)
 {
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     double w = ROUND((halfW * 2 + 1) * scale);
-    dc.DrawRectangle(int((star.X - halfW) * scale), int((star.Y - halfW) * scale), w, w);
+    dc.DrawRectangle(int((star.X - halfW) * scale + xOffset), int((star.Y - halfW) * scale + yOffset), w, w);
 }
 
 // Define the repainting behaviour
@@ -877,7 +877,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                         // Otherwise red
                         dc.SetPen(wxPen(wxColour(255,0,0), 1, wxSOLID));
                     }    
-                    DrawBox(dc, s, m_searchRegion, m_scaleFactor);    
+                    DrawBox(dc, s, m_searchRegion, m_scaleFactor, 0, m_yOffset);    
                 }
 
                 // Also trails, if they're currently enabled
@@ -900,7 +900,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                     Star tempStar;
                     tempStar.SetXY(s.lastExpectedPos.X, s.lastExpectedPos.Y);
                     dc.SetPen(wxPen(wxColour(250,127,227), 1, wxSOLID));    
-                    DrawBox(dc, tempStar, m_searchRegion, m_scaleFactor);    
+                    DrawBox(dc, tempStar, m_searchRegion, m_scaleFactor, 0, m_yOffset);    
                 }
 
                 // Debugging info
@@ -924,14 +924,14 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                 dc.SetPen(wxPen(wxColour(100,255,90), 1, wxSOLID));  // Draw green box around primary star
             else
                 dc.SetPen(wxPen(wxColour(230,130,30), 1, wxDOT));
-            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor);
+            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
             
         }
         else if (state == STATE_CALIBRATING_PRIMARY || state == STATE_CALIBRATING_SECONDARY)
         {
             // in the calibration process
             dc.SetPen(wxPen(wxColour(32,196,32), 1, wxSOLID));  // Draw the box around the star
-            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor);
+            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
         }
         else if (state == STATE_CALIBRATED || state == STATE_GUIDING)
         {
@@ -940,7 +940,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                 dc.SetPen(wxPen(wxColour(32,196,32), 1, wxSOLID));  // Draw the box around the star
             else
                 dc.SetPen(wxPen(wxColour(230,130,30), 1, wxDOT));
-            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor);
+            DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
         }
 
         // Image logging

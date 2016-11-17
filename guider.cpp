@@ -374,16 +374,23 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
         int newWidth = int(imageWidth * m_scaleFactor);
         int newHeight = int(imageHeight * m_scaleFactor);
 
-        if (m_scaleFactor != 0) {
+
+
+        if (m_scaleFactor != 1) {
             m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
+            if ( newHeight > YWinSize) // Crop the image! 
+            {
+                int heightDiff = m_displayedImage->GetHeight() - YWinSize;
+                Debug.AddLine(wxString::Format("dispImg %d Ywinsize %d heightdiff %d", newWidth, YWinSize, heightDiff));
+                *m_displayedImage = m_displayedImage->GetSubImage(wxRect(0, heightDiff / 2, newWidth, newHeight - heightDiff / 2));
+                m_yOffset = heightDiff / 2 * -1;
+            }
+            else {
+                m_yOffset = 0;
+            }
         }
 
-        if ( newHeight > YWinSize) {
-            int heightDiff = m_displayedImage->GetHeight() - YWinSize;
-            Debug.AddLine(wxString::Format("dispImg %d Ywinsize %d heightdiff %d", newWidth, YWinSize, heightDiff));
-            m_yOffset = heightDiff / 2;
-            *m_displayedImage = m_displayedImage->GetSubImage(wxRect(0, m_yOffset, newWidth, newHeight - m_yOffset));
-        }
+        
 
         // important to provide explicit color for r,g,b, optional args to Size().
         // If default args are provided wxWidgets performs some expensive histogram
