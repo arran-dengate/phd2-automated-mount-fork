@@ -173,6 +173,7 @@ protected:
     int m_searchRegion; // how far u/d/l/r do we do the initial search for a star
     bool m_forceFullFrame;
     double m_scaleFactor;
+    int m_yOffset;
     bool m_showBookmarks;
     std::vector<wxRealPoint> m_bookmarks;
 

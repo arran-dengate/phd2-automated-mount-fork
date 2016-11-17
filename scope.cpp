@@ -1272,6 +1272,7 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 //alert->ShowModal();
 
                 pFrame->StatusMsg(wxString::Format("Calibration completed with angle %f", cameraAngle));
+                pFrame->Alert(wxString::Format("Calibration completed; camera angle %f", cameraAngle));
 
                 GetLastCalibration(&m_prevCalibration);
                 GetCalibrationDetails(&m_prevCalibrationDetails);

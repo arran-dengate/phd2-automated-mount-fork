@@ -813,9 +813,9 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         //memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
         //memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
         #ifdef __APPLEX__
-            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
+            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor + m_yOffset)-30,wxCOPY,false);
         #else
-            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
+            tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor + m_yOffset) - 30,wxCOPY,false);
         #endif
 
 
@@ -851,7 +851,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             for (std::vector<wxRealPoint>::const_iterator it = m_bookmarks.begin();
                  it != m_bookmarks.end(); ++it)
             {
-                wxPoint p((int)(it->x * m_scaleFactor), (int)(it->y * m_scaleFactor));
+                wxPoint p((int)(it->x * m_scaleFactor), (int)(it->y * m_scaleFactor + m_yOffset));
                 dc.DrawCircle(p, 3);
                 dc.DrawCircle(p, 6);
                 dc.DrawCircle(p, 12);
@@ -866,7 +866,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         if (FoundStar && (state == STATE_SELECTED | STATE_CALIBRATING_PRIMARY | STATE_CALIBRATING_SECONDARY | STATE_CALIBRATED | STATE_GUIDING)) {
             
             dc.SetPen(wxPen(wxColour(0,0,0), 1, wxSOLID));
-            dc.DrawCircle(m_rotationCenter.X * m_scaleFactor, m_rotationCenter.Y *m_scaleFactor, 5);
+            dc.DrawCircle(m_rotationCenter.X * m_scaleFactor, m_rotationCenter.Y *m_scaleFactor + m_yOffset, 5);
             for (Star s : m_starList) 
             {   
                 if ( s.X > m_star.X + border || s.X < m_star.X - border || s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
@@ -887,8 +887,8 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                     PHD_Point prevPoint(s.X, s.Y);
                     dc.SetPen(wxPen(wxColour(233,228,24), 1, wxSOLID));
                     for (PHD_Point p : s.prevPositions) {
-                        dc.DrawLine(wxPoint(prevPoint.X * m_scaleFactor, prevPoint.Y * m_scaleFactor), 
-                                    wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor));
+                        dc.DrawLine(wxPoint(prevPoint.X * m_scaleFactor, prevPoint.Y * m_scaleFactor + m_yOffset), 
+                                    wxPoint(p.X         * m_scaleFactor, p.Y         * m_scaleFactor + m_yOffset));
                         prevPoint = p;
                     }    
                 }
@@ -910,7 +910,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                     wxString strAngle = wxString::Format(wxT("%.3f"),s.lastAngleDiff);
                     wxColour original = dc.GetTextForeground();
                     dc.SetTextForeground(wxColour(255, 255, 255));
-                    dc.DrawText(strAngle, s.X * m_scaleFactor + 10, s.Y * m_scaleFactor + 10);
+                    dc.DrawText(strAngle, s.X * m_scaleFactor + 10, s.Y * m_scaleFactor + m_yOffset + 10);
                     dc.SetTextForeground(original);
                 }
                 
@@ -965,7 +965,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
                 memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
                 memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
     #ifdef __APPLEX__
-                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor)-30,wxCOPY,false);
+                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor + m_yOffset)-30,wxCOPY,false);
     #else
                 tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
     #endif

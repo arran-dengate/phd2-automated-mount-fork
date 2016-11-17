@@ -45,6 +45,7 @@
 #include <unordered_map>
 #include <wx/listctrl.h>
 #include <wx/srchctrl.h>
+#include <wx/checkbox.h>
 #include <wx/progdlg.h>
 #include "cam_simulator.h" // To determine if current camera is simulator
 
@@ -55,7 +56,7 @@ const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
 const char CATALOG_FILENAME[]        = "/usr/local/phd2/goto/catalog.csv";
 
 GotoDialog::GotoDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX)
+    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 325), wxCAPTION | wxCLOSE_BOX)
 {   
     m_doAccuracyMap = false;
 
@@ -75,7 +76,7 @@ GotoDialog::GotoDialog(void)
     wxStaticBoxSizer *statusBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Status");
     wxStaticBoxSizer *destinationBox = new wxStaticBoxSizer(wxVERTICAL, this, "Destination");
 
-    containBox->Add(searchBox, 1, wxEXPAND);
+    containBox->Add(searchBox, 0, wxEXPAND);
     containBox->Add(lowerBox, 1, wxEXPAND);
     lowerBox->Add(statusBox, 1, wxEXPAND);
     lowerBox->Add(destinationBox, 1, wxEXPAND);
@@ -95,11 +96,6 @@ GotoDialog::GotoDialog(void)
 
     searchBox->Add(m_searchBar, 0, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
 
-    // Debugging only - add text ctrl for manually setting current sky position.
-
-    m_skyAltManualSet = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
-    m_skyAzManualSet  = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
-
     // Get a bold font
 
     wxStaticText *tempText = new wxStaticText(this, -1, "");
@@ -116,22 +112,14 @@ GotoDialog::GotoDialog(void)
     m_timeText                   = new wxStaticText(this, -1, "-");
     
     wxStaticText *skyPosHeading                = new wxStaticText(this, -1, "Sky position");
-    wxStaticText *skyAltManualSetHeading       = new wxStaticText(this, -1, "Set sky alt (degrees)");
-    wxStaticText *skyAzManualSetHeading        = new wxStaticText(this, -1, "Set sky az (degrees)");
     wxStaticText *gpsLocHeading                = new wxStaticText(this, -1, "GPS location");
     wxStaticText *timeHeading                  = new wxStaticText(this, -1, "Time");
     skyPosHeading          ->SetFont(boldFont);
-    skyAltManualSetHeading ->SetFont(boldFont);
-    skyAzManualSetHeading  ->SetFont(boldFont);
     gpsLocHeading          ->SetFont(boldFont);
     timeHeading            ->SetFont(boldFont);
 
     statusGrid->Add(skyPosHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyPosText,                0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(skyAltManualSetHeading,      0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(m_skyAltManualSet,           0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(skyAzManualSetHeading,       0, wxALL | wxALIGN_TOP, borderSize);
-    statusGrid->Add(m_skyAzManualSet,            0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(gpsLocHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_gpsLocText,                0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(timeHeading,                 0, wxALL | wxALIGN_TOP, borderSize);
@@ -145,7 +133,7 @@ GotoDialog::GotoDialog(void)
     m_destinationRa     = new wxStaticText(this, -1, "-                      \n ");
     m_destinationDec    = new wxStaticText(this, -1, "-                      ");
     m_destinationAlt    = new wxStaticText(this, -1, "-                      ");
-    m_destinationAz     = new wxStaticText(this, -1, "-                      ");
+    m_destinationAz     = new wxStaticText(this, -1, "-                      \n");
     m_destinationType   = new wxStaticText(this, -1, "-                      ");
     wxStaticText *destinationTypeHeading = new wxStaticText(this, -1, "Type");
     wxStaticText *destinationRaHeading   = new wxStaticText(this, -1, "RA");
@@ -170,6 +158,9 @@ GotoDialog::GotoDialog(void)
     destinationGrid->Add(m_destinationAlt,       0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(destinationAzHeading,   0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationAz,        0, wxALL | wxALIGN_TOP, borderSize);
+
+    m_recalibrateDuringGoto = new wxCheckBox(this, -1, "Recalibrate during goto\n(slower, more accurate)", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT, wxDefaultValidator, wxTextCtrlNameStr);
+    destinationBox->Add(m_recalibrateDuringGoto, 0, wxALL | wxEXPAND | wxALIGN_LEFT, borderSize); 
 
     // Button sizer along the bottom with 'Cancel' and 'Goto' buttons
 
@@ -430,19 +421,7 @@ void GotoDialog::AccuracyMap() {
     }
 }
 
-void GotoDialog::OnDebug(wxCommandEvent&) {
-    // Line up some points to visit
-    for (int i = 90; i > 30; i -= 10) {
-        m_pointsToVisit.push_back(std::make_pair(i, 0));
-    }
-    Debug.AddLine(wxString::Format("Goto accMap: Goto 90, 0"));
-    pMount->HexGoto(90, 0);
-    m_solveTriesRemaining = 3;
-    m_doAccuracyMap = true;
-}
-
-void GotoDialog::OnCalibrate(wxCommandEvent& )
-{
+bool GotoDialog::Calibrate() {
     // Create directory if does not exist
     struct stat info;
     if( stat( IMAGE_DIRECTORY, &info ) != 0 ) {
@@ -455,14 +434,7 @@ void GotoDialog::OnCalibrate(wxCommandEvent& )
     double startAz  = 0;
     double astroRotationAngle = 0;
 
-    if ( m_skyAltManualSet->GetValue().length() > 0 && m_skyAzManualSet->GetValue().length() > 0 ) 
-    {
-        wxString contents = wxString::Format("Bypassing astrometry and assuming sky position is alt %s az %s", m_skyAltManualSet->GetValue(), m_skyAzManualSet->GetValue());
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();
-        startAlt = stod(string(m_skyAltManualSet->GetValue()));
-        startAz  = stod(string(m_skyAzManualSet ->GetValue()));
-    } else if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
+    if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
         EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
         wxString contents = wxString::Format("Astrometry finished! Current location:\n RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
         wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
@@ -473,7 +445,7 @@ void GotoDialog::OnCalibrate(wxCommandEvent& )
                                      "Goto cannot proceed.");
         wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal(); 
-        return;                                                             
+        return false;                                                             
     } 
 
     // -- Center of rotation --
@@ -504,6 +476,23 @@ void GotoDialog::OnCalibrate(wxCommandEvent& )
     
     pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt); // TODO - fill in missing angle
     Debug.AddLine("Goto: Ending onCalibrate");
+    return true;
+}
+
+void GotoDialog::OnDebug(wxCommandEvent&) {
+    // Line up some points to visit
+    for (int i = 90; i > 30; i -= 10) {
+        m_pointsToVisit.push_back(std::make_pair(i, 0));
+    }
+    Debug.AddLine(wxString::Format("Goto accMap: Goto 90, 0"));
+    pMount->HexGoto(90, 0);
+    m_solveTriesRemaining = 3;
+    m_doAccuracyMap = true;
+}
+
+void GotoDialog::OnCalibrate(wxCommandEvent& )
+{
+    Calibrate();   
 }
 
 void GotoDialog::OnGoto(wxCommandEvent& )
@@ -535,6 +524,10 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     alert->ShowModal(); 
 
     pMount->HexGoto(destAlt, destAz);
+    if ( m_recalibrateDuringGoto->IsChecked() ) {
+        Calibrate();
+        pMount->HexGoto(destAlt, destAz);
+    }
 
 }
 

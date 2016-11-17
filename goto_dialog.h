@@ -41,19 +41,16 @@ class GotoDialog :
     public wxDialog
 {
 private:
-    wxTextCtrl   *m_skyAltManualSet;
-    wxTextCtrl   *m_skyAzManualSet;
     wxTextCtrl   *m_searchBar;
     wxStaticText *m_destinationRa;
-    //wxStaticText *m_destinationRaHMS;
     wxStaticText *m_destinationDec;
-    //wxStaticText *m_destinationDecDMS;
     wxStaticText *m_destinationAlt;
     wxStaticText *m_destinationAz;
     wxStaticText *m_destinationType;
     wxStaticText *m_skyPosText;
     wxStaticText *m_gpsLocText;
     wxStaticText *m_timeText; 
+    wxCheckBox   *m_recalibrateDuringGoto;
     std::unordered_map<string,string> m_catalog;
 
     wxTimer *m_timer; 
@@ -71,6 +68,7 @@ private:
 
     int StringWidth(const wxString& string);
     void AccuracyMap();
+    bool Calibrate();
     void OnCalibrate(wxCommandEvent& event);
     void OnDebug(wxCommandEvent& event);
     void OnGoto(wxCommandEvent& event);

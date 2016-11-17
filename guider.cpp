@@ -370,52 +370,19 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
 
         int imageWidth   = m_displayedImage->GetWidth();
         int imageHeight  = m_displayedImage->GetHeight();
+        m_scaleFactor = double(XWinSize) / double(imageWidth);
+        int newWidth = int(imageWidth * m_scaleFactor);
+        int newHeight = int(imageHeight * m_scaleFactor);
 
-        // scale the image if necessary
+        if (m_scaleFactor != 0) {
+            m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
+        }
 
-        if (imageWidth != XWinSize || imageHeight != YWinSize)
-        {
-            // The image is not the exact right size -- figure out what to do.
-            double xScaleFactor = imageWidth / (double)XWinSize;
-            double yScaleFactor = imageHeight / (double)YWinSize;
-            int newWidth = imageWidth;
-            int newHeight = imageHeight;
-
-            double newScaleFactor = (xScaleFactor > yScaleFactor) ?
-                                    xScaleFactor :
-                                    yScaleFactor;
-
-//            Debug.Write(wxString::Format("xScaleFactor=%.2f, yScaleFactor=%.2f, newScaleFactor=%.2f\n", xScaleFactor,
-//                    yScaleFactor, newScaleFactor));
-
-            // we rescale the image if:
-            // - The image is either too big
-            // - The image is so small that at least one dimension is less
-            //   than half the width of the window or
-            // - The user has requsted rescaling
-
-            if (xScaleFactor > 1.0 || yScaleFactor > 1.0 ||
-                xScaleFactor < 0.45 || yScaleFactor < 0.45 || m_scaleImage)
-            {
-
-                newWidth /= newScaleFactor;
-                newHeight /= newScaleFactor;
-
-                newScaleFactor = 1.0 / newScaleFactor;
-
-                m_scaleFactor = newScaleFactor;
-
-                //Debug.Write(wxString::Format("Resizing image to %d,%d\n", newWidth, newHeight));
-
-                if (newWidth > 0 && newHeight > 0)
-                {
-                    m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
-                }
-            }
-            else
-            {
-                m_scaleFactor = 1.0;
-            }
+        if ( newHeight > YWinSize) {
+            int heightDiff = m_displayedImage->GetHeight() - YWinSize;
+            Debug.AddLine(wxString::Format("dispImg %d Ywinsize %d heightdiff %d", newWidth, YWinSize, heightDiff));
+            m_yOffset = heightDiff / 2;
+            *m_displayedImage = m_displayedImage->GetSubImage(wxRect(0, m_yOffset, newWidth, newHeight - m_yOffset));
         }
 
         // important to provide explicit color for r,g,b, optional args to Size().
@@ -425,6 +392,19 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
         memDC.SelectObject(DisplayedBitmap);
 
         dc.Blit(0, 0, DisplayedBitmap.GetWidth(), DisplayedBitmap.GetHeight(), &memDC, 0, 0, wxCOPY, false);
+
+        /*Parameters
+        xdest   Destination device context x position.
+        ydest   Destination device context y position.
+        width   Width of source area to be copied.
+        height  Height of source area to be copied.
+        source  Source device context.
+        xsrc    Source device context x position.
+        ysrc    Source device context y position.
+        logicalFunc Logical function to use, see SetLogicalFunction().
+        useMask  
+        xsrcMask    Source x position on the mask. If both xsrcMask and ysrcMask are -1, xsrc and ysrc will be assumed for the mask source position. Currently only implemented on Windows.
+        ysrcMask*/
 
         int XImgSize = m_displayedImage->GetWidth();
         int YImgSize = m_displayedImage->GetHeight();
