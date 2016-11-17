@@ -693,12 +693,6 @@ int PHDStatusBar::GetMinSBWidth()
     return m_ctrlPanel->GetMinPanelWidth();
 }
 
-void PHDStatusBar::StatusMsg(const wxString& text)
-{
-    m_Msg1->SetLabelText(text);
-    m_Msg1->Update();
-}
-
 // Trivial class to handle the background color on the toolbar control
 void PHDToolBarArt::DrawBackground(wxDC& dc, wxWindow* parent, const wxRect& rect)
 {

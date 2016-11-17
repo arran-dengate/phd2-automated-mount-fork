@@ -384,8 +384,10 @@ public:
     void Alert(const wxString& msg, int flags = wxICON_EXCLAMATION);
     void Alert(const wxString& msg, alert_fn *DontShowFn, const wxString& buttonLabel,  alert_fn *SpecialFn, long arg, bool showHelpButton = false, int flags = wxICON_EXCLAMATION);
     void SuppressableAlert(const wxString& configPropKey, const wxString& msg, alert_fn *dontShowFn, long arg, bool showHelpButton = false, int flags = wxICON_EXCLAMATION);
-    void StatusMsg(const wxString& text);
     void StatusMsgNoTimeout(const wxString& text);
+    void StatusMsg(const wxString& text);
+    void SetStatusMsg(PHDStatusBar *statusbar, const wxString& text);
+    wxString getStatusMsgText();
     wxString GetSettingsSummary();
     wxString ExposureDurationSummary(void) const;
     wxString PixelScaleSummary(void) const;
@@ -404,6 +406,7 @@ private:
 
     wxSocketServer *SocketServer;
     wxTimer m_statusbarTimer;
+    wxString m_statusMsgText;
 
     int m_exposureDuration;
     AutoExposureCfg m_autoExp;

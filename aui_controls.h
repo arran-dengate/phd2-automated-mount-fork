@@ -159,7 +159,7 @@ private:
 
 public:
     static PHDStatusBar* CreateInstance(wxWindow* parent, long style = wxSTB_DEFAULT_STYLE);
-    void StatusMsg(const wxString& text);
+    //void StatusMsg(const wxString& text);
     void UpdateStates();
     void UpdateStarInfo(double SNR, bool Saturated);
     void ClearStarInfo() { UpdateStarInfo(-1, 0); }

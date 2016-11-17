@@ -321,10 +321,10 @@ void RefineDefMap::ShowStatus(const wxString& msg, bool appending)
     static wxString preamble;
 
     if (appending)
-        pStatusBar->SetStatusText(preamble + " " + msg);
+        pFrame->SetStatusText(preamble + " " + msg);
     else
     {
-        pStatusBar->SetStatusText(msg);
+        pFrame->SetStatusText(msg);
         preamble = msg;
     }
     pStatusBar->Update();

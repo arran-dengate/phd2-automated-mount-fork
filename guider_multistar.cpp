@@ -793,6 +793,11 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         // PaintHelper drew the image and any overlays
         // now decorate the image to show the selection
 
+        wxColour original = dc.GetTextForeground();
+        dc.SetTextForeground(wxColour(255, 255, 255));
+        dc.DrawText(pFrame->getStatusMsgText(), 5, YWinSize - 20);
+        dc.SetTextForeground(original);
+
         // Arran: This is how to draw something on the screen!
         //wxString strAngle = wxString::Format(wxT("%f"),RotationAngleDelta());
         //wxColour original = dc.GetTextForeground();

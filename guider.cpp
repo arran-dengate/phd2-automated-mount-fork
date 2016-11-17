@@ -470,13 +470,13 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
                         double cos_eangle = cos(eAngle);
                         double sin_eangle = sin(eAngle);
                         dc.SetPen(wxPen(pFrame->pGraphLog->GetRaOrDxColor(), 2, wxPENSTYLE_DOT));
-                        dc.DrawLine(ROUND(StarX * m_scaleFactor + r * cos_eangle), ROUND(StarY * m_scaleFactor + r * sin_eangle),
-                            ROUND(StarX * m_scaleFactor - r * cos_eangle), ROUND(StarY * m_scaleFactor - r * sin_eangle));
+                        dc.DrawLine(ROUND(StarX * m_scaleFactor + r * cos_eangle), ROUND(StarY * m_scaleFactor + m_yOffset + r * sin_eangle),
+                            ROUND(StarX * m_scaleFactor - r * cos_eangle), ROUND(StarY * m_scaleFactor + m_yOffset - r * sin_eangle));
                         if (raParity != GUIDE_PARITY_UNKNOWN)
                         {
                             dc.SetTextForeground(pFrame->pGraphLog->GetRaOrDxColor());
                             dc.DrawText(_("E"),
-                                ROUND(StarX * m_scaleFactor + rlabel * cos_eangle) - 4, ROUND(StarY * m_scaleFactor + rlabel * sin_eangle) - 6);
+                                ROUND(StarX * m_scaleFactor + rlabel * cos_eangle) - 4, ROUND(StarY * m_scaleFactor + m_yOffset + rlabel * sin_eangle) - 6);
                         }
 
                         double nAngle = pMount->IsCalibrated() ? pMount->yAngle() : M_PI / 2.0;
@@ -491,13 +491,13 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
                         double cos_nangle = cos(nAngle);
                         double sin_nangle = sin(nAngle);
                         dc.SetPen(wxPen(pFrame->pGraphLog->GetDecOrDyColor(), 2, wxPENSTYLE_DOT));
-                        dc.DrawLine(ROUND(StarX * m_scaleFactor + r * cos_nangle), ROUND(StarY * m_scaleFactor + r * sin_nangle),
-                            ROUND(StarX * m_scaleFactor - r * cos_nangle), ROUND(StarY * m_scaleFactor - r * sin_nangle));
+                        dc.DrawLine(ROUND(StarX * m_scaleFactor + r * cos_nangle), ROUND(StarY * m_scaleFactor + m_yOffset + r * sin_nangle),
+                            ROUND(StarX * m_scaleFactor - r * cos_nangle), ROUND(StarY * m_scaleFactor + m_yOffset - r * sin_nangle));
                         if (decParity != GUIDE_PARITY_UNKNOWN)
                         {
                             dc.SetTextForeground(pFrame->pGraphLog->GetDecOrDyColor());
                             dc.DrawText(_("N"),
-                                ROUND(StarX * m_scaleFactor + rlabel * cos_nangle) - 4, ROUND(StarY * m_scaleFactor + rlabel * sin_nangle) - 6);
+                                ROUND(StarX * m_scaleFactor + rlabel * cos_nangle) - 4, ROUND(StarY * m_scaleFactor + m_yOffset + rlabel * sin_nangle) - 6);
                         }
 
                         wxGraphicsContext *gc = wxGraphicsContext::Create(dc);
@@ -547,7 +547,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
                             for (int i = 0; i < 5; i++)
                             {
                                 pt[i].x = (int) floor(m_overlaySlitCoords.corners[i].x * m_scaleFactor);
-                                pt[i].y = (int) floor(m_overlaySlitCoords.corners[i].y * m_scaleFactor);
+                                pt[i].y = (int) floor(m_overlaySlitCoords.corners[i].y * m_scaleFactor + m_yOffset);
                             }
                             dc.DrawLines(5, pt);
                         }
@@ -568,7 +568,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
             for (DefectMap::const_iterator it = m_defectMapPreview->begin(); it != m_defectMapPreview->end(); ++it)
             {
                 const wxPoint& pt = *it;
-                dc.DrawPoint((int)(pt.x * m_scaleFactor), (int)(pt.y * m_scaleFactor));
+                dc.DrawPoint((int)(pt.x * m_scaleFactor), (int)(pt.y * m_scaleFactor + m_yOffset));
             }
         }
 
@@ -595,7 +595,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
                     break;
             }
 
-            dc.DrawLine(0, int(LockY * m_scaleFactor), XImgSize, int(LockY * m_scaleFactor));
+            dc.DrawLine(0, int(LockY * m_scaleFactor + m_yOffset), XImgSize, int(LockY * m_scaleFactor + m_yOffset));
             dc.DrawLine(int(LockX * m_scaleFactor), 0, int(LockX * m_scaleFactor), YImgSize);
         }
 
@@ -607,7 +607,7 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
             dc.SetPen(wxPen(wxColor(255,0,255), 1, penStyle));
             int radius = ROUND(m_polarAlignCircleRadius * m_polarAlignCircleCorrection * m_scaleFactor);
             dc.DrawCircle(m_polarAlignCircleCenter.X * m_scaleFactor,
-                m_polarAlignCircleCenter.Y * m_scaleFactor, radius);
+                m_polarAlignCircleCenter.Y * m_scaleFactor + m_yOffset, radius);
         }
 
         if (GetPauseType() != PAUSE_NONE)

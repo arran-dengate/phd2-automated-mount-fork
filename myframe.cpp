@@ -873,7 +873,7 @@ wxObject *  clientData = NULL
 void MyFrame::SetupStatusBar(void)
 {
     m_statusbar = PHDStatusBar::CreateInstance(this, wxSTB_DEFAULT_STYLE);
-    SetStatusBar(m_statusbar);
+    //SetStatusBar(m_statusbar); // Disabled to save space on smaller screens
     PositionStatusBar();
     UpdateCalibrationStatus();
 }
@@ -1203,11 +1203,18 @@ static void StartStatusbarTimer(wxTimer& timer)
     timer.Start(DISPLAY_MS, wxTIMER_ONE_SHOT);
 }
 
-static void SetStatusMsg(PHDStatusBar *statusbar, const wxString& text)
+void MyFrame::SetStatusMsg(PHDStatusBar *statusbar, const wxString& text)
 {
+
     Debug.Write(wxString::Format("Status Line: %s\n", text));
-    statusbar->StatusMsg(text);
+   // pFrame->StatusMsg(text);
+   m_statusMsgText = text;
 }
+
+wxString MyFrame::getStatusMsgText() {
+    return m_statusMsgText;
+}
+
 
 enum StatusbarThreadMsgType
 {
@@ -1432,11 +1439,11 @@ void MyFrame::OnRequestMountMove(wxCommandEvent& evt)
 void MyFrame::OnStatusbarTimerEvent(wxTimerEvent& evt)
 {
     if (pGuider->IsGuiding())
-        m_statusbar->StatusMsg(_("Guiding"));
+        StatusMsg(_("Guiding"));
     else if (CaptureActive)
-        m_statusbar->StatusMsg(_("Looping"));
+        StatusMsg(_("Looping"));
     else
-        m_statusbar->StatusMsg(wxEmptyString);
+        StatusMsg(wxEmptyString);
 }
 
 void MyFrame::ScheduleExposure(void)
