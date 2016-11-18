@@ -235,6 +235,14 @@ public:
     bool m_rawImageModeWarningDone;
     wxSize m_prevDarkFrameSize;
 
+    // New style icons
+    wxBitmap calibrateIconBmp;
+    wxBitmap calibrateIconBmpDisabled;
+    wxBitmap gotoIconBmp;
+    wxBitmap gotoIconBmpDisabled;
+    wxBitmap gammaIconBmp;
+    wxBitmap gammaIconBmpDisabled;
+
     void GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault);
     void SetGamma(int newGamma);
 
@@ -253,6 +261,7 @@ public:
     void OnLoopExposure(wxCommandEvent& evt);
     void OnButtonStop(wxCommandEvent& evt);
     void OnButtonGoto(wxCommandEvent& evt);
+    void OnButtonCalibrate(wxCommandEvent& evt);
     void OnButtonGamma(wxCommandEvent& evt);
     void OnDark(wxCommandEvent& evt);
     void OnLoadDark(wxCommandEvent& evt);
@@ -465,6 +474,7 @@ enum {
       AO_SIMULATOR,
     END_STEPGUIDERS,
     BUTTON_GEAR,
+    BUTTON_CALIBRATE,
     BUTTON_CAL,
     BUTTON_LOOP,
     BUTTON_GUIDE,

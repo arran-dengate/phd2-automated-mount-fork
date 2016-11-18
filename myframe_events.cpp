@@ -471,7 +471,20 @@ void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
     GotoDialog gotodlg;
     gotodlg.ShowModal();
- }
+}
+
+void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
+{
+    if (pGuider->GetState() < STATE_SELECTED)
+    {
+        // Autoselect if not already done
+        pFrame->pGuider->AutoSelect();
+    }
+
+    pMount->ClearCalibration();
+    StartGuiding();
+    
+}
 
 void MyFrame::OnButtonGamma(wxCommandEvent& WXUNUSED(event))
 {
@@ -854,8 +867,8 @@ void MyFrame::GuideButtonClick(bool interactive)
 
         if (pGuider->GetState() < STATE_SELECTED)
         {
-            wxMessageBox(_T("Please select a guide star before attempting to guide"));
-            throw ERROR_INFO("Unable to guide with state < STATE_SELECTED");
+            // Autoselect if not already done
+            pFrame->pGuider->AutoSelect();
         }
 
         ValidateDarksLoaded();
@@ -903,6 +916,7 @@ void MyFrame::GuideButtonClick(bool interactive)
 
 void MyFrame::OnGuide(wxCommandEvent& WXUNUSED(event))
 {
+    //TODO - check if already autofound.
     GuideButtonClick(true);
 }
 
@@ -985,6 +999,10 @@ void MyFrame::OnSelectGear(wxCommandEvent& evt)
     {
         POSSIBLY_UNUSED(Msg);
     }
+
+    StartLooping();
+    if (pCamera && pCamera->Connected && !CaptureActive && !pGuider->IsCalibratingOrGuiding())
+        StartLooping();
 }
 
 void MyFrame::OnBookmarksShow(wxCommandEvent& evt)

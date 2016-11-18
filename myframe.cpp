@@ -129,6 +129,8 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(BUTTON_LOOP, MyFrame::OnLoopExposure) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_STOP, MyFrame::OnButtonStop)
     EVT_MENU(BUTTON_STOP, MyFrame::OnButtonStop) // Bit of a hack -- not actually on the menu but need an event to accelerate
+    EVT_TOOL(BUTTON_CALIBRATE, MyFrame::OnButtonCalibrate)
+    EVT_MENU(BUTTON_CALIBRATE, MyFrame::OnButtonCalibrate) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_GOTO, MyFrame::OnButtonGoto)
     EVT_MENU(BUTTON_GOTO, MyFrame::OnButtonGoto) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_GAMMA, MyFrame::OnButtonGamma)
@@ -795,6 +797,17 @@ void MyFrame::SetupToolBar()
 {
     MainToolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL|wxTB_RIGHT|wxTB_FLAT, wxT("MainToolbar"));
 
+    const string PHD2_FILE_PATH = "/usr/local/phd2/";
+    
+    calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
+    calibrateIconBmpDisabled = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
+
+    gotoIconBmp              = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto.png"), wxBITMAP_TYPE_PNG);
+    gotoIconBmpDisabled      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
+
+    gammaIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma.png"), wxBITMAP_TYPE_PNG);
+    gammaIconBmpDisabled     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
+
 #   include "icons/loop.png.h"
     wxBitmap loop_bmp(wxBITMAP_PNG_FROM_DATA(loop));
 
@@ -851,14 +864,15 @@ const wxString &    longHelpString = wxEmptyString,
 wxObject *  clientData = NULL 
 ) */  
     MainToolbar->AddTool(BUTTON_GEAR, wxString::Format("Gear button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Setup equipment"), _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
-    MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
+    //MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
+    MainToolbar->AddTool(BUTTON_CALIBRATE, wxString::Format("Calibrate button"), calibrateIconBmp, calibrateIconBmpDisabled, wxITEM_NORMAL, _("Calibrate"), _("Calibrate to work out mount orientation with respect to camera"));
     MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guide_bmp, guide_bmp_disabled, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
-    MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
-    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), brain_bmp, brain_bmp, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
+    //MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
+    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), gotoIconBmp, gotoIconBmpDisabled, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
-    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), brain_bmp, brain_bmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
+    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), gammaIconBmp, gammaIconBmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
     MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
