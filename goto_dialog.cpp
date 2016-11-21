@@ -207,10 +207,10 @@ GotoDialog::GotoDialog(void)
     // Store original exposure duration so we can go back to it.
     // Set high exposure duration to help Astrometry get a good image.
     // TODO: make this user-configurable (we don't know what their camera setup is like!)
-    pFrame->GetExposureInfo(&prevExposureDuration, &ignored);
-    if ( not pFrame->SetExposureDuration(2000) ) {
-        Debug.AddLine("Goto: failed to increase exposure duration");
-    }
+    //pFrame->GetExposureInfo(&prevExposureDuration, &ignored);
+    //if ( not pFrame->SetExposureDuration(2000) ) {
+    //    Debug.AddLine("Goto: failed to increase exposure duration");
+    //}
     
 }
 
@@ -611,7 +611,7 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
     // TODO: Detect arcsecperpix ratio from the first astrometry output, instead of hardcoding it here
-    strcat(inputFilename, " --overwrite --no-plots --scale-low=6.08 --scale-high=6.14 --scale-units=arcsecperpix --no-fits2fits --fits-image");
+    strcat(inputFilename, " --overwrite "); //--no-plots --scale-low=6.08 --scale-high=6.14 --scale-units=arcsecperpix --no-fits2fits --fits-image ");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 
@@ -683,7 +683,7 @@ void GotoDialog::OnClose(wxCommandEvent& event) {
 GotoDialog::~GotoDialog(void)
 {
     m_timer->Stop();
-    pFrame->SetExposureDuration(prevExposureDuration);
+    //pFrame->SetExposureDuration(prevExposureDuration);
     pFrame->pGuider->InvalidateSavedImage();
 
 }
