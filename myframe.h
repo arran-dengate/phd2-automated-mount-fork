@@ -395,7 +395,7 @@ public:
     void SuppressableAlert(const wxString& configPropKey, const wxString& msg, alert_fn *dontShowFn, long arg, bool showHelpButton = false, int flags = wxICON_EXCLAMATION);
     void StatusMsgNoTimeout(const wxString& text);
     void StatusMsg(const wxString& text);
-    void SetStatusMsg(PHDStatusBar *statusbar, const wxString& text);
+    void SetStatusMsg(const wxString& text);
     wxString getStatusMsgText();
     wxString GetSettingsSummary();
     wxString ExposureDurationSummary(void) const;

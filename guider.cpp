@@ -377,7 +377,13 @@ bool Guider::PaintHelper(wxAutoBufferedPaintDCBase& dc, wxMemoryDC& memDC)
 
 
         if (m_scaleFactor != 1) {
-            m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
+            
+            if (m_scaleFactor < 1) {
+                m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BOX_AVERAGE);
+            } else {
+                m_displayedImage->Rescale(newWidth, newHeight, wxIMAGE_QUALITY_BICUBIC);
+            }
+            
             if ( newHeight > YWinSize) // Crop the image! 
             {
                 int heightDiff = m_displayedImage->GetHeight() - YWinSize;

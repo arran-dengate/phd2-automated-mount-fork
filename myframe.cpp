@@ -181,7 +181,7 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     m_pSecondaryWorkerThread = NULL;
     StartWorkerThread(m_pSecondaryWorkerThread);
 
-    m_statusbarTimer.SetOwner(this, STATUSBAR_TIMER_EVENT);
+    //m_statusbarTimer.SetOwner(this, STATUSBAR_TIMER_EVENT);
 
     SocketServer = NULL;
 
@@ -1001,10 +1001,6 @@ void MyFrame::UpdateButtonsStatus(void)
 
     if (need_update)
     {
-        if (pGuider->GetState() < STATE_SELECTED)
-            m_statusbar->ClearStarInfo();
-        if (!guiding_active)
-            m_statusbar->ClearGuiderInfo();
         Update();
         Refresh();
     }
@@ -1092,7 +1088,7 @@ void MyFrame::DoAlert(const alert_params& params)
         buttonSpace += 80;
     }
     m_infoBar->ShowMessage(pFrame && pFrame->pGuider ? WrapText(m_infoBar, params.msg, wxMax(pFrame->pGuider->GetSize().GetWidth() - buttonSpace, 100)) : params.msg, params.flags);
-    m_statusbar->UpdateStates();        // might have disconnected a device
+    
     EvtServer.NotifyAlert(params.msg, params.flags);
 }
 
@@ -1217,7 +1213,7 @@ static void StartStatusbarTimer(wxTimer& timer)
     timer.Start(DISPLAY_MS, wxTIMER_ONE_SHOT);
 }
 
-void MyFrame::SetStatusMsg(PHDStatusBar *statusbar, const wxString& text)
+void MyFrame::SetStatusMsg(const wxString& text)
 {
 
     Debug.Write(wxString::Format("Status Line: %s\n", text));
@@ -1257,8 +1253,7 @@ void MyFrame::StatusMsg(const wxString& text)
 {
     if (wxThread::IsMain())
     {
-        SetStatusMsg(m_statusbar, text);
-        StartStatusbarTimer(m_statusbarTimer);
+        SetStatusMsg(text);
     }
     else
         QueueStatusbarTextMsg(this, text, true);
@@ -1267,7 +1262,7 @@ void MyFrame::StatusMsg(const wxString& text)
 void MyFrame::StatusMsgNoTimeout(const wxString& text)
 {
     if (wxThread::IsMain())
-        SetStatusMsg(m_statusbar, text);
+        SetStatusMsg(text);
     else
         QueueStatusbarTextMsg(this, text, false);
 }
@@ -1279,11 +1274,7 @@ void MyFrame::OnStatusMsg(wxThreadEvent& event)
         wxString msg(event.GetString());
         bool withTimeout = event.GetInt() ? true : false;
 
-        SetStatusMsg(m_statusbar, msg);
-
-        if (withTimeout)
-            StartStatusbarTimer(m_statusbarTimer);
-        break;
+        SetStatusMsg(msg);
     }
     case THR_SB_STATE_LABELS:
         m_statusbar->UpdateStates();
