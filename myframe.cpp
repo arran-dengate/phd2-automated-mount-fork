@@ -796,8 +796,6 @@ void MyFrame::LoadProfileSettings(void)
 void MyFrame::SetupToolBar()
 {
     MainToolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL|wxTB_RIGHT|wxTB_FLAT, wxT("MainToolbar"));
-
-    const string PHD2_FILE_PATH = "/usr/local/phd2/";
     
     calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
     calibrateIconBmpDisabled = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);

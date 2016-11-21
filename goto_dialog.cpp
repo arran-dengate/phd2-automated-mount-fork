@@ -54,11 +54,13 @@ const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
 const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fits";
 const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
 const char CATALOG_FILENAME[]        = "/usr/local/phd2/goto/catalog.csv";
+const char MOVE_COMPLETE_FILENAME[]  = "/dev/shm/phd2/goto/done";
 
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 325), wxCAPTION | wxCLOSE_BOX)
 {   
     m_doAccuracyMap = false;
+    m_gotoInProgress = false;
 
     // Obtain the catalog data from a CSV file...
     
@@ -215,6 +217,19 @@ GotoDialog::GotoDialog(void)
 void GotoDialog::OnTimer(wxTimerEvent& event) {
     UpdateLocationText();
     if ( m_doAccuracyMap ) AccuracyMap();
+
+    if ( m_gotoInProgress ) {
+        struct stat info;
+        Debug.AddLine("Goto: in progress, waiting for 'done' file...");
+        if ( stat( MOVE_COMPLETE_FILENAME , &info ) == 0 ) {  // TODO: Get application executable path & use that, rather than absolute path! 
+            Calibrate();
+            double destAlt = std::stod(string(m_destinationAlt->GetLabelText())); // Also, getting the time from the text string is not ideal.
+            double destAz  = std::stod(string(m_destinationAz->GetLabelText()));
+            pMount->HexGoto(destAlt, destAz);
+            m_gotoInProgress = false;
+            Debug.AddLine("Goto: Sent second move command; complete!");
+        } 
+    }
 }
 
 void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
@@ -436,9 +451,10 @@ bool GotoDialog::Calibrate() {
 
     if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
         EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
-        wxString contents = wxString::Format("Astrometry finished! Current location:\n RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();
+        wxString contents = wxString::Format("Astrometry finished! Current location: RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
+        pFrame->Alert(contents);
+        //wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+        //alert->ShowModal();
     } else {
         wxString contents = wxString("Unable to work out position with astrometry!\n"
                                      "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
@@ -525,8 +541,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
 
     pMount->HexGoto(destAlt, destAz);
     if ( m_recalibrateDuringGoto->IsChecked() ) {
-        Calibrate();
-        pMount->HexGoto(destAlt, destAz);
+        m_gotoInProgress = true;
     }
 
 }

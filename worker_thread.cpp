@@ -271,7 +271,8 @@ Mount::MOVE_RESULT WorkerThread::HandleMove(MOVE_REQUEST *pArgs)
             {
                 Debug.AddLine("Calibration move");
                 result = pArgs->pMount->CalibrationMove(pArgs->direction, pArgs->duration, pArgs->rotationDeg);
-                wxMilliSleep(500 + ( 4000 * pArgs->rotationDeg)); // TODO fix this hideous hack
+                //wxMilliSleep(500 + ( 4000 * pArgs->rotationDeg)); // TODO fix this hideous hack
+                // Disabled for now - correct value will depend on how much we reduce scope shake anyway
 
                 if (result != Mount::MOVE_OK)
                 {

@@ -181,6 +181,8 @@ WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 #include "runinbg.h"
 #include "fitsiowrap.h"
 
+static const string PHD2_FILE_PATH = "/usr/local/phd2/";
+
 class wxSingleInstanceChecker;
 
 extern Mount *pMount;

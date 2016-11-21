@@ -73,6 +73,16 @@ private:
     double m_originalRotationAngle;
     PHD_Point m_rotationCenter;
 
+    wxBitmap m_manualGuideArrow;
+    wxBitmap m_curveGuideArrow;
+    PHD_Point m_upArrowPos;
+    PHD_Point m_downArrowPos;
+    PHD_Point m_leftArrowPos;
+    PHD_Point m_rightArrowPos;
+    PHD_Point m_clockwiseArrowPos;
+    PHD_Point m_anticlockwiseArrowPos;
+    bool WasClickNear(const PHD_Point &click, const PHD_Point &target, double within);
+
 
 public:
 

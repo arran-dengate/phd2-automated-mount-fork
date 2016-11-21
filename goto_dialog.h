@@ -53,6 +53,8 @@ private:
     wxCheckBox   *m_recalibrateDuringGoto;
     std::unordered_map<string,string> m_catalog;
 
+    bool m_gotoInProgress;
+
     wxTimer *m_timer; 
 
     wxButton *m_debugButton;
