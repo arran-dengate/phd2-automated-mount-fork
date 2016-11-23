@@ -475,13 +475,9 @@ void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
 {
-    if (pGuider->GetState() < STATE_SELECTED)
-    {
-        // Autoselect if not already done
-        pFrame->pGuider->AutoSelect();
-    }
-
-    pMount->ClearCalibration();
+    
+    pFrame->pGuider->AutoSelect();
+    pMount->ClearCalibration();pFrame->pGuider->AutoSelect();
     StartGuiding();
     
 }
@@ -846,7 +842,11 @@ static void ValidateDarksLoaded(void)
 }
 
 void MyFrame::GuideButtonClick(bool interactive)
-{
+{   
+    if ( pGuider->IsGuiding()) {
+        pGuider->StopGuiding();
+        return;
+    }
     try
     {
         if (pMount == NULL)
@@ -865,45 +865,12 @@ void MyFrame::GuideButtonClick(bool interactive)
             throw ERROR_INFO("Unable to guide with no camera Connected");
         }
 
-        if (pGuider->GetState() < STATE_SELECTED)
-        {
-            // Autoselect if not already done
-            pFrame->pGuider->AutoSelect();
-        }
+        pFrame->pGuider->AutoSelect();
 
         ValidateDarksLoaded();
-
-        if (wxGetKeyState(WXK_SHIFT))
-        {
-            bool recalibrate = true;
-            if (pMount->IsCalibrated() || (pSecondaryMount && pSecondaryMount->IsCalibrated()))
-            {
-                recalibrate = ConfirmDialog::Confirm(_("Are you sure you want force recalibration?"),
-                    "/force_recalibration_ok", _("Force Recalibration"));
-            }
-            if (recalibrate)
-            {
-                pMount->ClearCalibration();
-                if (pSecondaryMount)
-                    pSecondaryMount->ClearCalibration();
-            }
-        }
-
-        if (interactive && pPointingSource && pPointingSource->IsConnected() && pPointingSource->CanReportPosition())
-        {
-            bool proceed = true;
-            bool error = pPointingSource->PreparePositionInteractive();
-
-            if (!error && fabs(pPointingSource->GetDeclination()) > Scope::DEC_COMP_LIMIT && !TheScope()->IsCalibrated() )
-            {
-                proceed = ConfirmDialog::Confirm(
-                    _("Calibration this far from the celestial equator will be error-prone.  For best results, calibrate at a declination of -20 to +20."),
-                    "/highdec_calibration_ok", _("Confirm Calibration at Large Declination")
-                    );
-            }
-            if (error || !proceed)
-                return;
-        }
+        Calibration tempCal;
+        pMount->GetLastCalibration(&tempCal);
+        pMount->SetCalibration(tempCal);
 
         StartGuiding();
     }
@@ -977,7 +944,7 @@ void MyFrame::OnSelectGear(wxCommandEvent& evt)
     {
         if (CaptureActive)
         {
-            throw ERROR_INFO("OnSelectGear called while CaptureActive");
+            StopCapturing();
         }
 
         if (pConfig->NumProfiles() == 1 && pGearDialog->IsEmptyProfile())
@@ -1000,7 +967,7 @@ void MyFrame::OnSelectGear(wxCommandEvent& evt)
         POSSIBLY_UNUSED(Msg);
     }
 
-    StartLooping();
+    //StartLooping();
     if (pCamera && pCamera->Connected && !CaptureActive && !pGuider->IsCalibratingOrGuiding())
         StartLooping();
 }

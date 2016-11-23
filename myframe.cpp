@@ -172,6 +172,8 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     m_instanceNumber = instanceNumber;
     m_pLocale = locale;
 
+    isGuideIconStop = false;
+
     m_mgr.SetManagedWindow(this);
 
     m_frameCounter = 0;
@@ -798,13 +800,18 @@ void MyFrame::SetupToolBar()
     MainToolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL|wxTB_RIGHT|wxTB_FLAT, wxT("MainToolbar"));
     
     calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
-    calibrateIconBmpDisabled = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
+    calibrateIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
 
     gotoIconBmp              = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto.png"), wxBITMAP_TYPE_PNG);
-    gotoIconBmpDisabled      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
+    gotoIconDisabledBmp      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
+    gotoIconStopBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_stop.png"), wxBITMAP_TYPE_PNG);
 
     gammaIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma.png"), wxBITMAP_TYPE_PNG);
-    gammaIconBmpDisabled     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
+    gammaIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
+
+    guideIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
+    guideIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
+    guideIconStopBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_stop.png"), wxBITMAP_TYPE_PNG);
 
 #   include "icons/loop.png.h"
     wxBitmap loop_bmp(wxBITMAP_PNG_FROM_DATA(loop));
@@ -863,10 +870,10 @@ wxObject *  clientData = NULL
 ) */  
     MainToolbar->AddTool(BUTTON_GEAR, wxString::Format("Gear button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Setup equipment"), _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
     //MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
-    MainToolbar->AddTool(BUTTON_CALIBRATE, wxString::Format("Calibrate button"), calibrateIconBmp, calibrateIconBmpDisabled, wxITEM_NORMAL, _("Calibrate"), _("Calibrate to work out mount orientation with respect to camera"));
-    MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guide_bmp, guide_bmp_disabled, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
+    MainToolbar->AddTool(BUTTON_CALIBRATE, wxString::Format("Calibrate button"), calibrateIconBmp, calibrateIconDisabledBmp, wxITEM_NORMAL, _("Calibrate"), _("Calibrate to work out mount orientation with respect to camera"));
+    MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guideIconBmp, guideIconDisabledBmp, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
     //MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
-    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), gotoIconBmp, gotoIconBmpDisabled, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
+    MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), gotoIconBmp, gotoIconDisabledBmp, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
     MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
@@ -875,10 +882,8 @@ wxObject *  clientData = NULL
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
     MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
     MainToolbar->EnableTool(BUTTON_CAM_PROPERTIES, false);
-    MainToolbar->Realize();
-    MainToolbar->EnableTool(BUTTON_LOOP, false);
     MainToolbar->EnableTool(BUTTON_GUIDE, false);
-    MainToolbar->EnableTool(BUTTON_STOP, false);
+    MainToolbar->Realize();
 
 }
 
@@ -948,14 +953,19 @@ void MyFrame::UpdateButtonsStatus(void)
         (!CaptureActive || pGuider->IsCalibratingOrGuiding()) &&
         pCamera && pCamera->Connected;
 
-    if (cond_update_tool(MainToolbar, BUTTON_LOOP, loop_enabled))
-        need_update = true;
+    //if (cond_update_tool(MainToolbar, BUTTON_GEAR, !CaptureActive))
+    //    need_update = true
 
-    if (cond_update_tool(MainToolbar, BUTTON_GEAR, !CaptureActive))
+    if (! isGuideIconStop && pGuider->IsGuiding()) {
+        MainToolbar->SetToolNormalBitmap(BUTTON_GUIDE, guideIconStopBmp);
+        isGuideIconStop = true;
         need_update = true;
+    } else if (isGuideIconStop && !pGuider->IsGuiding()) {
+        MainToolbar->SetToolNormalBitmap(BUTTON_GUIDE, guideIconBmp);
+        isGuideIconStop = false;
+        need_update = true;
+    }
 
-    if (cond_update_tool(MainToolbar, BUTTON_STOP, CaptureActive))
-        need_update = true;
 
     bool dark_enabled = loop_enabled && !CaptureActive;
     if (dark_enabled ^ m_takeDarksMenuItem->IsEnabled())
@@ -964,7 +974,7 @@ void MyFrame::UpdateButtonsStatus(void)
         need_update = true;
     }
 
-    bool guiding_active = pGuider && pGuider->IsCalibratingOrGuiding();         // Not the same as 'bGuideable below
+    bool guiding_active = pGuider && pGuider->IsCalibratingOrGuiding();        
     bool mod_calibration_ok = !guiding_active && pMount && pMount->IsConnected();
     if (mod_calibration_ok ^ m_calibrationMenuItem->IsEnabled())
     {
@@ -977,10 +987,7 @@ void MyFrame::UpdateButtonsStatus(void)
         need_update = true;
     }
 
-    bool bGuideable = pGuider->GetState() == STATE_SELECTED &&
-        pMount && pMount->IsConnected();
-
-    if (cond_update_tool(MainToolbar, BUTTON_GUIDE, bGuideable))
+    if (cond_update_tool(MainToolbar, BUTTON_GUIDE, pMount && pMount->IsConnected()))
         need_update = true;
 
     if (pDriftTool)

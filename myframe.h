@@ -184,6 +184,22 @@ private:
     PHDStatusBar *m_statusbar;
     bool m_continueCapturing; // should another image be captured?
 
+    // New style icons
+    wxBitmap calibrateIconBmp;
+    wxBitmap calibrateIconDisabledBmp;
+    wxBitmap gotoIconBmp;
+    wxBitmap gotoIconDisabledBmp;
+    wxBitmap gotoIconStopBmp;
+    wxBitmap gammaIconBmp;
+    wxBitmap gammaIconDisabledBmp;
+    wxBitmap guideIconBmp;
+    wxBitmap guideIconDisabledBmp;
+    wxBitmap guideIconStopBmp;
+
+    bool isGuideIconStop;
+
+    
+
 public:
     MyFrame(int instanceNumber, wxLocale *locale);
     virtual ~MyFrame();
@@ -234,14 +250,6 @@ public:
     bool m_rawImageMode;
     bool m_rawImageModeWarningDone;
     wxSize m_prevDarkFrameSize;
-
-    // New style icons
-    wxBitmap calibrateIconBmp;
-    wxBitmap calibrateIconBmpDisabled;
-    wxBitmap gotoIconBmp;
-    wxBitmap gotoIconBmpDisabled;
-    wxBitmap gammaIconBmp;
-    wxBitmap gammaIconBmpDisabled;
 
     void GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault);
     void SetGamma(int newGamma);
