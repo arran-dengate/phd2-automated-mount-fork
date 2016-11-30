@@ -37,6 +37,8 @@
  */
 
 #include "phd.h"
+#include "custom_button.h"
+
 #include <wx/dir.h>
 #include <algorithm>
 #include <cmath>
@@ -67,9 +69,15 @@ GuiderMultiStar::GuiderMultiStar(wxWindow *parent)
 {
     SetState(STATE_UNINITIALIZED);
     m_rotationCenter.SetXY(-10, -10);
-    m_curveGuideArrow    = wxBitmap(wxString(PHD2_FILE_PATH + "icons/curve-guide-arrow.png"), wxBITMAP_TYPE_PNG);
-    m_manualGuideArrow   = wxBitmap(wxString(PHD2_FILE_PATH + "icons/manual-guide-arrow.png"), wxBITMAP_TYPE_PNG);
+    m_arrowImg              = wxImage(wxString(PHD2_FILE_PATH + "icons/manual-guide-arrow.png"), wxBITMAP_TYPE_PNG);
+    m_arrowImgClicked       = wxImage(wxString(PHD2_FILE_PATH + "icons/manual-guide-arrow-clicked.png"), wxBITMAP_TYPE_PNG);
+    m_curveArrowImg         = wxImage(wxString(PHD2_FILE_PATH + "icons/curve-guide-arrow.png"), wxBITMAP_TYPE_PNG);
+    m_curveArrowImgClicked  = wxImage(wxString(PHD2_FILE_PATH + "icons/curve-guide-arrow-clicked.png"), wxBITMAP_TYPE_PNG);
 
+    m_upArrowButton     = CustomButton();
+    m_downArrowButton   = CustomButton();
+    m_leftArrowButton   = CustomButton();
+    m_rightArrowButton  = CustomButton();
 }
 
 GuiderMultiStar::~GuiderMultiStar()
@@ -709,44 +717,57 @@ void GuiderMultiStar::OnLClick(wxMouseEvent &mevent)
 {
     try {
         double const scaleFactor = ScaleFactor();
-        PHD_Point clickPos((double) mevent.m_x / scaleFactor, (double) mevent.m_y / scaleFactor);
+        PHD_Point clickPos((double) mevent.m_x, (double) mevent.m_y);
         double moveAmount = 0.1;
+        double rotateVector = 1.7;
+        double within = 100;
+        Debug.AddLine(wxString::Format("Location: click %f %f, uparrowpos %f %f", clickPos.X, clickPos.Y, 
+                                                                                   m_upArrowButton.GetCenter().X, m_upArrowButton.GetCenter().Y));
+        Debug.AddLine(wxString::Format("Location: Uparrowpos imagewidth %d imageheight %d", m_upArrowButton.imageWidth, m_upArrowButton.imageHeight));
 
-        if      (WasClickNear(clickPos, m_upArrowPos, 100)) 
+        if      (WasClickNear(clickPos, m_upArrowButton.GetCenter(), within)) 
         {
+            m_upArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,-moveAmount);
             pMount->HexGuide(moveVector, 0);
         }
-        else if (WasClickNear(clickPos, m_leftArrowPos, 100)) 
+        else if (WasClickNear(clickPos, m_leftArrowButton.GetCenter(), within)) 
         {
+            m_leftArrowButton.SetClickedStatus();
             PHD_Point moveVector(-moveAmount,0);
             pMount->HexGuide(moveVector, 0);
         }
-        else if (WasClickNear(clickPos, m_rightArrowPos, 100)) 
+        else if (WasClickNear(clickPos, m_rightArrowButton.GetCenter(), within)) 
         {
+            m_rightArrowButton.SetClickedStatus();
             PHD_Point moveVector(moveAmount,0);
             pMount->HexGuide(moveVector, 0);
         }
-        else if (WasClickNear(clickPos, m_downArrowPos, 100)) 
+        else if (WasClickNear(clickPos, m_downArrowButton.GetCenter(), within)) 
         {
+            m_downArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,moveAmount);
             pMount->HexGuide(moveVector, 0);
         }
-        else if (WasClickNear(clickPos, m_clockwiseArrowPos, 100)) 
+        else if (WasClickNear(clickPos, m_clockwiseArrowButton.GetCenter(), within)) 
         {
+            m_clockwiseArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,0);
-            pMount->HexGuide(moveVector, 1.7);
+            pMount->HexGuide(moveVector, rotateVector);
         }
-        else if (WasClickNear(clickPos, m_anticlockwiseArrowPos, 100)) 
+        else if (WasClickNear(clickPos, m_anticlockwiseArrowButton.GetCenter(), within)) 
         {
+            m_anticlockwiseArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,0);
-            pMount->HexGuide(moveVector, -1.7);
+            pMount->HexGuide(moveVector, -rotateVector);
         }
         //Debug.AddLine(wxString::Format("Clicked on %f %f!", pt.x, pt.x));
     } catch (const wxString& Msg)
     {
         POSSIBLY_UNUSED(Msg);
     }
+
+    Refresh();
 
     // Previous code - used to manually select a particular star.
     /*
@@ -1047,36 +1068,40 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         
         if (state != STATE_CALIBRATING_PRIMARY && state != STATE_GUIDING) {
 
-            wxImage arrowImg   = m_manualGuideArrow.ConvertToImage();
-            wxPoint rotCenter  = wxPoint(arrowImg.GetSize().GetWidth() / 2, arrowImg.GetSize().GetHeight());
-            wxImage upArrow    = arrowImg;
-            wxImage leftArrow  = arrowImg.Rotate(radians(90), rotCenter);
-            wxImage rightArrow = arrowImg.Rotate(radians(270), rotCenter);
-            wxImage downArrow  = arrowImg.Rotate(radians(180), rotCenter);
-            int screenWidth    = dc.GetSize().GetWidth();
-            int screenHeight   = dc.GetSize().GetHeight();
-            int imgCenterX     = arrowImg.GetSize().GetWidth()  / 2;
-            int imgCenterY     = arrowImg.GetSize().GetHeight() / 2;
+            //wxImage arrowImg        = m_manualGuideArrow.ConvertToImage();
+            //wxImage arrowImgClicked = m_manualGuideArrowClicked.ConvertToImage();
+            wxPoint rotCenter       = wxPoint(m_arrowImg.GetSize().GetWidth() / 2, m_arrowImg.GetSize().GetHeight());
 
-            m_upArrowPos       = PHD_Point(screenWidth * 0.5 - imgCenterX, dc.GetSize().GetHeight() * 0.1 - imgCenterY);
-            m_downArrowPos     = PHD_Point(screenWidth * 0.5 - imgCenterX, dc.GetSize().GetHeight() * 0.9 - imgCenterY);
-            m_leftArrowPos     = PHD_Point(screenWidth * 0.1 - imgCenterX, dc.GetSize().GetHeight() * 0.5 - imgCenterY);
-            m_rightArrowPos    = PHD_Point(screenWidth * 0.9 - imgCenterX, dc.GetSize().GetHeight() * 0.5 - imgCenterY);
-           
-            dc.DrawBitmap(wxBitmap(upArrow, -1),    m_upArrowPos.X,    m_upArrowPos.Y,    true);
-            dc.DrawBitmap(wxBitmap(downArrow, -1),  m_downArrowPos.X,  m_downArrowPos.Y,  true);
-            dc.DrawBitmap(wxBitmap(leftArrow, -1),  m_leftArrowPos.X,  m_leftArrowPos.Y,  true);
-            dc.DrawBitmap(wxBitmap(rightArrow, -1), m_rightArrowPos.X, m_rightArrowPos.Y, true); 
-    
-            wxImage curveArrowImg       = m_curveGuideArrow.ConvertToImage();
-            wxImage clockwiseArrow      = curveArrowImg;
-            wxImage anticlockwiseArrow  = curveArrowImg.Mirror(true);
-            int curveImgCenterX         = curveArrowImg.GetSize().GetWidth()  / 2;
-            int curveImgCenterY         = curveArrowImg.GetSize().GetHeight() / 2;
-            m_clockwiseArrowPos         = PHD_Point(screenWidth * 0.1 - curveImgCenterX, dc.GetSize().GetHeight() * 0.1 - curveImgCenterY);
-            m_anticlockwiseArrowPos     = PHD_Point(screenWidth * 0.9 - curveImgCenterX, dc.GetSize().GetHeight() * 0.1 - curveImgCenterY);
-            dc.DrawBitmap(wxBitmap(clockwiseArrow, -1),     m_clockwiseArrowPos.X,     m_clockwiseArrowPos.Y,     true);
-            dc.DrawBitmap(wxBitmap(anticlockwiseArrow, -1), m_anticlockwiseArrowPos.X, m_anticlockwiseArrowPos.Y, true);
+            int screenWidth     = dc.GetSize().GetWidth();
+            int screenHeight    = dc.GetSize().GetHeight();
+            int imgCenterX      = m_arrowImg.GetSize().GetWidth()  / 2;
+            int imgCenterY      = m_arrowImg.GetSize().GetHeight() / 2;
+            int curveImgCenterX = m_curveArrowImg.GetSize().GetWidth()  / 2;
+            int curveImgCenterY = m_curveArrowImg.GetSize().GetHeight() / 2;
+            int imgWidth        = m_arrowImg.GetSize().GetWidth();
+            int imgHeight       = m_arrowImg.GetSize().GetHeight();
+
+            m_upArrowButton.SetSizeAndPosition(screenWidth * 0.5 - imgCenterX, screenHeight * 0.1 - imgCenterY, imgWidth, imgHeight);
+            m_downArrowButton.SetSizeAndPosition(screenWidth * 0.5 - imgCenterX, screenHeight * 0.9 - imgCenterY, imgWidth, imgHeight);
+            m_leftArrowButton.SetSizeAndPosition(screenWidth * 0.1 - imgCenterX, screenHeight * 0.5 - imgCenterY, imgWidth, imgHeight);
+            m_rightArrowButton.SetSizeAndPosition(screenWidth * 0.9 - imgCenterX, screenHeight * 0.5 - imgCenterY, imgWidth, imgHeight);
+            m_clockwiseArrowButton.SetSizeAndPosition(screenWidth * 0.1 - curveImgCenterX, dc.GetSize().GetHeight() * 0.1 - curveImgCenterY, imgWidth, imgHeight);
+            m_anticlockwiseArrowButton.SetSizeAndPosition(screenWidth * 0.9 - curveImgCenterX, dc.GetSize().GetHeight() * 0.1 - curveImgCenterY, imgWidth, imgHeight);
+            
+            m_upArrowButton.           SetImage(wxBitmap(m_arrowImg, -1),                                  wxBitmap(m_arrowImgClicked, -1));
+            m_downArrowButton.         SetImage(wxBitmap(m_arrowImg.Rotate(radians(180), rotCenter), -1),  wxBitmap(m_arrowImgClicked.Rotate(radians(180), rotCenter), -1));
+            m_leftArrowButton.         SetImage(wxBitmap(m_arrowImg.Rotate(radians(90), rotCenter), -1),   wxBitmap(m_arrowImgClicked.Rotate(radians(90), rotCenter), -1));
+            m_rightArrowButton.        SetImage(wxBitmap(m_arrowImg.Rotate(radians(270), rotCenter), -1),  wxBitmap(m_arrowImgClicked.Rotate(radians(270), rotCenter), -1));
+            m_clockwiseArrowButton.    SetImage(wxBitmap(m_curveArrowImg, -1),                           wxBitmap(m_curveArrowImgClicked, -1));
+            m_anticlockwiseArrowButton.SetImage(wxBitmap(m_curveArrowImg.Mirror(true), -1),              wxBitmap(m_curveArrowImgClicked.Mirror(true), -1));
+
+            dc.DrawBitmap(m_upArrowButton.GetImage(),            m_upArrowButton.position.X,    m_upArrowButton.position.Y,    true);
+            dc.DrawBitmap(m_downArrowButton.GetImage(),          m_downArrowButton.position.X,  m_downArrowButton.position.Y,  true);
+            dc.DrawBitmap(m_leftArrowButton.GetImage(),          m_leftArrowButton.position.X,  m_leftArrowButton.position.Y,  true);
+            dc.DrawBitmap(m_rightArrowButton.GetImage(),         m_rightArrowButton.position.X, m_rightArrowButton.position.Y, true); 
+            dc.DrawBitmap(m_clockwiseArrowButton.GetImage(),     m_clockwiseArrowButton.position.X,     m_clockwiseArrowButton.position.Y,     true);
+            dc.DrawBitmap(m_anticlockwiseArrowButton.GetImage(), m_anticlockwiseArrowButton.position.X, m_anticlockwiseArrowButton.position.Y, true);
+            
         }
     }
     catch (const wxString& Msg)

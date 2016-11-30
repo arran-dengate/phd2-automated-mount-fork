@@ -158,6 +158,7 @@ WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 #include "guide_algorithms.h"
 #include "guiders.h"
 #include "masschecker.h"
+#include "custom_button.h"
 #include "messagebox_proxy.h"
 #include "serialports.h"
 #include "parallelports.h"

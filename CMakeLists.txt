@@ -327,6 +327,8 @@ set(guiding_SRC
   ${phd_src_dir}/guide_algorithm.h
   ${phd_src_dir}/guide_algorithms.h
   ${phd_src_dir}/guider_multistar.cpp
+  ${phd_src_dir}/custom_button.cpp
+  ${phd_src_dir}/custom_button.h
   ${phd_src_dir}/masschecker.cpp
   ${phd_src_dir}/masschecker.h
   ${phd_src_dir}/guider_multistar.h
