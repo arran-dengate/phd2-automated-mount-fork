@@ -721,128 +721,41 @@ void GuiderMultiStar::OnLClick(wxMouseEvent &mevent)
         double moveAmount = 0.1;
         double rotateVector = 1.7;
         double within = 100;
-        Debug.AddLine(wxString::Format("Location: click %f %f, uparrowpos %f %f", clickPos.X, clickPos.Y, 
-                                                                                   m_upArrowButton.GetCenter().X, m_upArrowButton.GetCenter().Y));
-        Debug.AddLine(wxString::Format("Location: Uparrowpos imagewidth %d imageheight %d", m_upArrowButton.imageWidth, m_upArrowButton.imageHeight));
+        //Debug.AddLine(wxString::Format("Location: click %f %f, uparrowpos %f %f", clickPos.X, clickPos.Y, 
+        //                                                                           m_upArrowButton.GetCenter().X, m_upArrowButton.GetCenter().Y));
+        //Debug.AddLine(wxString::Format("Location: Uparrowpos imagewidth %d imageheight %d", m_upArrowButton.imageWidth, m_upArrowButton.imageHeight));
 
-        if      (WasClickNear(clickPos, m_upArrowButton.GetCenter(), within)) 
-        {
+        if (WasClickNear(clickPos, m_upArrowButton.GetCenter(), within)) {
             m_upArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,-moveAmount);
             pMount->HexGuide(moveVector, 0);
-        }
-        else if (WasClickNear(clickPos, m_leftArrowButton.GetCenter(), within)) 
-        {
+        } else if (WasClickNear(clickPos, m_leftArrowButton.GetCenter(), within)) {
             m_leftArrowButton.SetClickedStatus();
             PHD_Point moveVector(-moveAmount,0);
             pMount->HexGuide(moveVector, 0);
-        }
-        else if (WasClickNear(clickPos, m_rightArrowButton.GetCenter(), within)) 
-        {
+        } else if (WasClickNear(clickPos, m_rightArrowButton.GetCenter(), within)) {
             m_rightArrowButton.SetClickedStatus();
             PHD_Point moveVector(moveAmount,0);
             pMount->HexGuide(moveVector, 0);
-        }
-        else if (WasClickNear(clickPos, m_downArrowButton.GetCenter(), within)) 
-        {
+        } else if (WasClickNear(clickPos, m_downArrowButton.GetCenter(), within)) {
             m_downArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,moveAmount);
             pMount->HexGuide(moveVector, 0);
-        }
-        else if (WasClickNear(clickPos, m_clockwiseArrowButton.GetCenter(), within)) 
-        {
+        } else if (WasClickNear(clickPos, m_clockwiseArrowButton.GetCenter(), within)) {
             m_clockwiseArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,0);
             pMount->HexGuide(moveVector, rotateVector);
-        }
-        else if (WasClickNear(clickPos, m_anticlockwiseArrowButton.GetCenter(), within)) 
-        {
+        } else if (WasClickNear(clickPos, m_anticlockwiseArrowButton.GetCenter(), within)) {
             m_anticlockwiseArrowButton.SetClickedStatus();
             PHD_Point moveVector(0,0);
             pMount->HexGuide(moveVector, -rotateVector);
         }
-        //Debug.AddLine(wxString::Format("Clicked on %f %f!", pt.x, pt.x));
-    } catch (const wxString& Msg)
-    {
+    } catch (const wxString& Msg) {
         POSSIBLY_UNUSED(Msg);
     }
 
     Refresh();
 
-    // Previous code - used to manually select a particular star.
-    /*
-    try
-    {
-        if (mevent.GetModifiers() == wxMOD_CONTROL)
-        {
-            double const scaleFactor = ScaleFactor();
-            wxRealPoint pt((double) mevent.m_x / scaleFactor,
-                           (double) mevent.m_y / scaleFactor);
-            ToggleBookmark(pt);
-            m_showBookmarks = true;
-            pFrame->bookmarks_menu->Check(MENU_BOOKMARKS_SHOW, GetBookmarksShown());
-            Refresh();
-            Update();
-            return;
-        }
-
-        if (GetState() > STATE_SELECTED)
-        {
-            mevent.Skip();
-            throw THROW_INFO("Skipping event because state > STATE_SELECTED");
-        }
-
-        if (mevent.GetModifiers() == wxMOD_SHIFT)
-        {
-            // Deselect guide star
-            InvalidateCurrentPosition(true);
-        }
-        else
-        {
-            if ((mevent.m_x <= m_searchRegion) || (mevent.m_x + m_searchRegion >= XWinSize) || (mevent.m_y <= m_searchRegion) || (mevent.m_y + m_searchRegion >= YWinSize))
-            {
-                mevent.Skip();
-                throw THROW_INFO("Skipping event because click outside of search region");
-            }
-
-            usImage *pImage = CurrentImage();
-
-            if (pImage->NPixels == 0)
-            {
-                mevent.Skip();
-                throw ERROR_INFO("Skipping event m_pCurrentImage->NPixels == 0");
-            }
-
-            double scaleFactor = ScaleFactor();
-            double StarX = (double) mevent.m_x / scaleFactor;
-            double StarY = (double) mevent.m_y / scaleFactor;
-
-            SetCurrentPosition(pImage, PHD_Point(StarX, StarY));
-
-            if (!m_star.IsValid())
-            {
-                pFrame->StatusMsg(wxString::Format(_("No star found")));
-            }
-            else
-            {
-                SetLockPosition(m_star);
-                pFrame->StatusMsg(wxString::Format(_("Selected star at (%.1f, %.1f)"), m_star.X, m_star.Y));
-                pFrame->UpdateStarInfo(m_star.SNR, m_star.GetError() == Star::STAR_SATURATED);
-                EvtServer.NotifyStarSelected(CurrentPosition());
-                SetState(STATE_SELECTED);
-                pFrame->UpdateButtonsStatus();
-                pFrame->pProfile->UpdateData(pImage, m_star.X, m_star.Y);
-            }
-
-            Refresh();
-            Update();
-        }
-    }
-    catch (const wxString& Msg)
-    {
-        POSSIBLY_UNUSED(Msg);
-    }
-    */
 }
 
 inline static void DrawBox(wxDC& dc, const PHD_Point& star, int halfW, double scale, double xOffset, double yOffset)
