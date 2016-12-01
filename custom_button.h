@@ -15,7 +15,7 @@ class CustomButton {
     CustomButton(double x, double y, int imageWidth, int imageHeight);
     void SetImage(wxBitmap normal, wxBitmap clicked);
     PHD_Point GetCenter();
-    wxBitmap GetImage();
+    wxBitmap& GetImage();
     void SetClickedStatus();
     void SetSizeAndPosition(double x, double y, int width, int height);
     bool GetClickedStatus();

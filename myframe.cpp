@@ -801,52 +801,29 @@ void MyFrame::SetupToolBar()
 {
     MainToolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL|wxTB_RIGHT|wxTB_FLAT, wxT("MainToolbar"));
     
-    calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
-    calibrateIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap calibrateIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
 
-    gotoIconBmp              = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto.png"), wxBITMAP_TYPE_PNG);
-    gotoIconDisabledBmp      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
-    gotoIconStopBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_stop.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap gotoIconBmp              = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap gotoIconDisabledBmp      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap gotoIconStopBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_stop.png"), wxBITMAP_TYPE_PNG);
 
-    gammaIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma.png"), wxBITMAP_TYPE_PNG);
-    gammaIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap gammaIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap gammaIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
 
-    guideIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
-    guideIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
-    guideIconStopBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_stop.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap connectIconBmp           = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap connectIconDisabledBmp   = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect_disabled.png"), wxBITMAP_TYPE_PNG);
 
-#   include "icons/loop.png.h"
-    wxBitmap loop_bmp(wxBITMAP_PNG_FROM_DATA(loop));
+    wxBitmap brainIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/brain.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap brainIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/brain.png"), wxBITMAP_TYPE_PNG);
 
-#   include "icons/loop_disabled.png.h"
-    wxBitmap loop_bmp_disabled(wxBITMAP_PNG_FROM_DATA(loop_disabled));
+    wxBitmap camSetupIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap camSetupIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup_disabled.png"), wxBITMAP_TYPE_PNG); 
 
-#   include "icons/guide.png.h"
-    wxBitmap guide_bmp(wxBITMAP_PNG_FROM_DATA(guide));
-
-#   include "icons/guide_disabled.png.h"
-    wxBitmap guide_bmp_disabled(wxBITMAP_PNG_FROM_DATA(guide_disabled));
-
-#   include "icons/stop.png.h"
-    wxBitmap stop_bmp(wxBITMAP_PNG_FROM_DATA(stop));
-
-#   include "icons/stop_disabled.png.h"
-    wxBitmap stop_bmp_disabled(wxBITMAP_PNG_FROM_DATA(stop_disabled));
-
-#   include "icons/connect.png.h"
-    wxBitmap connect_bmp(wxBITMAP_PNG_FROM_DATA(connect));
-
-#   include "icons/connect_disabled.png.h"
-    wxBitmap connect_bmp_disabled(wxBITMAP_PNG_FROM_DATA(connect_disabled));
-
-#   include "icons/brain.png.h"
-    wxBitmap brain_bmp(wxBITMAP_PNG_FROM_DATA(brain));
-
-#   include "icons/cam_setup.png.h"
-    wxBitmap cam_setup_bmp(wxBITMAP_PNG_FROM_DATA(cam_setup));
-
-#   include "icons/cam_setup_disabled.png.h"
-    wxBitmap cam_setup_bmp_disabled(wxBITMAP_PNG_FROM_DATA(cam_setup_disabled));
+    // We need to swap these icons out at runtime, so they are declared in the header.
+    guideIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
+    guideIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
+    guideIconStopBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_stop.png"), wxBITMAP_TYPE_PNG);
 
     // provide translated strings for dur_choices here since cannot use _() in static initializer
     dur_choices[0] = _("Auto");
@@ -860,17 +837,7 @@ void MyFrame::SetupToolBar()
     Gamma_Slider->SetBackgroundColour(wxColor(60, 60, 60));         // Slightly darker than toolbar background
     Gamma_Slider->SetToolTip(_("Screen gamma (brightness)"));
 
-/*  
-int     toolId, 
-const wxString &    label,
-const wxBitmap &    bitmap,
-const wxBitmap &    bmpDisabled,
-wxItemKind  kind = wxITEM_NORMAL,
-const wxString &    shortHelpString = wxEmptyString,
-const wxString &    longHelpString = wxEmptyString,
-wxObject *  clientData = NULL 
-) */  
-    MainToolbar->AddTool(BUTTON_GEAR, wxString::Format("Gear button"), connect_bmp, connect_bmp_disabled, wxITEM_NORMAL, _("Setup equipment"), _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
+    MainToolbar->AddTool(BUTTON_GEAR, wxString::Format("Gear button"), connectIconBmp, connectIconDisabledBmp, wxITEM_NORMAL, _("Setup equipment"), _("Connect to equipment. Shift-click to reconnect the same equipment last connected."));
     //MainToolbar->AddTool(BUTTON_LOOP, wxString::Format("Loop button"), loop_bmp, loop_bmp_disabled, wxITEM_NORMAL, _("Start looping exposures"), _("Begin looping exposures for frame and focus"));
     MainToolbar->AddTool(BUTTON_CALIBRATE, wxString::Format("Calibrate button"), calibrateIconBmp, calibrateIconDisabledBmp, wxITEM_NORMAL, _("Calibrate"), _("Calibrate to work out mount orientation with respect to camera"));
     MainToolbar->AddTool(BUTTON_GUIDE, wxString::Format("Guide button"), guideIconBmp, guideIconDisabledBmp, wxITEM_NORMAL, _("Start guiding"), _("Begin guiding (PHD). Shift-click to force calibration."));
@@ -881,8 +848,8 @@ wxObject *  clientData = NULL
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
     MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), gammaIconBmp, gammaIconBmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
-    MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brain_bmp, _("Advanced parameters"));
-    MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), cam_setup_bmp, cam_setup_bmp_disabled, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
+    MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brainIconBmp, _("Advanced parameters"));
+    MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), camSetupIconBmp, camSetupIconDisabledBmp, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
     MainToolbar->EnableTool(BUTTON_CAM_PROPERTIES, false);
     MainToolbar->EnableTool(BUTTON_GUIDE, false);
     MainToolbar->Realize();

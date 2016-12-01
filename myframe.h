@@ -188,17 +188,9 @@ private:
     PHDStatusBar *m_statusbar;
     bool m_continueCapturing; // should another image be captured?
 
-    // New style icons
-    wxBitmap calibrateIconBmp;
-    wxBitmap calibrateIconDisabledBmp;
-    wxBitmap gotoIconBmp;
-    wxBitmap gotoIconDisabledBmp;
-    wxBitmap gotoIconStopBmp;
-    wxBitmap gammaIconBmp;
-    wxBitmap gammaIconDisabledBmp;
     wxBitmap guideIconBmp;
-    wxBitmap guideIconDisabledBmp;
     wxBitmap guideIconStopBmp;
+    wxBitmap guideIconDisabledBmp;
 
     bool isGuideIconStop;
 

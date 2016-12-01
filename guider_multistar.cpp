@@ -1013,8 +1013,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             dc.DrawBitmap(m_leftArrowButton.GetImage(),          m_leftArrowButton.position.X,  m_leftArrowButton.position.Y,  true);
             dc.DrawBitmap(m_rightArrowButton.GetImage(),         m_rightArrowButton.position.X, m_rightArrowButton.position.Y, true); 
             dc.DrawBitmap(m_clockwiseArrowButton.GetImage(),     m_clockwiseArrowButton.position.X,     m_clockwiseArrowButton.position.Y,     true);
-            dc.DrawBitmap(m_anticlockwiseArrowButton.GetImage(), m_anticlockwiseArrowButton.position.X, m_anticlockwiseArrowButton.position.Y, true);
-            
+            dc.DrawBitmap(m_anticlockwiseArrowButton.GetImage(), m_anticlockwiseArrowButton.position.X, m_anticlockwiseArrowButton.position.Y, true);       
         }
     }
     catch (const wxString& Msg)

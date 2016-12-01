@@ -31,7 +31,7 @@ void CustomButton::SetImage(wxBitmap normal, wxBitmap clicked) {
     clickedImage = clicked;
 }
 
-wxBitmap CustomButton::GetImage() {
+wxBitmap& CustomButton::GetImage() {
     if ( wasClicked ) { 
         wasClicked = false;
         return clickedImage;
