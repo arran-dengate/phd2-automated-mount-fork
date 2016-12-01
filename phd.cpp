@@ -178,6 +178,9 @@ bool PhdApp::OnInit()
     wxImage::AddHandler(new wxJPEGHandler);
     wxImage::AddHandler(new wxPNGHandler);
 
+    wxDialog::EnableLayoutAdaptation(true); // Makes all dialogs in program automatically scroll on small screens   
+
+
     pFrame = new MyFrame(m_instanceNumber, &m_locale);
 
     pFrame->Show(true);
