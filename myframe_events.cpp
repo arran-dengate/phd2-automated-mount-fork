@@ -484,8 +484,9 @@ void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonGamma(wxCommandEvent& WXUNUSED(event))
 {
-    GammaDialog gammaDlg;
-    gammaDlg.ShowModal();
+    //GammaDialog gammaDlg;
+    gammaDlg->UpdateValues();
+    gammaDlg->Show();
 }
 
 void MyFrame::SetGamma(int newGamma) {

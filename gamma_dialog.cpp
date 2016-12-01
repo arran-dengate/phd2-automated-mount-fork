@@ -38,28 +38,31 @@
 #include "gamma_dialog.h"
 
 GammaDialog::GammaDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Gamma"), wxDefaultPosition, wxDefaultSize, wxCAPTION | wxCLOSE_BOX)
+    : wxDialog(pFrame, wxID_ANY, _("Gamma"), wxDefaultPosition, wxDefaultSize, 0)
 {
     wxBoxSizer *mainBox = new wxBoxSizer(wxVERTICAL);
-    int currentGamma, gammaMin, gammaMax, gammaDefault;
-    pFrame->GetGammaSettings(currentGamma, gammaMin, gammaMax, gammaDefault); 
-    currentGamma = pConfig->Profile.GetInt("/Gamma", 20); // GetGammaSettings doesn't seem to accurately get this, so pull it from the profile.
-
     wxStaticText *introText = new wxStaticText(this, -1, wxT("Drag the bar below to change the brightness of the guide scope image."),
                                                 wxDefaultPosition, wxDefaultSize, wxALIGN_CENTER_HORIZONTAL, wxT("Explanation"));
-
-
     mainBox->Add(introText, 1, wxALIGN_CENTER | wxALL, 5);
-    gammaSlider = new wxSlider(this, wxID_ANY, currentGamma, gammaMin, gammaMax, wxDefaultPosition, wxSize(400, -1), 
+    gammaSlider = new wxSlider(this, wxID_ANY, 0, 0, 255, wxDefaultPosition, wxSize(500, -1), 
                                wxSL_HORIZONTAL, wxDefaultValidator, wxT("Gamma_Slider"));
     gammaSlider->SetBackgroundColour(wxColor(60, 60, 60));         // Slightly darker than toolbar background
     gammaSlider->SetToolTip(_("Screen gamma (brightness)"));
     gammaSlider->Bind(wxEVT_SLIDER, &GammaDialog::OnGammaSlider, this);
+    gammaSlider->Bind(wxEVT_KILL_FOCUS, &GammaDialog::OnKillFocus, this);
     mainBox->Add(gammaSlider, 1, wxEXPAND | wxALL, 5);
-    wxSizer * okCancelSizer = CreateButtonSizer(wxOK);
-    mainBox->Add(okCancelSizer, 1, wxALIGN_CENTER | wxALL, 5);
     SetSizer(mainBox);
     Fit();
+    gammaSlider->SetFocus();
+}
+
+void GammaDialog::UpdateValues() {
+    int currentGamma, gammaMin, gammaMax, gammaDefault;
+    pFrame->GetGammaSettings(currentGamma, gammaMin, gammaMax, gammaDefault); 
+    currentGamma = pConfig->Profile.GetInt("/Gamma", 20); // GetGammaSettings doesn't seem to accurately get this, so pull it from the profile.
+    gammaSlider->SetMin(gammaMin);
+    gammaSlider->SetMax(gammaMax);
+    gammaSlider->SetValue(currentGamma);
 }
 
 void GammaDialog::OnGammaSlider(wxCommandEvent& WXUNUSED(event))
@@ -70,6 +73,10 @@ void GammaDialog::OnGammaSlider(wxCommandEvent& WXUNUSED(event))
     pConfig->Profile.SetInt("/Gamma", gammaValue);
     //Stretch_gamma = (double) val / 100.0;
     pFrame->pGuider->UpdateImageDisplay();
+}
+
+void GammaDialog::OnKillFocus(wxFocusEvent& evt) {
+    Close();
 }
 
 GammaDialog::~GammaDialog(void)

@@ -37,6 +37,9 @@
 #ifndef MYFRAME_H_INCLUDED
 #define MYFRAME_H_INCLUDED
 
+#include "gamma_dialog.h"
+#include <memory>
+
 class WorkerThread;
 class MyFrame;
 class RefineDefMap;
@@ -160,6 +163,7 @@ protected:
     bool SetLanguage(int language);
 
     void SetAutoLoadCalibration(bool val);
+    std::unique_ptr<GammaDialog> gammaDlg;
 
     friend class MyFrameConfigDialogPane;
     friend class MyFrameConfigDialogCtrlSet;

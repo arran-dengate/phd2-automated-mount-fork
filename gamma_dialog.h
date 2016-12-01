@@ -42,11 +42,13 @@ class GammaDialog :
 private:
     wxSlider *gammaSlider;
     void OnGammaSlider(wxCommandEvent& WXUNUSED(event));
+    void OnKillFocus(wxFocusEvent& evt);
+
 
 public:
     GammaDialog(void);
     ~GammaDialog(void);
-
+    void UpdateValues();
 };
 
 #endif

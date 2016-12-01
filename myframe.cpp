@@ -169,6 +169,8 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     m_bookmarkLockPosAccel(0),
     pStatsWin(0)
 {
+    gammaDlg = std::unique_ptr<GammaDialog>(new GammaDialog());
+    //gammaDlg->Show(false);
     m_instanceNumber = instanceNumber;
     m_pLocale = locale;
 
