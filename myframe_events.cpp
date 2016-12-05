@@ -38,6 +38,7 @@
 #include "darks_dialog.h"
 #include "goto_dialog.h"
 #include "gamma_dialog.h"
+#include "exposure_dialog.h"
 #include "Refine_DefMap.h"
 #include "camcal_import_dialog.h"
 #include "aui_controls.h"
@@ -55,8 +56,7 @@ wxDEFINE_EVENT(APPSTATE_NOTIFY_EVENT, wxCommandEvent);
 
 void MyFrame::OnExposureDurationSelected(wxCommandEvent& WXUNUSED(evt))
 {
-    wxString sel = Dur_Choice->GetValue();
-    int duration = ExposureDurationFromSelection(sel);
+    int duration = ExposureDurationFromSelection(m_durationSelection);
     if (duration > 0)
     {
         Debug.Write(wxString::Format("OnExposureDurationSelected: duration = %d\n", duration));
@@ -80,7 +80,7 @@ void MyFrame::OnExposureDurationSelected(wxCommandEvent& WXUNUSED(evt))
 
     GuideLog.SetGuidingParam("Exposure", ExposureDurationSummary());
 
-    pConfig->Profile.SetString("/ExposureDuration", sel);
+    pConfig->Profile.SetString("/ExposureDuration", m_durationSelection);
 }
 
 int MyFrame::RequestedExposureDuration()
@@ -475,7 +475,6 @@ void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
 {
-    
     pFrame->pGuider->AutoSelect();
     pMount->ClearCalibration();pFrame->pGuider->AutoSelect();
     StartGuiding();
@@ -484,9 +483,16 @@ void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonGamma(wxCommandEvent& WXUNUSED(event))
 {
-    //GammaDialog gammaDlg;
     gammaDlg->UpdateValues();
     gammaDlg->Show();
+}
+
+void MyFrame::OnButtonExposure(wxCommandEvent& WXUNUSED(event))
+{
+    wxArrayString durations;
+    GetExposureDurationStrings(&durations);
+    exposureDlg->UpdateValues(durations);
+    exposureDlg->Show();
 }
 
 void MyFrame::SetGamma(int newGamma) {

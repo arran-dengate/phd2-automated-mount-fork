@@ -39,15 +39,14 @@
 #include "Refine_DefMap.h"
 #include "comet_tool.h"
 #include "guiding_assistant.h"
+#include "aui_controls.h"
+#include "cam_simulator.h" // To determine if current camera is simulator
 
 #include <wx/filesys.h>
 #include <wx/fs_zip.h>
 #include <wx/artprov.h>
 #include <wx/dirdlg.h>
 #include <wx/textwrapper.h>
-#include "aui_controls.h"
-#include "cam_simulator.h" // To determine if current camera is simulator
-
 #include <memory>
 
 static const int DefaultNoiseReductionMethod = 0;
@@ -123,6 +122,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(MENU_STARPROFILE, MyFrame::OnStarProfile)
     EVT_MENU(MENU_RESTORE_WINDOWS, MyFrame::OnRestoreWindows)
     EVT_MENU(MENU_AUTOSTAR,MyFrame::OnAutoStar)
+    EVT_TOOL(BUTTON_EXPOSURE,MyFrame::OnButtonExposure)
     EVT_TOOL(BUTTON_GEAR,MyFrame::OnSelectGear)
     EVT_MENU(BUTTON_GEAR,MyFrame::OnSelectGear) // Bit of a hack -- not actually on the menu but need an event to accelerate
     EVT_TOOL(BUTTON_LOOP, MyFrame::OnLoopExposure)
@@ -169,7 +169,8 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     m_bookmarkLockPosAccel(0),
     pStatsWin(0)
 {
-    gammaDlg = std::unique_ptr<GammaDialog>(new GammaDialog());
+    gammaDlg    = std::unique_ptr<GammaDialog>(new GammaDialog());
+    exposureDlg = std::unique_ptr<ExposureDialog>(new ExposureDialog());
     //gammaDlg->Show(false);
     m_instanceNumber = instanceNumber;
     m_pLocale = locale;
@@ -585,6 +586,10 @@ static int dur_values[] = {
     6000, 7000, 8000, 9000, 10000, 15000,
 };
 
+void MyFrame::UpdateExposureDuration(wxString duration) {
+    m_durationSelection = duration;
+}
+
 int MyFrame::ExposureDurationFromSelection(const wxString& sel)
 {
     for (unsigned int i = 0; i < WXSIZEOF(dur_choices); i++)
@@ -820,6 +825,9 @@ void MyFrame::SetupToolBar()
     wxBitmap camSetupIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup.png"), wxBITMAP_TYPE_PNG);
     wxBitmap camSetupIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup_disabled.png"), wxBITMAP_TYPE_PNG); 
 
+    wxBitmap exposureIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/exposure.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap exposureIconDisabledBmp      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/exposure_disabled.png"), wxBITMAP_TYPE_PNG);
+
     // We need to swap these icons out at runtime, so they are declared in the header.
     guideIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
     guideIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
@@ -844,8 +852,9 @@ void MyFrame::SetupToolBar()
     //MainToolbar->AddTool(BUTTON_STOP, wxString::Format("Stop button"), stop_bmp, stop_bmp_disabled, wxITEM_NORMAL, _("Stop looping and guiding"), _("Stop looping and guiding"));
     MainToolbar->AddTool(BUTTON_GOTO, wxString::Format("Goto button"), gotoIconBmp, gotoIconDisabledBmp, wxITEM_NORMAL, _("Goto"), _("Traverse mount to a star or astronomical feature"));
     MainToolbar->AddSeparator();
-    MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
+    //MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
+    MainToolbar->AddTool(BUTTON_EXPOSURE, wxString::Format("Exposure button"), exposureIconBmp, exposureIconDisabledBmp, wxITEM_NORMAL, _("Exposure"), _("Change exposure time of camera."));
     MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), gammaIconBmp, gammaIconBmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
     MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brainIconBmp, _("Advanced parameters"));

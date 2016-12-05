@@ -413,6 +413,8 @@ set(phd2_SRC
   ${phd_src_dir}/gamma_dialog.h
   ${phd_src_dir}/goto_dialog.cpp
   ${phd_src_dir}/goto_dialog.h
+  ${phd_src_dir}/exposure_dialog.cpp
+  ${phd_src_dir}/exposure_dialog.h
   ${phd_src_dir}/messagebox_proxy.cpp
   ${phd_src_dir}/messagebox_proxy.h
   ${phd_src_dir}/myframe.cpp

@@ -38,6 +38,7 @@
 #define MYFRAME_H_INCLUDED
 
 #include "gamma_dialog.h"
+#include "exposure_dialog.h"
 #include <memory>
 
 class WorkerThread;
@@ -164,6 +165,8 @@ protected:
 
     void SetAutoLoadCalibration(bool val);
     std::unique_ptr<GammaDialog> gammaDlg;
+    std::unique_ptr<ExposureDialog> exposureDlg;
+    std::vector<string> exposureDurations;
 
     friend class MyFrameConfigDialogPane;
     friend class MyFrameConfigDialogCtrlSet;
@@ -183,6 +186,7 @@ private:
     double m_sampling;
     bool m_autoLoadCalibration;
     int m_instanceNumber;
+    wxString m_durationSelection;
 
     wxAuiManager m_mgr;
     PHDStatusBar *m_statusbar;
@@ -267,6 +271,7 @@ public:
     void OnButtonGoto(wxCommandEvent& evt);
     void OnButtonCalibrate(wxCommandEvent& evt);
     void OnButtonGamma(wxCommandEvent& evt);
+    void OnButtonExposure(wxCommandEvent& evt);
     void OnDark(wxCommandEvent& evt);
     void OnLoadDark(wxCommandEvent& evt);
     void OnLoadDefectMap(wxCommandEvent& evt);
@@ -319,6 +324,7 @@ public:
     void LoadProfileSettings(void);
     void UpdateTitle(void);
 
+    void UpdateExposureDuration(wxString duration);
     void GetExposureDurations(std::vector<int> *exposure_durations);
     void GetExposureDurationStrings(wxArrayString *target);
     int ExposureDurationFromSelection(const wxString& selection);
@@ -484,6 +490,7 @@ enum {
     BUTTON_GUIDE,
     BUTTON_STOP,
     BUTTON_GOTO,
+    BUTTON_EXPOSURE,
     BUTTON_GAMMA,
     BUTTON_DURATION,
     BUTTON_ADVANCED,

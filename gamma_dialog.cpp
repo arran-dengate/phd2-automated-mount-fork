@@ -2,8 +2,8 @@
  *  manualcal_dialog.cpp
  *  PHD Guiding
  *
- *  Created by Sylvain Girard
- *  Copyright (c) 2013 Sylvain Girard
+ *  Created by Arran Dengate
+ *  Copyright (c) 2016 Arran Dengate
  *  All rights reserved.
  *
  *  This source code is distributed under the following "BSD" license

@@ -1,5 +1,5 @@
 /*
- *  manualcal_dialog.h
+ *  exposure_dialog.h
  *  PHD Guiding
  *
  *  Created by Arran Dengate
@@ -33,22 +33,24 @@
  *
  */
 
-#ifndef GammaDialog_h_included
-#define GammaDialog_h_included
+#ifndef ExposureDialog_h_included
+#define ExposureDialog_h_included
 
-class GammaDialog :
+class ExposureDialog :
     public wxDialog
 {
 private:
-    wxSlider *gammaSlider;
-    void OnGammaSlider(wxCommandEvent& WXUNUSED(event));
+    wxBoxSizer * mainBox;
+    wxBoxSizer * radioBoxLeft;
+    wxGridSizer * buttonSizer;
+    //std::vector<wxRadioButton*> buttonVector;
+    int numButtons;
     void OnKillFocus(wxFocusEvent& evt);
-
-
+    void OnExposureClicked(wxCommandEvent& event);
 public:
-    GammaDialog(void);
-    ~GammaDialog(void);
-    void UpdateValues();
+    ExposureDialog(void);
+    ~ExposureDialog(void);
+    void UpdateValues(wxArrayString durations);
 };
 
 #endif
