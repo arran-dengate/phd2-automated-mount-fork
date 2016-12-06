@@ -819,8 +819,8 @@ void MyFrame::SetupToolBar()
     wxBitmap connectIconBmp           = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect.png"), wxBITMAP_TYPE_PNG);
     wxBitmap connectIconDisabledBmp   = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect_disabled.png"), wxBITMAP_TYPE_PNG);
 
-    wxBitmap brainIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/brain.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap brainIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/brain.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap settingsIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/settings.png"), wxBITMAP_TYPE_PNG);
+    wxBitmap settingsIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/settings.png"), wxBITMAP_TYPE_PNG);
 
     wxBitmap camSetupIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup.png"), wxBITMAP_TYPE_PNG);
     wxBitmap camSetupIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup_disabled.png"), wxBITMAP_TYPE_PNG); 
@@ -855,12 +855,15 @@ void MyFrame::SetupToolBar()
     //MainToolbar->AddControl(Dur_Choice, _("Exposure duration"));
     //MainToolbar->AddControl(Gamma_Slider, _("Gamma"));
     MainToolbar->AddTool(BUTTON_EXPOSURE, wxString::Format("Exposure button"), exposureIconBmp, exposureIconDisabledBmp, wxITEM_NORMAL, _("Exposure"), _("Change exposure time of camera."));
-    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), gammaIconBmp, gammaIconBmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
+    MainToolbar->AddTool(BUTTON_GAMMA, wxString::Format("Gamma button"), gammaIconBmp, gammaIconDisabledBmp, wxITEM_NORMAL, _("Gamma"), _("Adjust the brightness of the camera image display."));
     MainToolbar->AddSeparator();
-    MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), brainIconBmp, _("Advanced parameters"));
+    MainToolbar->AddTool(BUTTON_ADVANCED, _("Advanced parameters"), settingsIconBmp, _("Advanced parameters"));
     MainToolbar->AddTool(BUTTON_CAM_PROPERTIES, wxString::Format("Camera settings button"), camSetupIconBmp, camSetupIconDisabledBmp, wxITEM_NORMAL, _("Camera settings"), _("Camera settings"));
+    MainToolbar->EnableTool(BUTTON_CALIBRATE, false);
     MainToolbar->EnableTool(BUTTON_CAM_PROPERTIES, false);
     MainToolbar->EnableTool(BUTTON_GUIDE, false);
+    MainToolbar->EnableTool(BUTTON_GAMMA, false);
+    MainToolbar->EnableTool(BUTTON_EXPOSURE, false);
     MainToolbar->Realize();
 
 }
@@ -933,6 +936,16 @@ void MyFrame::UpdateButtonsStatus(void)
 
     //if (cond_update_tool(MainToolbar, BUTTON_GEAR, !CaptureActive))
     //    need_update = true
+
+    if (cond_update_tool(MainToolbar, BUTTON_CALIBRATE, CaptureActive))
+        need_update = true;
+
+    if (cond_update_tool(MainToolbar, BUTTON_EXPOSURE, pCamera && pCamera->Connected))
+        need_update = true;
+
+    if (cond_update_tool(MainToolbar, BUTTON_GAMMA, pCamera && pCamera->Connected))
+        need_update = true;
+
 
     if (! isGuideIconStop && pGuider->IsGuiding()) {
         MainToolbar->SetToolNormalBitmap(BUTTON_GUIDE, guideIconStopBmp);
