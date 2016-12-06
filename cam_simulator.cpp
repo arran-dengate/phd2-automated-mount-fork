@@ -84,6 +84,7 @@ struct SimCamParams
     static bool show_comet;
     static double comet_rate_x;
     static double comet_rate_y;
+    static double hex_guide_scale_factor;
 };
 
 unsigned int SimCamParams::width = 752;          // simulated camera image width
@@ -110,6 +111,7 @@ double SimCamParams::custom_pe_period;
 bool SimCamParams::show_comet;
 double SimCamParams::comet_rate_x;
 double SimCamParams::comet_rate_y;
+double SimCamParams::hex_guide_scale_factor = 350;
 
 // Note: these are all in units appropriate for the UI
 #define NR_STARS_DEFAULT 800
@@ -1337,13 +1339,11 @@ bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 
 bool Camera_SimClass::HexGuide(PHD_Point moveVector, double rotationDeg)
 {
-    const double SCALE_FACTOR = 350;
     moveVector.X *= -1;
     moveVector.Y *= -1;
-    sim->ra_ofs += moveVector.X * SCALE_FACTOR;
-    sim->dec_ofs.incr(moveVector.Y * SCALE_FACTOR);
-    WorkerThread::MilliSleep(moveVector.X + moveVector.Y / 10, WorkerThread::INT_ANY);
-
+    sim->ra_ofs += moveVector.X * SimCamParams::hex_guide_scale_factor;
+    sim->dec_ofs.incr(moveVector.Y * SimCamParams::hex_guide_scale_factor);
+    //WorkerThread::MilliSleep(moveVector.X + moveVector.Y / 10, WorkerThread::INT_ANY);
     sim->mount_rotation_deg += rotationDeg;
     
 }
