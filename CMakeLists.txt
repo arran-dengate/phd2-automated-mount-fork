@@ -693,13 +693,12 @@ elseif(UNIX)
    ${guiding_SRC}
    ${phd2_SRC}
    )
-  target_link_libraries(phd2 X11 profiler)
+  target_link_libraries(phd2 X11)
 
   set_target_properties(
     phd2 
     PROPERTIES 
       OUTPUT_NAME phd2  # lower case on linux
-      LINK_FLAGS "-lprofiler"
     )  
   
 else()

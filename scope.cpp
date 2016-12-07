@@ -38,7 +38,6 @@
 #include "calstep_dialog.h"
 #include "image_math.h"
 #include "socket_server.h"
-#include "gperftools/profiler.h" // Google profiler - needed for debugging only!
 #include "cam_simulator.h"
 
 #include <wx/textfile.h>
@@ -1115,8 +1114,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
 
             case CALIBRATION_STATE_GO_NORTH:
 
-                ProfilerStart("PHD2.prof"); // For Google perf tools - debugging only
-
                 GuideLog.CalibrationStep(this, "North", m_calibrationSteps, dX, dY, currentLocation, dist);
 
                 if (m_calibrationStepsRemaining > 0) {
@@ -1321,7 +1318,6 @@ bool Scope::UpdateCalibrationState(const PHD_Point& currentLocation)
                 GuideLog.CalibrationComplete(this);
                 EvtServer.NotifyCalibrationComplete(this);
                 Debug.AddLine("Calibration Complete");
-                ProfilerStop(); // Google perf tools debugging
                 break;
         }
     }
