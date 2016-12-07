@@ -475,6 +475,7 @@ void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnButtonCalibrate(wxCommandEvent& WXUNUSED(event))
 {
+    Debug.AddLine("Mouse: clicked onButtonCalibrate");
     pFrame->pGuider->AutoSelect();
     pMount->ClearCalibration();pFrame->pGuider->AutoSelect();
     StartGuiding();

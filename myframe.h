@@ -218,6 +218,7 @@ public:
     wxMenuItem *m_calibrationMenuItem;
     wxMenuItem *m_importCamCalMenuItem;
     wxToolBar * MainToolbar;
+    std::vector<CustomButton> overlayToolbar;
     wxInfoBar *m_infoBar;
     wxComboBox    *Dur_Choice;
     wxCheckBox *HotPixel_Checkbox;
@@ -253,6 +254,9 @@ public:
 
     void GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault);
     void SetGamma(int newGamma);
+
+    void OnLeftMouseDown(wxMouseEvent &mevent);
+    void OnLeftMouseUp(wxMouseEvent &mevent);
 
     void RegisterTextCtrl(wxTextCtrl *ctrl);
     void OnQuit(wxCommandEvent& evt);

@@ -150,7 +150,8 @@ private:
     bool SetCurrentPosition(usImage *pImage, const PHD_Point& position);
     void UpdateStar(Star &s, Star &newStar);
 
-    void OnLClick(wxMouseEvent& evt);
+    void OnLeftMouseDown(wxMouseEvent& evt);
+    void OnLeftMouseUp(wxMouseEvent& evt);
 
     void SaveStarFITS();
 

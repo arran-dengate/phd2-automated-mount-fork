@@ -76,7 +76,7 @@ void GammaDialog::OnGammaSlider(wxCommandEvent& WXUNUSED(event))
 }
 
 void GammaDialog::OnKillFocus(wxFocusEvent& evt) {
-    Close();
+    Hide();
 }
 
 GammaDialog::~GammaDialog(void)

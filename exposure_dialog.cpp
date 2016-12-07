@@ -104,7 +104,7 @@ void ExposureDialog::OnKillFocus(wxFocusEvent& evt) {
     int width, height;
     this->GetSize(&width, &height);
     if ( (clickPos.x < windowPos.x || clickPos.x > windowPos.x + width) or (clickPos.y < windowPos.y || clickPos.y > windowPos.y + height) ) {
-        Close();    
+        Hide();    
     }
     Debug.AddLine(wxString::Format("Exposure: onKillFocus with clickPos %d %d windowPos %d %d width %d height %d", clickPos.x, clickPos.y, windowPos.x, windowPos.y, width, height));
 }
