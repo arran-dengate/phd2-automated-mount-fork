@@ -584,7 +584,7 @@ void MyFrame::SetupMenuBar(void)
     Menubar->Append(darks_menu, _("&Darks"));
     Menubar->Append(bookmarks_menu, _("&Bookmarks"));
     Menubar->Append(help_menu, _("&Help"));
-    SetMenuBar(Menubar);
+    //SetMenuBar(Menubar);
 }
 
 int MyFrame::GetTextWidth(wxControl *pControl, const wxString& string)
