@@ -177,7 +177,7 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     m_instanceNumber = instanceNumber;
     m_pLocale = locale;
 
-    isGuideIconStop = false;
+    expandToolbar = false;
 
     m_mgr.SetManagedWindow(this);
 
@@ -251,74 +251,36 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     //SetMinSize(wxSize(wxMax(400, m_statusbar->GetMinSBWidth()), 300));
 
     // Setup overlay toolbar
-
-    wxBitmap calibrateIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap calibrateIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/calibrate_disabled.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap gotoIconBmp              = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap gotoIconDisabledBmp      = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_disabled.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap gotoIconStopBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/goto_stop.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap gammaIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap gammaIconDisabledBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/gamma_disabled.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap connectIconBmp           = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap connectIconDisabledBmp   = wxBitmap(wxString(PHD2_FILE_PATH + "icons/connect_disabled.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap settingsIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/settings.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap settingsIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/settings.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap camSetupIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap camSetupIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/cam_setup_disabled.png"), wxBITMAP_TYPE_PNG); 
-
-    wxBitmap exposureIconBmp          = wxBitmap(wxString(PHD2_FILE_PATH + "icons/exposure.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap exposureIconDisabledBmp  = wxBitmap(wxString(PHD2_FILE_PATH + "icons/exposure_disabled.png"), wxBITMAP_TYPE_PNG);
-
-    wxBitmap darksIconBmp             = wxBitmap(wxString(PHD2_FILE_PATH + "icons/darks.png"), wxBITMAP_TYPE_PNG);
-    wxBitmap darksDisabledBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/darks_disabled.png"), wxBITMAP_TYPE_PNG);
-
-    // We need to swap these icons out at runtime, so they are declared in the header.
-    guideIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
-    guideIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
-    guideIconStopBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_stop.png"), wxBITMAP_TYPE_PNG);
-
-    wxCommandEvent blank   = wxCommandEvent();
-    // Order is: connect calibrate guide goto exposure gamma settings camsetup    
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnSelectGear, this, blank), this), 
-                                                    "Connect", true, 36, 36, connectIconBmp, connectIconBmp, connectIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonCalibrate, this, blank), this), 
-                                                    "Calibrate", false, 36, 36, calibrateIconBmp, calibrateIconBmp, calibrateIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnGuide, this, blank), this), 
-                                                    "Guide", false, 36, 36, guideIconBmp, guideIconBmp, guideIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonGoto, this, blank), this), 
-                                                    "Goto", true, 36, 36, gotoIconBmp, gotoIconBmp, gotoIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonExposure, this, blank), this), 
-                                                    "Exposure", false, 36, 36, exposureIconBmp, exposureIconBmp, exposureIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonGamma, this, blank), this), 
-                                                    "Gamma", false, 36, 36, gammaIconBmp, gammaIconBmp, gammaIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnAdvanced, this, blank), this), 
-                                                    "Settings", true, 36, 36, settingsIconBmp, settingsIconBmp, settingsIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnSetupCamera, this, blank), this), 
-                                                    "CamSetup", false, 36, 36, camSetupIconBmp, camSetupIconBmp, camSetupIconDisabledBmp));
-    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnDark, this, blank), this), 
-                                                    "Darks", false, 36, 36, darksIconBmp, darksIconBmp, darksDisabledBmp));
-
-    // Needed to partially apply the function to get the reference to a wxCommandEvent out of the way. 
+    // We want to pass a function into the button, but we have to partially apply the function to get the reference to a wxCommandEvent out of the way. 
     // Long version would have been:
+    // wxCommandEvent blank          = wxCommandEvent();
     // auto partiallyAppliedFunction = std::bind(&MyFrame::OnButtonCalibrate, this, blank);
     // CustomButton f                = CustomButton(std::bind(partiallyAppliedFunction, this));
-    // In the code below, the partially applied function is just anonymously created where it is needed.
-    //CustomButton f = CustomButton(std::bind(std::bind(&MyFrame::OnButtonCalibrate, this, blank), this), 
-    //                              300, 300, 36, 36, testButtonBmp, testButtonBmp, testButtonBmp);
+    // In the code below, the last two steps are combined inline.
 
-    //overlayToolbar->push_back(CustomButton(300, 300, 36, 36, testButtonBmp, testButtonBmp, testButtonBmp)
-    
-    //wxBitmapButton * testButton = new wxBitmapButton(pGuider, -1, testButtonBmp, wxPoint(150, 150), wxDefaultSize, wxBORDER_NONE | wxBU_EXACTFIT, wxDefaultValidator, _("Test button"));
-    //(wxWindow *parent, wxWindowID id, const wxBitmap &label, const wxPoint &pos=wxDefaultPosition, const wxSize &size=wxDefaultSize, long style=0, const wxString &name=wxStaticBitmapNameStr)
-
-    
-    //wxStaticBitmap * testButton = new wxStaticBitmap(pGuider, -1, gammaIconBmp, wxPoint(150, 150), wxDefaultSize, 0, _("Test button"));
-    
+    wxCommandEvent blank   = wxCommandEvent();
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnSelectGear, this, blank), this), 
+                             "Connect",     true,  false, 36, 36, GetIconBitmap("connect.png"), GetIconBitmap("connect_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonCalibrate, this, blank), this), 
+                             "Calibrate",   false, false, 36, 36, GetIconBitmap("calibrate.png"), GetIconBitmap("calibrate_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnGuide, this, blank), this), 
+                             "Guide",       false, false, 36, 36, GetIconBitmap("guide.png"), GetIconBitmap("guide_disabled.png"), GetIconBitmap("guide_alt.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonGoto, this, blank), this), 
+                             "Goto",        true,  false, 36, 36, GetIconBitmap("goto.png"), GetIconBitmap("goto_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonExposure, this, blank), this), 
+                             "Exposure",    false, false, 36, 36, GetIconBitmap("exposure.png"), GetIconBitmap("exposure_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonGamma, this, blank), this), 
+                             "Gamma",       false, false, 36,  36, GetIconBitmap("gamma.png"), GetIconBitmap("gamma_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnButtonExpand, this, blank), this), 
+                             "Expand",      true, false,  36, 36, GetIconBitmap("expand.png"), GetIconBitmap("expand_disabled.png"), GetIconBitmap("expand_alt.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnAdvanced, this, blank), this), 
+                             "Settings",    true,  true,  36, 36, GetIconBitmap("settings.png"), GetIconBitmap("settings_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnSetupCamera, this, blank), this), 
+                             "CamSetup",    false, true,  36, 36, GetIconBitmap("cam_setup.png"), GetIconBitmap("cam_setup_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnDark, this, blank), this), 
+                             "Darks",       false, true,  36,  36, GetIconBitmap("darks.png"), GetIconBitmap("darks_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnGraph, this, blank), this), 
+                             "Graphs",      false, true,  36,  36, GetIconBitmap("graphs.png"), GetIconBitmap("graphs_disabled.png")));
 
     wxString geometry = pConfig->Global.GetString("/geometry", wxEmptyString);
     if (geometry == wxEmptyString)
@@ -913,7 +875,7 @@ void MyFrame::SetupToolBar()
     // We need to swap these icons out at runtime, so they are declared in the header.
     guideIconBmp         = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide.png"), wxBITMAP_TYPE_PNG);
     guideIconDisabledBmp = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_disabled.png"), wxBITMAP_TYPE_PNG);
-    guideIconStopBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_stop.png"), wxBITMAP_TYPE_PNG);
+    guideIconStopBmp     = wxBitmap(wxString(PHD2_FILE_PATH + "icons/guide_alt.png"), wxBITMAP_TYPE_PNG);
 
     // provide translated strings for dur_choices here since cannot use _() in static initializer
     dur_choices[0] = _("Auto");
@@ -1023,11 +985,11 @@ void MyFrame::UpdateButtonsStatus(void)
         if (b.name == "Guide"     ) (pMount && pMount->IsConnected()) ? b.enabled = true : b.enabled = false;
         if (b.name == "CamSetup"  ) (pCamera && pCamera->Connected  ) ? b.enabled = true : b.enabled = false;
         if (b.name == "Darks"     ) (pCamera && pCamera->Connected  ) ? b.enabled = true : b.enabled = false;
-        
+        if (b.name == "Graphs"    ) (pGuider->IsGuiding() ) ? b.enabled = true : b.enabled = false;
     }
 
     //if (cond_update_tool(MainToolbar, BUTTON_GEAR, !CaptureActive))
-    //    need_update = true
+    /*    need_update = true
 
     if (cond_update_tool(MainToolbar, BUTTON_CALIBRATE, CaptureActive))
         need_update = true;
@@ -1092,6 +1054,7 @@ void MyFrame::UpdateButtonsStatus(void)
         Update();
         Refresh();
     }
+    */
 }
 
 static wxString WrapText(wxWindow *win, const wxString& text, int width)
@@ -2908,4 +2871,8 @@ void MyFrame::PlaceWindowOnScreen(wxWindow *win, int x, int y)
     }
     else
         win->Move(x, y);
+}
+
+wxBitmap MyFrame::GetIconBitmap(wxString filename) {
+    return wxBitmap(wxString(PHD2_FILE_PATH + "icons/" + filename), wxBITMAP_TYPE_PNG);
 }

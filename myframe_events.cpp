@@ -467,6 +467,11 @@ void MyFrame::OnButtonStop(wxCommandEvent& WXUNUSED(event))
     StopCapturing();
 }
 
+void MyFrame::OnButtonExpand(wxCommandEvent& WXUNUSED(event))
+{
+    expandToolbar = !expandToolbar; // Toggle display of overflow buttons in overlay toolbar
+}
+
 void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
     GotoDialog gotodlg;
@@ -667,28 +672,30 @@ void MyFrame::OnToolBar(wxCommandEvent& evt)
 
 void MyFrame::OnGraph(wxCommandEvent& evt)
 {
-    if (evt.IsChecked())
+    /*if (evt.IsChecked())
     {
         m_mgr.GetPane(_T("GraphLog")).Show().Bottom().Position(0).MinSize(-1, 240);
     }
     else
     {
         m_mgr.GetPane(_T("GraphLog")).Hide();
-    }
+    }*/
+    m_mgr.GetPane(_T("GraphLog")).Show().Bottom().Position(0).MinSize(-1, 240);
     pGraphLog->SetState(evt.IsChecked());
     m_mgr.Update();
 }
 
 void MyFrame::OnStats(wxCommandEvent& evt)
 {
-    if (evt.IsChecked())
+    /*if (evt.IsChecked())
     {
         m_mgr.GetPane(_T("Stats")).Show().Bottom().Position(0).MinSize(-1, 240);
     }
     else
     {
         m_mgr.GetPane(_T("Stats")).Hide();
-    }
+    }*/
+    m_mgr.GetPane(_T("Stats")).Show().Bottom().Position(0).MinSize(-1, 240);
     pStatsWin->SetState(evt.IsChecked());
     m_mgr.Update();
 }

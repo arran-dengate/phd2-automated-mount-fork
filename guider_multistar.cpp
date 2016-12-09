@@ -70,10 +70,10 @@ GuiderMultiStar::GuiderMultiStar(wxWindow *parent)
 {
     SetState(STATE_UNINITIALIZED);
     m_rotationCenter.SetXY(-10, -10);
-    m_arrowImg              = wxImage(wxString(PHD2_FILE_PATH + "icons/manual-guide-arrow.png"), wxBITMAP_TYPE_PNG);
-    m_arrowImgClicked       = wxImage(wxString(PHD2_FILE_PATH + "icons/manual-guide-arrow-clicked.png"), wxBITMAP_TYPE_PNG);
-    m_curveArrowImg         = wxImage(wxString(PHD2_FILE_PATH + "icons/curve-guide-arrow.png"), wxBITMAP_TYPE_PNG);
-    m_curveArrowImgClicked  = wxImage(wxString(PHD2_FILE_PATH + "icons/curve-guide-arrow-clicked.png"), wxBITMAP_TYPE_PNG);
+    m_arrowImg              = wxImage(wxString(PHD2_FILE_PATH + "icons/manual_arrow.png"), wxBITMAP_TYPE_PNG);
+    m_arrowImgClicked       = wxImage(wxString(PHD2_FILE_PATH + "icons/manual_arrow_clicked.png"), wxBITMAP_TYPE_PNG);
+    m_curveArrowImg         = wxImage(wxString(PHD2_FILE_PATH + "icons/manual_curve_arrow.png"), wxBITMAP_TYPE_PNG);
+    m_curveArrowImgClicked  = wxImage(wxString(PHD2_FILE_PATH + "icons/manual_curve_arrow_clicked.png"), wxBITMAP_TYPE_PNG);
 
     m_upArrowButton     = CustomButton();
     m_downArrowButton   = CustomButton();
@@ -994,21 +994,37 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         // Overlay toolbar
 
         int i = 0;
+        int expandToolbarHeight = 0;
+        int expandToolbarIndex = 0;
         for (CustomButton &b : pFrame->overlayToolbar) {
-            if (i < 6) {
-                b.SetPos(dc.GetSize().GetWidth() - 55, 10 + (i * 55));
-                dc.DrawBitmap(pFrame->overlayToolbar[i].GetImage(), b.xPos, b.yPos);
-            } else {
-                b.SetPos(dc.GetSize().GetWidth() - (55 + ( i - 5) * 55 ), 10);
-                dc.DrawBitmap(pFrame->overlayToolbar[i].GetImage(), b.xPos, b.yPos);
+            if (b.name == "Guide" ) {
+                (state == STATE_GUIDING) ? b.DisplayAltImage(true) : b.DisplayAltImage(false);  
+            } else if (b.name == "Expand") {
+                (pFrame->expandToolbar) ? b.DisplayAltImage(true) : b.DisplayAltImage(false);                
             }
+
+            if (! b.isOverflow ) {
+                b.SetPos(dc.GetSize().GetWidth() - 55, 10 + (i * 55));
+                dc.DrawBitmap(pFrame->overlayToolbar[i].GetImage(), b.xPos, b.yPos);    
+            }
+
+            if (b.name =="Expand") {
+                expandToolbarHeight = b.yPos;
+                expandToolbarIndex = i;
+            }
+            
+            if ( b.isOverflow && pFrame->expandToolbar ) {
+                b.SetPos(dc.GetSize().GetWidth() - ( 55 + ( i - expandToolbarIndex ) * 55), expandToolbarHeight);
+                dc.DrawBitmap(pFrame->overlayToolbar[i].GetImage(), b.xPos, b.yPos);    
+            }
+
             i++;
         }
 
         // Manual guide overlay buttons
         // TODO: if this works, move the bitmap conversion somewhere so it'll only be done once 
         
-        if (state != STATE_CALIBRATING_PRIMARY && state != STATE_GUIDING) {
+        if (state != STATE_CALIBRATING_PRIMARY && state != STATE_GUIDING && !pFrame->expandToolbar) {
 
             //wxImage arrowImg        = m_manualGuideArrow.ConvertToImage();
             //wxImage arrowImgClicked = m_manualGuideArrowClicked.ConvertToImage();

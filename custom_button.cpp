@@ -7,18 +7,34 @@ CustomButton::CustomButton() {
     imageHeight   = 0;
     wasClicked    = false;
     enabled       = true;
+    displayAlt    = false;
 }
 
-CustomButton::CustomButton(std::function<void()> functionToStore, std::string buttonName, bool isEnabled, int width, int height, wxBitmap normal, wxBitmap clicked, wxBitmap disabled) {
+CustomButton::CustomButton(std::function<void()> functionToStore, std::string buttonName, bool isEnabled, bool overflow, int width, int height, wxBitmap normal, wxBitmap disabled) {
     name           = buttonName;
     imageWidth     = width;
     imageHeight    = height;
     wasClicked     = false;
     normalImage    = normal;
-    clickedImage   = clicked;
     disabledImage  = disabled;
     storedFunction = functionToStore;
     enabled        = isEnabled;
+    displayAlt     = false;
+    isOverflow     = overflow;
+}
+
+CustomButton::CustomButton(std::function<void()> functionToStore, std::string buttonName, bool isEnabled, bool overflow, int width, int height, wxBitmap normal, wxBitmap disabled, wxBitmap alt) {
+    name            = buttonName;
+    imageWidth      = width;
+    imageHeight     = height;
+    wasClicked      = false;
+    normalImage     = normal;
+    disabledImage   = disabled;
+    altImage        = alt;
+    storedFunction  = functionToStore;
+    enabled         = isEnabled;
+    displayAlt      = false;
+    isOverflow      = overflow;
 }
 
 void CustomButton::SetPos(int x, int y) {
@@ -44,13 +60,21 @@ PHD_Point CustomButton::GetCenter() {
 
 void CustomButton::SetImage(wxBitmap normal, wxBitmap clicked) {
     normalImage  = normal;
-    clickedImage = clicked;
+    // We're not using the click image at the moment - will sort out how to handle this later
+}
+
+void CustomButton::DisplayAltImage(bool alt) {
+    displayAlt = alt;
 }
 
 wxBitmap& CustomButton::GetImage() {
-    if (! enabled) return disabledImage;
-    
-    return normalImage;
+    if (! enabled) {
+        return disabledImage;   
+    } else if (displayAlt) {
+        return altImage;
+    } else {
+        return normalImage;
+    }
     
 }
 

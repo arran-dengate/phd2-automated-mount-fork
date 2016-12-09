@@ -196,10 +196,6 @@ private:
     wxBitmap guideIconStopBmp;
     wxBitmap guideIconDisabledBmp;
 
-    bool isGuideIconStop;
-
-    
-
 public:
     MyFrame(int instanceNumber, wxLocale *locale);
     virtual ~MyFrame();
@@ -251,6 +247,7 @@ public:
     bool m_rawImageMode;
     bool m_rawImageModeWarningDone;
     wxSize m_prevDarkFrameSize;
+    bool expandToolbar;
 
     void GetGammaSettings(int &currentGamma, int &gammaMin, int &gammaMax, int &gammaDefault);
     void SetGamma(int newGamma);
@@ -271,6 +268,7 @@ public:
     void OnLog(wxCommandEvent& evt);
     void OnSelectGear(wxCommandEvent& evt);
     void OnLoopExposure(wxCommandEvent& evt);
+    void OnButtonExpand(wxCommandEvent& evt);
     void OnButtonStop(wxCommandEvent& evt);
     void OnButtonGoto(wxCommandEvent& evt);
     void OnButtonCalibrate(wxCommandEvent& evt);
@@ -460,6 +458,7 @@ private:
     void SetComboBoxWidth(wxComboBox *pComboBox, unsigned int extra);
     void FinishStop(void);
     void DoTryReconnect(void);
+    wxBitmap GetIconBitmap(wxString filename);
 
     // and of course, an event table
     DECLARE_EVENT_TABLE()
