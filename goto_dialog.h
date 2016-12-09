@@ -84,7 +84,8 @@ private:
     void OnSearchTextChanged(wxCommandEvent&);
     void UpdateLocationText(void);
     void degreesToDMS(double input, double &degrees, double &arcMinutes, double &arcSeconds);
-    void degreesToHMS(double ra, double &hours, double &minutes, double &seconds); 
+    void degreesToHMS(double ra, double &hours, double &minutes, double &seconds);
+    void OnSearchBarGetFocus(wxFocusEvent& evt);
 
 public:
     GotoDialog(void);

@@ -35,6 +35,8 @@
 
 #include "phd.h"
 #include "goto_dialog.h"
+#include "cam_simulator.h" // To determine if current camera is simulator
+
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -47,7 +49,7 @@
 #include <wx/srchctrl.h>
 #include <wx/checkbox.h>
 #include <wx/progdlg.h>
-#include "cam_simulator.h" // To determine if current camera is simulator
+#include <stdlib.h> 
 
 const char IMAGE_DIRECTORY[]         = "/dev/shm/phd2/goto";
 const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
@@ -88,6 +90,9 @@ GotoDialog::GotoDialog(void)
     // Autocomplete is broken for searchCtrl, so I had to use a textCtrl.
     m_searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
     m_searchBar->Bind(wxEVT_COMMAND_TEXT_UPDATED, &GotoDialog::OnSearchTextChanged, this, wxID_ANY);
+    m_searchBar->Bind(wxEVT_SET_FOCUS, &GotoDialog::OnSearchBarGetFocus, this);
+
+    system("florence show");
 
     wxArrayString catalog_keys;
     for ( auto kv : m_catalog ) {
@@ -212,6 +217,10 @@ GotoDialog::GotoDialog(void)
     //    Debug.AddLine("Goto: failed to increase exposure duration");
     //}
     
+}
+
+void GotoDialog::OnSearchBarGetFocus(wxFocusEvent& evt) {
+    system("florence show");
 }
 
 void GotoDialog::OnTimer(wxTimerEvent& event) {
