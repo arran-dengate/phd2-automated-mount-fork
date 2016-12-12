@@ -683,11 +683,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         }
         if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); 
         m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();
-        Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
-
-        //m_rotationGuideNeeded += ( angleSum * -1 ); // Incrementally update based on previous guides...
-
-        //Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
+        //Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
     }
     return bError;
 }

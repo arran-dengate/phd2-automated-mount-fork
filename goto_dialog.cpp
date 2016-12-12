@@ -51,12 +51,13 @@
 #include <wx/progdlg.h>
 #include <stdlib.h> 
 
-const char IMAGE_DIRECTORY[]         = "/dev/shm/phd2/goto";
-const char IMAGE_PARENT_DIRECTORY[]  = "/dev/shm/phd2";
-const char IMAGE_FILENAME[]          = "/dev/shm/phd2/goto/guide-scope-image.fits";
-const char SOLVER_FILENAME[]         = "/usr/local/astrometry/bin/solve-field";
-const char CATALOG_FILENAME[]        = "/usr/local/phd2/goto/catalog.csv";
-const char MOVE_COMPLETE_FILENAME[]  = "/dev/shm/phd2/goto/done";
+const char IMAGE_DIRECTORY[]          = "/dev/shm/phd2/goto";
+const char IMAGE_PARENT_DIRECTORY[]   = "/dev/shm/phd2";
+const char IMAGE_FILENAME[]           = "/dev/shm/phd2/goto/guide-scope-image.fits";
+const char SKYFIELD_RESULT_FILENAME[] = "/dev/shm/phd2/goto/skyfield-result"; 
+const char SOLVER_FILENAME[]          = "/usr/local/astrometry/bin/solve-field";
+const char CATALOG_FILENAME[]         = "/usr/local/phd2/goto/catalog.csv";
+const char MOVE_COMPLETE_FILENAME[]   = "/dev/shm/phd2/goto/done";
 
 GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 325), wxCAPTION | wxCLOSE_BOX)
@@ -92,7 +93,7 @@ GotoDialog::GotoDialog(void)
     m_searchBar->Bind(wxEVT_COMMAND_TEXT_UPDATED, &GotoDialog::OnSearchTextChanged, this, wxID_ANY);
     m_searchBar->Bind(wxEVT_SET_FOCUS, &GotoDialog::OnSearchBarGetFocus, this);
 
-    system("florence show");
+    int ignored = system("florence show > /dev/null 2>&1");
 
     wxArrayString catalog_keys;
     for ( auto kv : m_catalog ) {
@@ -206,7 +207,6 @@ GotoDialog::GotoDialog(void)
 
     prevExposureDuration = 0;
     //int * prevExposureDuration_ptr = &prevExposureDuration;
-    bool ignored;
     //bool * ignored_ptr = &ignored;
 
     // Store original exposure duration so we can go back to it.
@@ -220,7 +220,7 @@ GotoDialog::GotoDialog(void)
 }
 
 void GotoDialog::OnSearchBarGetFocus(wxFocusEvent& evt) {
-    system("florence show");
+    int ignored = system("florence show > /dev/null 2>&1");
 }
 
 void GotoDialog::OnTimer(wxTimerEvent& event) {
@@ -275,41 +275,53 @@ void GotoDialog::degreesToDMS(double input, double &degrees, double &arcMinutes,
 }
 
 void GotoDialog::OnSearchTextChanged(wxCommandEvent&) {   
+    remove(SKYFIELD_RESULT_FILENAME);
     UpdateLocationText();
 }
 
 void GotoDialog::UpdateLocationText(void) {
     if ( m_catalog.count(string(m_searchBar->GetValue())) ) {
         string target = string(m_searchBar->GetValue());
-        //m_destinationEquatorial->SetLabel(m_catalog[string(m_searchBar->GetValue())]);
 
         string word;
         string result = m_catalog[string(m_searchBar->GetValue())];
         stringstream resultStream(result);
         getline(resultStream, word, ',');
 
-        double ra;
-        double dec;
-        double alt;
-        double az;
+        double ra = 0;
+        double dec = 0;
+        double alt = 0;
+        double az = 0;
 
         if (! isdigit(word[0])) {
             m_destinationType->SetLabel(word);
-            LookupEphemeral(target, ra, dec, alt, az);
+            NonBlockingLookupEphemeral(target);
         } else {
             m_destinationType->SetLabel("Star");
             ra = stod(word);
             getline(resultStream, word, ',');
             dec = stod(word);
-            EquatorialToHorizontal(ra, dec, alt, az, false);
+            NonBlockingEquatorialToHorizontal(ra, dec, false);
         }
-        
-        //Debug.AddLine(wxString::Format("ra %f dec %f alt %f az %f", ra, dec, alt, az));
-        
-        //m_destinationRa->SetLabel(std::to_string(ra)); 
-        //m_destinationDec->SetLabel(std::to_string(dec));
-        //m_destinationAlt->SetLabel(std::to_string(alt));
-        //m_destinationAz->SetLabel(std::to_string(az));
+
+        vector<string> skyfieldResults;
+        std::ifstream file( SKYFIELD_RESULT_FILENAME );
+        string tok;
+        if ( file ) {
+            std::stringstream ss;
+            ss << file.rdbuf();
+            file.close();
+            while(getline(ss, tok, ',')) {
+                skyfieldResults.push_back(tok);
+            }
+        }
+
+        if (skyfieldResults.size() > 0) {
+            alt = stod(skyfieldResults[0]);
+            az  = stod(skyfieldResults[1]);
+            ra  = stod(skyfieldResults[2]);
+            dec = stod(skyfieldResults[3]);
+        }
 
         double raHours;
         double raMinutes;
@@ -353,11 +365,6 @@ void GotoDialog::UpdateLocationText(void) {
         //m_gotoButton->Disable(); TODO fix this
     }
 
-    if ( not pFrame->pGuider->IsImageSaved() ) {
-        m_gotoButton->Disable();
-    } else {
-        m_gotoButton->Enable();
-    }
     //Debug.AddLine(wxString::Format("Goto: %s", pFrame->pGuider->ImageSaved() ? "true" : "false"));
     
 }
@@ -581,6 +588,14 @@ bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, d
     return 0;
 }
 
+bool GotoDialog::NonBlockingEquatorialToHorizontal(double ra, double dec, bool useStoredTimestamp) {
+    // Run skyfield as a separate process separately and dump the result into a file
+
+    std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec) + " &";
+
+    return system(command.c_str());
+}
+
 bool GotoDialog::LookupEphemeral(string &ephemeral, double &outRa, double &outDec, double &outAlt, double &outAz) {
     std::string command = "/usr/local/skyfield/sky.py --planet=" + ephemeral;
     string skyOutput;
@@ -609,6 +624,12 @@ bool GotoDialog::LookupEphemeral(string &ephemeral, double &outRa, double &outDe
     outDec  = stod(word);
 
     return 0;
+}
+
+bool GotoDialog::NonBlockingLookupEphemeral(string &ephemeral) {
+    std::string command = "/usr/local/skyfield/sky.py --planet=" + ephemeral;
+
+    return system(command.c_str());
 }
 
 bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle) {

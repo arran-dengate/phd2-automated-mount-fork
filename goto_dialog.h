@@ -78,7 +78,9 @@ private:
     void OnTimer(wxTimerEvent& event);
     bool AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle);
     bool EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp);
+    bool NonBlockingEquatorialToHorizontal(double ra, double dec, bool useStoredTimestamp);
     bool LookupEphemeral(string &ephemeral, double &outRa, double &outDec, double &outAlt, double &outAz);
+    bool NonBlockingLookupEphemeral(string &ephemeral);
     bool PlanetToHorizontal(string p);
     bool GetCatalogData(std::unordered_map<string,string>& catalog);
     void OnSearchTextChanged(wxCommandEvent&);
