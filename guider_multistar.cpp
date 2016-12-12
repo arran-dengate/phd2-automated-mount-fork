@@ -667,23 +667,33 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 double angleDiff     = currentAngle - originalAngle;
                 if (angleDiff >  180) angleDiff -= 360;
                 if (angleDiff < -180) angleDiff += 360;
-                double distance      = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
+                double distance = s.Distance(PHD_Point(LockPosition().X, LockPosition().Y));
                 s.lastAngleDiff = angleDiff;
                 angleSum   += angleDiff;
                 angleCount ++;
             }
         }
-        angleSum /= angleCount;
-        m_previousRotationGuides.push_front(angleSum * -1);
+        if ( angleCount > 0) {
+            angleSum /= angleCount;
+            m_previousRotationGuides.push_front(angleSum * -1);
+        }
         //if m_previousRotationGuides.size() > 100)
         double rotationSum = 0;
         for (double d : m_previousRotationGuides) {
             rotationSum += d;
             //Debug.Write(wxString::Format(" %f ", d)); 
         }
-        if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); 
-        m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();
-        //Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
+        if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); // Limit maximum size
+        
+        // Wait for several ticks before sending rotation command
+        if (m_previousRotationGuides.size() > 3) {
+            m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();    
+        } else {
+            m_rotationGuideNeeded = 0;    
+        }
+        
+        Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
+        Debug.AddLine(wxString::Format("Guider: Number of secondary stars %d", angleSum));
     }
     return bError;
 }

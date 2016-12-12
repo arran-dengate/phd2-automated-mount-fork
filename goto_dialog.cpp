@@ -115,16 +115,15 @@ GotoDialog::GotoDialog(void)
     wxFlexGridSizer *statusGrid = new wxFlexGridSizer(2, 2, 2, 9);
     statusBox->Add(statusGrid);
     
-    m_skyPosText                 = new wxStaticText(this, -1, "-");
-    m_gpsLocText                 = new wxStaticText(this, -1, "35.2809° S,\n149.1300° E");
-    m_timeText                   = new wxStaticText(this, -1, "-");
-    
-    wxStaticText *skyPosHeading                = new wxStaticText(this, -1, "Sky position");
-    wxStaticText *gpsLocHeading                = new wxStaticText(this, -1, "GPS location");
-    wxStaticText *timeHeading                  = new wxStaticText(this, -1, "Time");
-    skyPosHeading          ->SetFont(boldFont);
-    gpsLocHeading          ->SetFont(boldFont);
-    timeHeading            ->SetFont(boldFont);
+    m_skyPosText                = new wxStaticText(this, -1, "-");
+    m_gpsLocText                = new wxStaticText(this, -1, "35.2809° S,\n149.1300° E");
+    m_timeText                  = new wxStaticText(this, -1, "-"); 
+    wxStaticText *skyPosHeading = new wxStaticText(this, -1, "Sky position");
+    wxStaticText *gpsLocHeading = new wxStaticText(this, -1, "GPS location");
+    wxStaticText *timeHeading   = new wxStaticText(this, -1, "Time");
+    skyPosHeading ->SetFont(boldFont);
+    gpsLocHeading ->SetFont(boldFont);
+    timeHeading   ->SetFont(boldFont);
 
     statusGrid->Add(skyPosHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyPosText,                0, wxALL | wxALIGN_TOP, borderSize);
@@ -239,6 +238,8 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
             Debug.AddLine("Goto: Sent second move command; complete!");
         } 
     }
+
+    //int ignored = system("florence show > /dev/null 2>&1");
 }
 
 void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
@@ -362,11 +363,7 @@ void GotoDialog::UpdateLocationText(void) {
         m_destinationAlt->SetLabel("-");
         m_destinationAz->SetLabel("-");
         m_destinationType->SetLabel("-");
-        //m_gotoButton->Disable(); TODO fix this
     }
-
-    //Debug.AddLine(wxString::Format("Goto: %s", pFrame->pGuider->ImageSaved() ? "true" : "false"));
-    
 }
 
 bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
@@ -382,7 +379,7 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
     while(getline(f, line)) 
         {
             // If it's a star, expect format:   name,ra,dec (eg Rigel,21.04,67.32)
-            // If it's a planet, expect format: name,planet (eg Mars,planet)
+            // If it's a planet, expect format: name,type (eg Mars,planet)
 
             stringstream  lineStream(line);
             getline(lineStream,cell,',');
@@ -394,10 +391,6 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
                 string ra = cell;
                 getline(lineStream,cell,',');
                 string dec = cell;
-                //Debug.AddLine(wxString::Format("Line %s", line));
-                //Debug.AddLine(wxString::Format("celestial %s", celestial));
-                //Debug.AddLine(wxString::Format("RA %s", ra));
-                //Debug.AddLine(wxString::Format("Dec %s", dec));
                 outCatalog[celestial] = ra + "," + dec;    
             }
             
