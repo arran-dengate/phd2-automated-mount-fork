@@ -279,7 +279,7 @@ static void SaveAutoSelectFailedImg(usImage *pImage)
 static wxString StarStatusStr(const Star& star)
 {
     if (!star.IsValid())
-        return _("No star selected");
+        return _("Ready to guide");
 
     switch (star.GetError())
     {
@@ -386,6 +386,7 @@ bool GuiderMultiStar::AutoSelect(void)
     }
     
     m_originalRotationAngle = RotationAngle();
+    m_previousRotationGuides.clear();
 
     return bError;
 }
@@ -516,11 +517,10 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
 {
     if (!m_star.IsValid() && m_star.X == 0.0 && m_star.Y == 0.0)
     {
-        Debug.AddLine("UpdateCurrentPosition: no star selected");
         errorInfo->starError = Star::STAR_ERROR;
         errorInfo->starMass = 0.0;
         errorInfo->starSNR = 0.0;
-        errorInfo->status = _("No star selected");
+        errorInfo->status = _("Ready to guide");
         return true;
     }
 
@@ -674,7 +674,19 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
             }
         }
         angleSum /= angleCount;
-        m_rotationGuideNeeded = angleSum * -1;
+        m_previousRotationGuides.push_front(angleSum * -1);
+        //if m_previousRotationGuides.size() > 100)
+        double rotationSum = 0;
+        for (double d : m_previousRotationGuides) {
+            rotationSum += d;
+            //Debug.Write(wxString::Format(" %f ", d)); 
+        }
+        if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); 
+        m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();
+        Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
+
+        //m_rotationGuideNeeded += ( angleSum * -1 ); // Incrementally update based on previous guides...
+
         //Debug.AddLine(wxString::Format("Guider: avg %f", angleSum));
     }
     return bError;
@@ -816,7 +828,7 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         tmpMdc.SelectObject(SubBmp);
         
         // Draw a giant crosshair over the lock position.
-        //memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
+        //memDC.SetPen(wxPen(wxColor(230,75,75),1,wxDOT));
         //memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
         //memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
         #ifdef __APPLEX__
@@ -849,22 +861,6 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             
         */
 
-        // display bookmarks
-        if (m_showBookmarks && m_bookmarks.size() > 0)
-        {
-            dc.SetPen(wxPen(wxColour(0,255,255),1,wxSOLID));
-            dc.SetBrush(*wxTRANSPARENT_BRUSH);
-
-            for (std::vector<wxRealPoint>::const_iterator it = m_bookmarks.begin();
-                 it != m_bookmarks.end(); ++it)
-            {
-                wxPoint p((int)(it->x * m_scaleFactor), (int)(it->y * m_scaleFactor + m_yOffset));
-                dc.DrawCircle(p, 3);
-                dc.DrawCircle(p, 6);
-                dc.DrawCircle(p, 12);
-            }
-        }
-
         GUIDER_STATE state = GetState();
         bool FoundStar = m_star.WasFound();
         int border = 20;
@@ -878,11 +874,11 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
             {   
                 if ( s.X > m_star.X + border || s.X < m_star.X - border || s.Y > m_star.Y + border || s.Y < m_star.Y - border) {
                     if ( s.massChecker.currentlyValid ) {
-                        // Draw blue boxes if valid
-                        dc.SetPen(wxPen(wxColour(0,191,255), 1, wxSOLID));    
+                        // Draw light boxes if valid
+                        dc.SetPen(wxPen(wxColour(200,40,40), 1, wxSOLID));    
                     } else {
-                        // Otherwise red
-                        dc.SetPen(wxPen(wxColour(255,0,0), 1, wxSOLID));
+                        // Otherwise dark
+                        dc.SetPen(wxPen(wxColour(80,16,16), 1, wxSOLID));
                     }    
                     DrawBox(dc, s, m_searchRegion, m_scaleFactor, 0, m_yOffset);    
                 }
@@ -928,67 +924,27 @@ void GuiderMultiStar::OnPaint(wxPaintEvent& event)
         {  
 
             if (FoundStar)
-                dc.SetPen(wxPen(wxColour(100,255,90), 1, wxSOLID));  // Draw green box around primary star
+                dc.SetPen(wxPen(wxColour(250,133,75), 1, wxSOLID));  // Draw green box around primary star
             else
-                dc.SetPen(wxPen(wxColour(230,130,30), 1, wxDOT));
+                dc.SetPen(wxPen(wxColour(230,75,75), 1, wxDOT));
             DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
             
         }
         else if (state == STATE_CALIBRATING_PRIMARY || state == STATE_CALIBRATING_SECONDARY)
         {
             // in the calibration process
-            dc.SetPen(wxPen(wxColour(32,196,32), 1, wxSOLID));  // Draw the box around the star
+            dc.SetPen(wxPen(wxColour(250,133,75), 1, wxSOLID));  // Draw the box around the star
             DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
         }
         else if (state == STATE_CALIBRATED || state == STATE_GUIDING)
         {
             // locked and guiding
             if (FoundStar)
-                dc.SetPen(wxPen(wxColour(32,196,32), 1, wxSOLID));  // Draw the box around the star
+                dc.SetPen(wxPen(wxColour(255, 76, 27), 1, wxSOLID));  // Draw the box around the star
             else
-                dc.SetPen(wxPen(wxColour(230,130,30), 1, wxDOT));
+                dc.SetPen(wxPen(wxColour(230,75,75), 1, wxDOT));
+
             DrawBox(dc, m_star, m_searchRegion, m_scaleFactor, 0, m_yOffset);
-        }
-
-        // Image logging
-        if (state >= STATE_SELECTED && pFrame->IsImageLoggingEnabled() && pFrame->m_frameCounter != pFrame->m_loggedImageFrame)
-        {
-            // only log each image frame once
-            pFrame->m_loggedImageFrame = pFrame->m_frameCounter;
-
-            if (pFrame->GetLoggedImageFormat() == LIF_RAW_FITS) // Save star image as a FITS
-            {
-                SaveStarFITS();
-            }
-            else  // Save star image as a JPEG
-            {
-                double LockX = LockPosition().X;
-                double LockY = LockPosition().Y;
-
-                wxBitmap SubBmp(60,60,-1);
-                wxMemoryDC tmpMdc;
-                tmpMdc.SelectObject(SubBmp);
-                memDC.SetPen(wxPen(wxColor(0,255,0),1,wxDOT));
-                memDC.DrawLine(0, LockY * m_scaleFactor, XWinSize, LockY * m_scaleFactor);
-                memDC.DrawLine(LockX * m_scaleFactor, 0, LockX * m_scaleFactor, YWinSize);
-    #ifdef __APPLEX__
-                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X*m_scaleFactor)-30,Displayed_Image->GetHeight() - ROUND(m_star.Y*m_scaleFactor + m_yOffset)-30,wxCOPY,false);
-    #else
-                tmpMdc.Blit(0,0,60,60,&memDC,ROUND(m_star.X * m_scaleFactor) - 30,ROUND(m_star.Y * m_scaleFactor) - 30,wxCOPY,false);
-    #endif
-                //          tmpMdc.Blit(0,0,200,200,&Cdc,0,0,wxCOPY);
-
-                wxString fname = Debug.GetLogDir() + PATHSEPSTR + "PHD_GuideStar" + wxDateTime::Now().Format(_T("_%j_%H%M%S")) + ".jpg";
-                wxImage subImg = SubBmp.ConvertToImage();
-                // subImg.Rescale(120, 120);  zoom up (not now)
-                if (pFrame->GetLoggedImageFormat() == LIF_HI_Q_JPEG)
-                {
-                    // set high(ish) JPEG quality
-                    subImg.SetOption(wxIMAGE_OPTION_QUALITY, 100);
-                }
-                subImg.SaveFile(fname, wxBITMAP_TYPE_JPEG);
-                tmpMdc.SelectObject(wxNullBitmap);
-            }
         }
 
         // Overlay toolbar

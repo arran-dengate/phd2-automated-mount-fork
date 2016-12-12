@@ -221,6 +221,7 @@ public:
     std::vector<Star> m_starList; // Secondary stars
     bool m_guidingPositionsInitialised;
     double m_rotationGuideNeeded;
+    std::deque<double> m_previousRotationGuides;
 
     bool IsPaused(void) const;
     PauseType GetPauseType(void) const;

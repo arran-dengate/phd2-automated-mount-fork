@@ -807,6 +807,11 @@ void MyFrame::OnAutoStar(wxCommandEvent& WXUNUSED(evt))
 
 void MyFrame::OnSetupCamera(wxCommandEvent& WXUNUSED(event))
 {
+    if (CaptureActive)
+        {
+            StopCapturing();
+        }
+    
     if (pCamera &&
         (((pCamera->PropertyDialogType & PROPDLG_WHEN_CONNECTED) != 0 && pCamera->Connected) ||
          ((pCamera->PropertyDialogType & PROPDLG_WHEN_DISCONNECTED) != 0 && !pCamera->Connected)))
