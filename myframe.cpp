@@ -179,6 +179,7 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
 
     expandToolbar = false;
 
+    ShowFullScreen(true, wxFULLSCREEN_ALL);
     m_mgr.SetManagedWindow(this);
 
     m_frameCounter = 0;
