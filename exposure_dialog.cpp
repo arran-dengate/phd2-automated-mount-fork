@@ -70,16 +70,20 @@ void ExposureDialog::UpdateValues(wxArrayString durations) {
 
     Fit();
 
-    wxString currentDuration = pConfig->Profile.GetString("/ExposureDuration", wxString("Auto"));
+    // This always returned a blank string. I am not at all sure why.
+    int currentDuration = pFrame->RequestedExposureDuration();
 
     bool first;
     for (wxString s : durations) {
         wxRadioButton * button = new wxRadioButton(this, -1, s, wxDefaultPosition, wxDefaultSize, ( first ? wxRB_GROUP : 0), 
                                                    wxDefaultValidator, s);
-        if (currentDuration == s) {
-            button->SetValue(true);
-            button->SetFocus();
+        if (s != _("Auto")){
+            if (currentDuration == int(stod(s.ToStdString())*1000)) {
+                button->SetValue(true);
+                button->SetFocus();
+            }    
         }
+        
         button->Bind(wxEVT_COMMAND_RADIOBUTTON_SELECTED, &ExposureDialog::OnExposureClicked, this);
         button->Bind(wxEVT_KILL_FOCUS, &ExposureDialog::OnKillFocus, this);
         buttonSizer->Add(button);
