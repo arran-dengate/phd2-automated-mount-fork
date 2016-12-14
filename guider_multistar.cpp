@@ -387,7 +387,10 @@ bool GuiderMultiStar::AutoSelect(void)
     
     m_originalRotationAngle = RotationAngle();
     m_previousRotationGuides.clear();
-
+    // To keep the first few rotations small
+    for (int i = 0; i < 4; i++) {
+        m_previousRotationGuides.push_front(0);
+    }
     return bError;
 }
 
@@ -592,7 +595,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
                 s->massChecker.validationChances -= 1;
                 s->massChecker.currentlyValid = false;
             } else {
-                UpdateStar(*s, newStar);
+                UpdateStar(*s, newStar); // This will also reset the number of validation chances.
             }
 
             if (s->massChecker.validationChances <= 0) {
@@ -685,12 +688,7 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
         }
         if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); // Limit maximum size
         
-        // Wait for several ticks before sending rotation command
-        if (m_previousRotationGuides.size() > 3) {
-            m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();    
-        } else {
-            m_rotationGuideNeeded = 0;    
-        }
+        m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();    
         
         Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
         Debug.AddLine(wxString::Format("Guider: Number of secondary stars %d", angleSum));
@@ -707,7 +705,7 @@ void GuiderMultiStar::UpdateStar(Star &s, Star &newStar) {
     s.HFD     = newStar.HFD;
     s.PeakVal = newStar.PeakVal;
     s.massChecker.AppendData(newStar.Mass);
-    s.massChecker.validationChances = 7;
+    s.massChecker.validationChances = 14;
     s.massChecker.currentlyValid = true;  
     if (s.prevPositions.size() > PREV_STAR_POSITIONS_LENGTH) {
         s.prevPositions.pop_back(); // Only keep the most recent

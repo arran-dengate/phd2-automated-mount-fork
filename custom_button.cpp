@@ -43,13 +43,15 @@ void CustomButton::SetPos(int x, int y) {
 }
 
 bool CustomButton::TriggerIfClicked(int clickX, int clickY, bool upClick) {
+    if ( ! enabled ) return false;
     Debug.AddLine(wxString::Format("Mouse clicked %d %d, button pos %d %d, imageHeight imageWidth %d %d", clickX, clickY, xPos, yPos, imageWidth, imageHeight));
     if ( (clickX > xPos && clickX < xPos + imageWidth) and (clickY > yPos && clickY < yPos + imageHeight ) ) {
         if (upClick) {
-            Debug.Write("Mouse up on button!");
-            storedFunction();   
+            storedFunction();
+            return true;
         } else {
-            Debug.Write("Mouse down on button!");
+            // Mouse is down on button. If we wanted to show a clicked animation this would be a good place to start.
+            return false;
         }
     }
 }

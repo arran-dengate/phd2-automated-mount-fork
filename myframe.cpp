@@ -278,9 +278,12 @@ MyFrame::MyFrame(int instanceNumber, wxLocale *locale)
     overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnSetupCamera, this, blank), this), 
                              "CamSetup",    false, true,  36, 36, GetIconBitmap("cam_setup.png"), GetIconBitmap("cam_setup_disabled.png")));
     overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnDark, this, blank), this), 
-                             "Darks",       false, true,  36,  36, GetIconBitmap("darks.png"), GetIconBitmap("darks_disabled.png")));
+                             "Darks",       false, true,  36, 36, GetIconBitmap("darks.png"), GetIconBitmap("darks_disabled.png")));
     overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnGraph, this, blank), this), 
-                             "Graphs",      false, true,  36,  36, GetIconBitmap("graphs.png"), GetIconBitmap("graphs_disabled.png")));
+                             "Graphs",      false, true,  36, 36, GetIconBitmap("graphs.png"), GetIconBitmap("graphs_disabled.png")));
+    overlayToolbar.push_back(CustomButton(std::bind(std::bind(&MyFrame::OnQuit, this, blank), this), 
+                             "Exit",        true, true,  36,  36, GetIconBitmap("exit.png"), GetIconBitmap("darks_disabled.png")));
+
 
     wxString geometry = pConfig->Global.GetString("/geometry", wxEmptyString);
     if (geometry == wxEmptyString)
@@ -1875,6 +1878,12 @@ void MyFrame::OnClose(wxCloseEvent& event)
             "/quit_when_looping_ok", _("Confirm Exit"));
         if (!confirmed)
         {
+            event.Veto();
+            return;
+        }
+    } else {
+        wxMessageDialog * confirmQuitDlg = new wxMessageDialog(this, _("Quit to desktop?"), _("Quit"), wxOK | wxCANCEL, wxDefaultPosition);
+        if (confirmQuitDlg->ShowModal() != wxID_OK) {
             event.Veto();
             return;
         }
