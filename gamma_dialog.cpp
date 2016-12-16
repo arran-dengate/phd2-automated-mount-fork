@@ -46,7 +46,6 @@ GammaDialog::GammaDialog(void)
     mainBox->Add(introText, 1, wxALIGN_CENTER | wxALL, 5);
     gammaSlider = new wxSlider(this, wxID_ANY, 0, 0, 255, wxDefaultPosition, wxSize(500, -1), 
                                wxSL_HORIZONTAL, wxDefaultValidator, wxT("Gamma_Slider"));
-    gammaSlider->SetBackgroundColour(wxColor(60, 60, 60));         // Slightly darker than toolbar background
     gammaSlider->SetToolTip(_("Screen gamma (brightness)"));
     gammaSlider->Bind(wxEVT_SLIDER, &GammaDialog::OnGammaSlider, this);
     gammaSlider->Bind(wxEVT_KILL_FOCUS, &GammaDialog::OnKillFocus, this);

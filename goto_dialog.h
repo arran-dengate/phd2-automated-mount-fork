@@ -42,6 +42,7 @@ class GotoDialog :
 {
 private:
     wxTextCtrl   *m_searchBar;
+    wxStaticText *m_destinationName;
     wxStaticText *m_destinationRa;
     wxStaticText *m_destinationDec;
     wxStaticText *m_destinationAlt;
@@ -52,6 +53,7 @@ private:
     wxStaticText *m_timeText; 
     wxCheckBox   *m_recalibrateDuringGoto;
     std::unordered_map<string,string> m_catalog;
+    Destination destination;
 
     bool m_gotoInProgress;
 
@@ -68,6 +70,7 @@ private:
     bool m_doAccuracyMap = false;
     int m_solveTriesRemaining;
 
+    void SetDestination(double ra, double dec);
     int StringWidth(const wxString& string);
     void AccuracyMap();
     bool Calibrate();
@@ -83,16 +86,14 @@ private:
     bool NonBlockingLookupEphemeral(string &ephemeral);
     bool PlanetToHorizontal(string p);
     bool GetCatalogData(std::unordered_map<string,string>& catalog);
-    void OnSearchTextChanged(wxCommandEvent&);
     void UpdateLocationText(void);
     void degreesToDMS(double input, double &degrees, double &arcMinutes, double &arcSeconds);
     void degreesToHMS(double ra, double &hours, double &minutes, double &seconds);
-    void OnSearchBarGetFocus(wxFocusEvent& evt);
 
 public:
     GotoDialog(void);
     ~GotoDialog(void);
-
+    void ShowDestinationDialog();
     void GetValues(Calibration *cal);
 };
 

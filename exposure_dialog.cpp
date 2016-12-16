@@ -55,6 +55,7 @@ ExposureDialog::ExposureDialog(void)
 
     SetSizer(outerBox);
     Fit();
+
 }
 
 void ExposureDialog::UpdateValues(wxArrayString durations) {

@@ -329,6 +329,8 @@ set(guiding_SRC
   ${phd_src_dir}/guider_multistar.cpp
   ${phd_src_dir}/custom_button.cpp
   ${phd_src_dir}/custom_button.h
+  ${phd_src_dir}/destination.cpp
+  ${phd_src_dir}/destination.h
   ${phd_src_dir}/masschecker.cpp
   ${phd_src_dir}/masschecker.h
   ${phd_src_dir}/guider_multistar.h
@@ -411,6 +413,8 @@ set(phd2_SRC
   ${phd_src_dir}/manualcal_dialog.h
   ${phd_src_dir}/gamma_dialog.cpp
   ${phd_src_dir}/gamma_dialog.h
+  ${phd_src_dir}/destination_dialog.cpp
+  ${phd_src_dir}/destination_dialog.h
   ${phd_src_dir}/goto_dialog.cpp
   ${phd_src_dir}/goto_dialog.h
   ${phd_src_dir}/exposure_dialog.cpp

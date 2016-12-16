@@ -36,6 +36,8 @@
 #include "phd.h"
 #include "goto_dialog.h"
 #include "cam_simulator.h" // To determine if current camera is simulator
+#include "destination_dialog.h"
+#include "destination.h"
 
 #include <cstdio>
 #include <fstream>
@@ -50,6 +52,7 @@
 #include <wx/checkbox.h>
 #include <wx/progdlg.h>
 #include <stdlib.h> 
+
 
 const char IMAGE_DIRECTORY[]          = "/dev/shm/phd2/goto";
 const char IMAGE_PARENT_DIRECTORY[]   = "/dev/shm/phd2";
@@ -77,33 +80,15 @@ GotoDialog::GotoDialog(void)
 
     wxBoxSizer *containBox           = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer *lowerBox             = new wxBoxSizer(wxHORIZONTAL);
-    wxStaticBoxSizer *searchBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Search");
     wxStaticBoxSizer *statusBox      = new wxStaticBoxSizer(wxVERTICAL, this, "Status");
     wxStaticBoxSizer *destinationBox = new wxStaticBoxSizer(wxVERTICAL, this, "Destination");
 
-    containBox->Add(searchBox, 0, wxEXPAND);
     containBox->Add(lowerBox, 1, wxEXPAND);
     lowerBox->Add(statusBox, 1, wxEXPAND);
     lowerBox->Add(destinationBox, 1, wxEXPAND);
     
     int borderSize = 5;
     
-    // Autocomplete is broken for searchCtrl, so I had to use a textCtrl.
-    m_searchBar = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, wxTextCtrlNameStr);
-    m_searchBar->Bind(wxEVT_COMMAND_TEXT_UPDATED, &GotoDialog::OnSearchTextChanged, this, wxID_ANY);
-    m_searchBar->Bind(wxEVT_SET_FOCUS, &GotoDialog::OnSearchBarGetFocus, this);
-
-    int ignored = system("florence show > /dev/null 2>&1");
-
-    wxArrayString catalog_keys;
-    for ( auto kv : m_catalog ) {
-        catalog_keys.Add(kv.first);
-    }
-    
-    m_searchBar->AutoComplete( catalog_keys );
-
-    searchBox->Add(m_searchBar, 0, wxALL | wxALIGN_TOP | wxEXPAND, borderSize);
-
     // Get a bold font
 
     wxStaticText *tempText = new wxStaticText(this, -1, "");
@@ -137,25 +122,32 @@ GotoDialog::GotoDialog(void)
     wxFlexGridSizer *destinationGrid = new wxFlexGridSizer(4, 4, 2, 4);
     destinationBox->Add(destinationGrid);
 
+    m_destinationName   = new wxStaticText(this, -1, "-");
+    m_destinationType   = new wxStaticText(this, -1, "-");
     m_destinationRa     = new wxStaticText(this, -1, "-                      \n ");
     m_destinationDec    = new wxStaticText(this, -1, "-                      ");
     m_destinationAlt    = new wxStaticText(this, -1, "-                      ");
     m_destinationAz     = new wxStaticText(this, -1, "-                      \n");
-    m_destinationType   = new wxStaticText(this, -1, "-                      ");
+    wxStaticText *destinationNameHeading = new wxStaticText(this, -1, "Name");
     wxStaticText *destinationTypeHeading = new wxStaticText(this, -1, "Type");
     wxStaticText *destinationRaHeading   = new wxStaticText(this, -1, "RA");
     wxStaticText *destinationDecHeading  = new wxStaticText(this, -1, "Dec");
     wxStaticText *destinationAltHeading  = new wxStaticText(this, -1, "Alt");
     wxStaticText *destinationAzHeading   = new wxStaticText(this, -1, "Az");
+    destinationNameHeading ->SetFont(boldFont);
+    destinationTypeHeading ->SetFont(boldFont);
     destinationRaHeading   ->SetFont(boldFont);
     destinationDecHeading  ->SetFont(boldFont);
     destinationAltHeading  ->SetFont(boldFont);
     destinationAzHeading   ->SetFont(boldFont);
-    destinationTypeHeading ->SetFont(boldFont);
 
+    destinationGrid->Add(destinationNameHeading, 0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->Add(m_destinationName,      0, wxALL | wxALIGN_TOP, borderSize);
+    destinationGrid->AddSpacer(0); // An empty cell
+    destinationGrid->AddSpacer(0); 
     destinationGrid->Add(destinationTypeHeading, 0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationType,      0, wxALL | wxALIGN_TOP, borderSize);
-    destinationGrid->AddSpacer(0); // An empty cell
+    destinationGrid->AddSpacer(0); 
     destinationGrid->AddSpacer(0); 
     destinationGrid->Add(destinationRaHeading,   0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationRa,        0, wxALL | wxALIGN_TOP, borderSize);
@@ -218,10 +210,6 @@ GotoDialog::GotoDialog(void)
     
 }
 
-void GotoDialog::OnSearchBarGetFocus(wxFocusEvent& evt) {
-    int ignored = system("florence show > /dev/null 2>&1");
-}
-
 void GotoDialog::OnTimer(wxTimerEvent& event) {
     UpdateLocationText();
     if ( m_doAccuracyMap ) AccuracyMap();
@@ -231,9 +219,7 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
         Debug.AddLine("Goto: in progress, waiting for 'done' file...");
         if ( stat( MOVE_COMPLETE_FILENAME , &info ) == 0 ) {  // TODO: Get application executable path & use that, rather than absolute path! 
             Calibrate();
-            double destAlt = std::stod(string(m_destinationAlt->GetLabelText())); // Also, getting the time from the text string is not ideal.
-            double destAz  = std::stod(string(m_destinationAz->GetLabelText()));
-            pMount->HexGoto(destAlt, destAz);
+            pMount->HexGoto(destination.alt, destination.az);
             m_gotoInProgress = false;
             Debug.AddLine("Goto: Sent second move command; complete!");
         } 
@@ -275,94 +261,57 @@ void GotoDialog::degreesToDMS(double input, double &degrees, double &arcMinutes,
 
 }
 
-void GotoDialog::OnSearchTextChanged(wxCommandEvent&) {   
-    remove(SKYFIELD_RESULT_FILENAME);
-    UpdateLocationText();
-}
-
 void GotoDialog::UpdateLocationText(void) {
-    if ( m_catalog.count(string(m_searchBar->GetValue())) ) {
-        string target = string(m_searchBar->GetValue());
+    if ( destination.initialised ) {
 
-        string word;
-        string result = m_catalog[string(m_searchBar->GetValue())];
-        stringstream resultStream(result);
-        getline(resultStream, word, ',');
-
-        double ra = 0;
-        double dec = 0;
-        double alt = 0;
-        double az = 0;
-
-        if (! isdigit(word[0])) {
-            m_destinationType->SetLabel(word);
-            NonBlockingLookupEphemeral(target);
+        if (destination.ephemeral) {
+            m_destinationType->SetLabel(destination.type);
         } else {
             m_destinationType->SetLabel("Star");
-            ra = stod(word);
-            getline(resultStream, word, ',');
-            dec = stod(word);
-            NonBlockingEquatorialToHorizontal(ra, dec, false);
         }
 
-        vector<string> skyfieldResults;
-        std::ifstream file( SKYFIELD_RESULT_FILENAME );
-        string tok;
-        if ( file ) {
-            std::stringstream ss;
-            ss << file.rdbuf();
-            file.close();
-            while(getline(ss, tok, ',')) {
-                skyfieldResults.push_back(tok);
-            }
-        }
-
-        if (skyfieldResults.size() > 0) {
-            alt = stod(skyfieldResults[0]);
-            az  = stod(skyfieldResults[1]);
-            ra  = stod(skyfieldResults[2]);
-            dec = stod(skyfieldResults[3]);
-        }
+        m_destinationName->SetLabel(destination.name);
 
         double raHours;
         double raMinutes;
         double raSeconds;
-        degreesToHMS(ra, raHours, raMinutes, raSeconds);
+        degreesToHMS(destination.ra, raHours, raMinutes, raSeconds);
         char raBuffer[200]; 
-        sprintf(raBuffer, "%f\n%.0fh %.0fm %.0fs", ra, raHours, raMinutes, raSeconds);
+        sprintf(raBuffer, "%f\n%.0fh %.0fm %.0fs", destination.ra, raHours, raMinutes, raSeconds);
         m_destinationRa->SetLabel(raBuffer);
 
         double decDegrees;
         double decArcMinutes;
         double decArcSeconds;
-        degreesToDMS(dec, decDegrees, decArcMinutes, decArcSeconds);
+        degreesToDMS(destination.dec, decDegrees, decArcMinutes, decArcSeconds);
         char decBuffer[200];
-        sprintf(decBuffer, "%f\n%.0fd %.0fm %.0fs", dec, decDegrees, abs(decArcMinutes), abs(decArcSeconds));
+        sprintf(decBuffer, "%f\n%.0fd %.0fm %.0fs", destination.dec, decDegrees, abs(decArcMinutes), abs(decArcSeconds));
         m_destinationDec->SetLabel(decBuffer);
 
         double altDegrees;
         double altArcMinutes;
         double altArcSeconds;
-        degreesToDMS(alt, altDegrees, altArcMinutes, altArcSeconds);
+        degreesToDMS(destination.alt, altDegrees, altArcMinutes, altArcSeconds);
         char altBuffer[200];
-        sprintf(altBuffer, "%f\n%.0fd %.0fm %.0fs", alt, altDegrees, altArcMinutes, altArcSeconds);
+        sprintf(altBuffer, "%f\n%.0fd %.0fm %.0fs", destination.alt, altDegrees, altArcMinutes, altArcSeconds);
         m_destinationAlt->SetLabel(altBuffer);
 
         double azDegrees;
         double azArcMinutes;
         double azArcSeconds;
-        degreesToDMS(az, azDegrees, azArcMinutes, azArcSeconds);
+        degreesToDMS(destination.az, azDegrees, azArcMinutes, azArcSeconds);
         char azBuffer[200];
-        sprintf(azBuffer, "%f\n%.0fd %.0fm %.0fs", az, azDegrees, azArcMinutes, azArcSeconds);
+        sprintf(azBuffer, "%f\n%.0fd %.0fm %.0fs", destination.az, azDegrees, azArcMinutes, azArcSeconds);
         m_destinationAz->SetLabel(azBuffer);
 
         m_gotoButton->Enable();
     } else {
-        m_destinationRa->SetLabel("-");
-        m_destinationDec->SetLabel("-");
-        m_destinationAlt->SetLabel("-");
-        m_destinationAz->SetLabel("-");
-        m_destinationType->SetLabel("-");
+        m_destinationName->SetLabel("-");
+        m_destinationRa->SetLabel("-                      \n");
+        m_destinationDec->SetLabel("-                      ");
+        m_destinationAlt->SetLabel("-                      \n");
+        m_destinationAz->SetLabel("-                      ");
+        m_destinationType->SetLabel("-                      ");
     }
 }
 
@@ -400,6 +349,16 @@ bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
         return false;
     }
     return true;
+}
+
+void GotoDialog::ShowDestinationDialog() {
+    DestinationDialog * destDlg = new DestinationDialog();
+    destDlg->ShowModal();
+    Destination result = Destination();
+    if (destDlg->GetDestination(result)) {
+        Debug.AddLine(wxString::Format("Destination: name %s alt %d az %d", destination.name, destination.alt, destination.az));
+        destination = result;
+    }
 }
 
 void GotoDialog::AccuracyMap() {

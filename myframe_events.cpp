@@ -475,6 +475,8 @@ void MyFrame::OnButtonExpand(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnButtonGoto(wxCommandEvent& WXUNUSED(event))
 {
     GotoDialog gotodlg;
+    //gotodlg.Show();
+    gotodlg.ShowDestinationDialog();
     gotodlg.ShowModal();
 }
 
