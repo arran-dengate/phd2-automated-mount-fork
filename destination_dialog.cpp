@@ -51,7 +51,7 @@ const char CATALOG_FILENAME[]         = "/usr/local/phd2/goto/catalog.csv";
 
 
 DestinationDialog::DestinationDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Destination"), wxDefaultPosition, wxDefaultSize, 0)
+    : wxDialog(pFrame, wxID_ANY, _("Choose a star, planet or dark sky object..."), wxDefaultPosition, wxDefaultSize, wxCAPTION)
 {
     wxBoxSizer * mainBox = new wxBoxSizer(wxVERTICAL);
 
@@ -99,15 +99,12 @@ DestinationDialog::DestinationDialog(void)
     std::vector<string> catalogNames;
 
     for ( auto kv : catalog ) {
-        //catalog_keys.Add(kv.first);
         catalogNames.push_back(kv.first);
-        //destGrid->SetCellValue(i, 0, kv.first);
-        //destGrid->SetCellValue(i, 1, kv.second);
     }
 
     std::sort(catalogNames.begin(), catalogNames.end());
     
-    destGrid->CreateGrid(catalogNames.size(), 2);
+    destGrid->CreateGrid(catalogNames.size(), 1);
     destGrid->Bind(wxEVT_GRID_CELL_LEFT_CLICK, &DestinationDialog::OnCellClicked, this);
 
     int i = 0;
@@ -119,7 +116,7 @@ DestinationDialog::DestinationDialog(void)
     destGrid->SetRowLabelSize(0);
     destGrid->SetColLabelSize(0);
     mainBox->Add(destGrid, 1, wxEXPAND | wxALL | wxCENTRE, 5);
-    destGrid->AutoSizeColumns();
+    
     destGrid->EnableGridLines(false);
     destGrid->EnableEditing(false);
 
@@ -179,18 +176,15 @@ DestinationDialog::DestinationDialog(void)
     chooseButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &DestinationDialog::OnChoose, this);
     chooseButton->Enable(false);
     okCancelSizer->Add(chooseButton);
-    //gammaSlider->Bind(wxEVT_SLIDER, &DestinationDialog::OnGammaSlider, this);
-    //gammaSlider->Bind(wxEVT_KILL_FOCUS, &DestinationDialog::OnKillFocus, this);
 
     wxButton * backspaceButton = new wxButton(this, index, _("⬅"), wxDefaultPosition, wxSize(75, -1), wxBU_EXACTFIT | wxBORDER_NONE, wxDefaultValidator, _("⇦"));
     backspaceButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &DestinationDialog::OnBackspace, this);
     keyRow4->Add(backspaceButton, 1, 0, 0);
 
-    // wxBitmap * backspaceBmp = new wxBitmap(PHD2_FILE_PATH + "icons/backspace.png", wxBITMAP_TYPE_PNG);
-    // wxBitmapButton * backspaceButton = new wxButton(this, wxID_ANY, _("Backspace"));
-
     SetSizer(mainBox);
     Fit();
+    destGrid->SetColSize(0, mainBox->GetSize().GetWidth() - 20);
+
 }
 
 void DestinationDialog::OnClose(wxCommandEvent& event) {
@@ -210,6 +204,7 @@ void DestinationDialog::OnBackspace(wxCommandEvent& event) {
 
 void DestinationDialog::OnCellClicked(wxGridEvent& event) {
     filterBar->SetValue(destGrid->GetCellValue(event.GetRow(), event.GetCol()));
+    destGrid->GoToCell(event.GetRow(), event.GetCol());
     chooseButton->Enable(true);
 }
 
@@ -223,19 +218,10 @@ void DestinationDialog::RefreshGrid() {
         for(int i = 0; i < upperString.size(); i++) {
             upperString.at(i) = toupper(upperString.at(i));
         }
-
-        //Debug.AddLine(wxString::Format("Upperstring %s kv first %s", filterString, upp));
-
-
         if (upperString.find(filterString) == 0) {//!= std::string::npos) {
             catalogNames.push_back(kv.first);
         }
-
-        //if (kv.first.find(filterBar->GetText() != std::string::npos) ) {
-        //catalog_keys.Add(kv.first);
-        //}
     }
-    
 
     std::sort(catalogNames.begin(), catalogNames.end());
     

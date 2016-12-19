@@ -52,29 +52,22 @@
 #include <wx/checkbox.h>
 #include <wx/progdlg.h>
 #include <stdlib.h> 
+#include <ctime>
 
 
 const char IMAGE_DIRECTORY[]          = "/dev/shm/phd2/goto";
 const char IMAGE_PARENT_DIRECTORY[]   = "/dev/shm/phd2";
 const char IMAGE_FILENAME[]           = "/dev/shm/phd2/goto/guide-scope-image.fits";
-const char SKYFIELD_RESULT_FILENAME[] = "/dev/shm/phd2/goto/skyfield-result"; 
 const char SOLVER_FILENAME[]          = "/usr/local/astrometry/bin/solve-field";
 const char CATALOG_FILENAME[]         = "/usr/local/phd2/goto/catalog.csv";
 const char MOVE_COMPLETE_FILENAME[]   = "/dev/shm/phd2/goto/done";
 
 GotoDialog::GotoDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 325), wxCAPTION | wxCLOSE_BOX)
+    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 265), wxCAPTION | wxCLOSE_BOX)
 {   
     m_doAccuracyMap = false;
     m_gotoInProgress = false;
-
-    // Obtain the catalog data from a CSV file...
-    
-    if ( ! GetCatalogData(m_catalog) ) {
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, wxString::Format("Unable to locate or read star catalog file! Goto will not work."), 
-                                                      wxString::Format("Error"), wxOK|wxCENTRE, wxDefaultPosition);
-        alert->ShowModal();
-    }
+    calibrated = false;
 
     // Now set up GUI.
 
@@ -158,8 +151,14 @@ GotoDialog::GotoDialog(void)
     destinationGrid->Add(destinationAzHeading,   0, wxALL | wxALIGN_TOP, borderSize);
     destinationGrid->Add(m_destinationAz,        0, wxALL | wxALIGN_TOP, borderSize);
 
-    m_recalibrateDuringGoto = new wxCheckBox(this, -1, "Recalibrate during goto\n(slower, more accurate)", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT, wxDefaultValidator, wxTextCtrlNameStr);
-    destinationBox->Add(m_recalibrateDuringGoto, 0, wxALL | wxEXPAND | wxALIGN_LEFT, borderSize); 
+    wxButton * changeDestinationButton = new wxButton(this, wxID_ANY, _("Change destination"));
+    changeDestinationButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnChangeDestination, this);
+    destinationBox->AddStretchSpacer(1);
+    destinationBox->Add(changeDestinationButton, 0, wxEXPAND | wxALL, 5);
+
+    // Iterative goto (currently disabled - needs more work)
+    //m_recalibrateDuringGoto = new wxCheckBox(this, -1, "Recalibrate during goto\n(slower, more accurate)", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT, wxDefaultValidator, wxTextCtrlNameStr);
+    //destinationBox->Add(m_recalibrateDuringGoto, 0, wxALL | wxEXPAND | wxALIGN_LEFT, borderSize); 
 
     // Button sizer along the bottom with 'Cancel' and 'Goto' buttons
 
@@ -170,15 +169,16 @@ GotoDialog::GotoDialog(void)
     cancelButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnClose, this);
     buttonSizer->Add(cancelButton);
 
-    m_debugButton = new wxButton(this, wxID_ANY, _("Debug"));
-    m_debugButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnDebug, this);
-    m_debugButton->SetToolTip(_("Take a series of exposures at different positions to map goto error"));
-    buttonSizer->Add(m_debugButton);
+    //m_debugButton = new wxButton(this, wxID_ANY, _("Debug"));
+    //m_debugButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnDebug, this);
+    //m_debugButton->SetToolTip(_("Take a series of exposures at different positions to map goto error"));
+    //buttonSizer->Add(m_debugButton);
 
     m_calibrateButton = new wxButton(this, wxID_ANY, _("Calibrate"));
     m_calibrateButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnCalibrate, this);
     m_calibrateButton->SetToolTip(_("Take an exposure and work out where mount is currently pointing"));
-    buttonSizer->Add(m_calibrateButton);
+    statusBox->AddStretchSpacer(1);
+    statusBox->Add(m_calibrateButton, 0, wxEXPAND | wxALL, 5);
 
     m_gotoButton = new wxButton(this, wxID_ANY, _("Go to"));
     m_gotoButton->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GotoDialog::OnGoto, this);
@@ -211,7 +211,11 @@ GotoDialog::GotoDialog(void)
 }
 
 void GotoDialog::OnTimer(wxTimerEvent& event) {
-    UpdateLocationText();
+    destination.NonBlockingUpdate();
+    destination.CheckForUpdate();
+    UpdateStatusText();
+    UpdateDestinationText();
+
     if ( m_doAccuracyMap ) AccuracyMap();
 
     if ( m_gotoInProgress ) {
@@ -224,44 +228,15 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
             Debug.AddLine("Goto: Sent second move command; complete!");
         } 
     }
-
-    //int ignored = system("florence show > /dev/null 2>&1");
 }
 
-void GotoDialog::degreesToHMS(double degrees, double &hours, double &minutes, double &seconds) {
-
-    /*  RA is measured in hours, minutes and seconds. The maximum possible value is 24h (which is adjacent to zero).
-
-        24 hours is 360 degrees, so one hour is 15 degrees, one minute is 0.25 degrees, and one second is 0.004166667 degrees.
-    */
-
-    hours = degrees / 15.0;
-    double fraction;
-    fraction = modf(hours, &hours);
-    minutes = fraction * 60.0;
-    fraction = modf(minutes, &minutes);
-    seconds = fraction * 60.0; 
-
+void GotoDialog::UpdateStatusText(void) {
+    std::time_t result = std::time(nullptr);
+    m_timeText->SetLabel(std::ctime(&result));
+    (calibrated) ? m_skyPosText->SetLabel("Calibrated") : m_skyPosText->SetLabel("Not calibrated");
 }
 
-void GotoDialog::degreesToDMS(double input, double &degrees, double &arcMinutes, double &arcSeconds) {
-    
-    /* Declination is in degrees:arcmin:arcsec. It is signed. Max value is
-       +90 at the north celesial pole, and min -90 at the south one.
- 
-       1 degree is 60 arcminutes
-       1 arcminute is 60 arcseconds.
-    */
-
-    double fraction;
-    fraction = modf(input, &degrees);
-    arcMinutes = fraction * 60.0;
-    fraction = modf(arcMinutes, &arcMinutes);
-    arcSeconds = fraction * 60.0;
-
-}
-
-void GotoDialog::UpdateLocationText(void) {
+void GotoDialog::UpdateDestinationText(void) {
     if ( destination.initialised ) {
 
         if (destination.ephemeral) {
@@ -275,7 +250,7 @@ void GotoDialog::UpdateLocationText(void) {
         double raHours;
         double raMinutes;
         double raSeconds;
-        degreesToHMS(destination.ra, raHours, raMinutes, raSeconds);
+        destination.GetRaHMS(raHours, raMinutes, raSeconds);
         char raBuffer[200]; 
         sprintf(raBuffer, "%f\n%.0fh %.0fm %.0fs", destination.ra, raHours, raMinutes, raSeconds);
         m_destinationRa->SetLabel(raBuffer);
@@ -283,7 +258,7 @@ void GotoDialog::UpdateLocationText(void) {
         double decDegrees;
         double decArcMinutes;
         double decArcSeconds;
-        degreesToDMS(destination.dec, decDegrees, decArcMinutes, decArcSeconds);
+        destination.GetDecDMS(decDegrees, decArcMinutes, decArcSeconds);
         char decBuffer[200];
         sprintf(decBuffer, "%f\n%.0fd %.0fm %.0fs", destination.dec, decDegrees, abs(decArcMinutes), abs(decArcSeconds));
         m_destinationDec->SetLabel(decBuffer);
@@ -291,7 +266,7 @@ void GotoDialog::UpdateLocationText(void) {
         double altDegrees;
         double altArcMinutes;
         double altArcSeconds;
-        degreesToDMS(destination.alt, altDegrees, altArcMinutes, altArcSeconds);
+        destination.GetAltDMS(altDegrees, altArcMinutes, altArcSeconds);
         char altBuffer[200];
         sprintf(altBuffer, "%f\n%.0fd %.0fm %.0fs", destination.alt, altDegrees, altArcMinutes, altArcSeconds);
         m_destinationAlt->SetLabel(altBuffer);
@@ -299,7 +274,7 @@ void GotoDialog::UpdateLocationText(void) {
         double azDegrees;
         double azArcMinutes;
         double azArcSeconds;
-        degreesToDMS(destination.az, azDegrees, azArcMinutes, azArcSeconds);
+        destination.GetAzDMS(azDegrees, azArcMinutes, azArcSeconds);
         char azBuffer[200];
         sprintf(azBuffer, "%f\n%.0fd %.0fm %.0fs", destination.az, azDegrees, azArcMinutes, azArcSeconds);
         m_destinationAz->SetLabel(azBuffer);
@@ -315,42 +290,6 @@ void GotoDialog::UpdateLocationText(void) {
     }
 }
 
-bool GotoDialog::GetCatalogData(std::unordered_map<string,string>& outCatalog) {
-
-    string line;
-    string cell;
-
-    ifstream f (CATALOG_FILENAME); // TODO: Get application executable path & use that, rather than absolute path! 
-    if (!f.is_open()) {
-        Debug.AddLine("Goto: error while opening star catalog file");
-        return false;
-    }
-    while(getline(f, line)) 
-        {
-            // If it's a star, expect format:   name,ra,dec (eg Rigel,21.04,67.32)
-            // If it's a planet, expect format: name,type (eg Mars,planet)
-
-            stringstream  lineStream(line);
-            getline(lineStream,cell,',');
-            string celestial = cell;
-            getline(lineStream,cell,',');
-            if (cell == "planet") {
-                outCatalog[celestial] = cell;
-            } else {
-                string ra = cell;
-                getline(lineStream,cell,',');
-                string dec = cell;
-                outCatalog[celestial] = ra + "," + dec;    
-            }
-            
-        }
-    if (f.bad()) {
-        Debug.AddLine("Goto: error while reading star catalog file");
-        return false;
-    }
-    return true;
-}
-
 void GotoDialog::ShowDestinationDialog() {
     DestinationDialog * destDlg = new DestinationDialog();
     destDlg->ShowModal();
@@ -361,8 +300,12 @@ void GotoDialog::ShowDestinationDialog() {
     }
 }
 
+void GotoDialog::OnChangeDestination(wxCommandEvent&) {
+    ShowDestinationDialog();
+}
+
 void GotoDialog::AccuracyMap() {
-    if ( not pFrame->pGuider->IsImageSaved() ) {
+/*    if ( not pFrame->pGuider->IsImageSaved() ) {
         pFrame->pGuider->RequestSaveImage();
         Debug.AddLine("Goto: image not ready yet");
         return;
@@ -402,6 +345,7 @@ void GotoDialog::AccuracyMap() {
         m_doAccuracyMap = false;
         return;
     }
+    */
 }
 
 bool GotoDialog::Calibrate() {
@@ -418,7 +362,8 @@ bool GotoDialog::Calibrate() {
     double astroRotationAngle = 0;
 
     if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
-        EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
+        
+        Destination::EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
         wxString contents = wxString::Format("Astrometry finished! Current location: RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
         pFrame->Alert(contents);
         //wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
@@ -456,10 +401,11 @@ bool GotoDialog::Calibrate() {
     // -- North celestial pole alt az
     double northCelestialPoleAlt = 0;
     double northCelestialPoleAz  = 0;
-    EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
+    Destination::EquatorialToHorizontal(0, 90, northCelestialPoleAlt, northCelestialPoleAz, true);
     
     pMount->HexCalibrate(startAlt, startAz, calDetails.cameraAngle, rotationCenter, astroRotationAngle, northCelestialPoleAlt); // TODO - fill in missing angle
     Debug.AddLine("Goto: Ending onCalibrate");
+    calibrated = true;
     return true;
 }
 
@@ -496,7 +442,7 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     // Goto!
     // --------------------
 
-    UpdateLocationText(); // TODO, get the time x seconds from now (calculate how long move is likely to take)
+    UpdateDestinationText(); // TODO, get the time x seconds from now (calculate how long move is likely to take)
     double destAlt = std::stod(string(m_destinationAlt->GetLabelText())); // Also, getting the time from the text string is not ideal.
     double destAz  = std::stod(string(m_destinationAz->GetLabelText())); 
 
@@ -512,76 +458,6 @@ void GotoDialog::OnGoto(wxCommandEvent& )
         m_gotoInProgress = true;
     }
 
-}
-
-bool GotoDialog::EquatorialToHorizontal(double ra, double dec, double &outAlt, double &outAz, bool useStoredTimestamp) {
-    std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec);
-    if ( useStoredTimestamp ) {
-        // command += " --use-stored"; TODO re-enable this if it's not the cause of our problems...
-    }
-    string skyOutput;
-    FILE *in;
-    char buf[200];
-
-    if(!(in = popen(command.c_str(), "r"))) {
-        Debug.AddLine(wxString::Format("Guider: Skyfield threw error while converting equatorial to horizontal coordinates"));
-        return 1;
-    }
-    while(fgets(buf, sizeof(buf), in)!=NULL) {
-        cout << buf;
-        skyOutput += buf;
-    }
-    pclose(in);
-
-    std::size_t found = skyOutput.find(",");
-    outAlt = stod(skyOutput.substr(0, found - 1 ));
-    outAz  = stod(skyOutput.substr(found+1, skyOutput.size()));
-     
-    return 0;
-}
-
-bool GotoDialog::NonBlockingEquatorialToHorizontal(double ra, double dec, bool useStoredTimestamp) {
-    // Run skyfield as a separate process separately and dump the result into a file
-
-    std::string command = "/usr/local/skyfield/sky.py --ra=" + std::to_string(ra) + " --dec=" + std::to_string(dec) + " &";
-
-    return system(command.c_str());
-}
-
-bool GotoDialog::LookupEphemeral(string &ephemeral, double &outRa, double &outDec, double &outAlt, double &outAz) {
-    std::string command = "/usr/local/skyfield/sky.py --planet=" + ephemeral;
-    string skyOutput;
-    FILE *in;
-    char buf[200];
-
-    if(!(in = popen(command.c_str(), "r"))) {
-        Debug.AddLine(wxString::Format("Guider: Skyfield threw error while looking up ephemeral for horizontal coordinates"));
-        return 1;
-    }
-    while(fgets(buf, sizeof(buf), in)!=NULL) {
-        cout << buf;
-        skyOutput += buf;
-    }
-    pclose(in);
-
-    string word;
-    stringstream resultStream(skyOutput);
-    getline(resultStream, word, ',');
-    outAlt  = stod(word);
-    getline(resultStream, word, ',');
-    outAz   = stod(word);
-    getline(resultStream, word, ',');
-    outRa   = stod(word);
-    getline(resultStream, word, ',');
-    outDec  = stod(word);
-
-    return 0;
-}
-
-bool GotoDialog::NonBlockingLookupEphemeral(string &ephemeral) {
-    std::string command = "/usr/local/skyfield/sky.py --planet=" + ephemeral;
-
-    return system(command.c_str());
 }
 
 bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle) {
