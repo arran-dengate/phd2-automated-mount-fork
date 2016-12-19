@@ -48,6 +48,7 @@ private:
     wxStaticText *m_destinationAlt;
     wxStaticText *m_destinationAz;
     wxStaticText *m_destinationType;
+    wxStaticText *m_stateText;
     wxStaticText *m_skyPosText;
     wxStaticText *m_gpsLocText;
     wxStaticText *m_timeText; 
@@ -55,7 +56,7 @@ private:
     std::unordered_map<string,string> m_catalog;
     Destination destination;
 
-    bool m_gotoInProgress;
+    bool gotoInProgress;
     bool calibrated;
 
     wxTimer *m_timer; 
@@ -80,6 +81,7 @@ private:
     void OnGoto(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);
+    void Goto();
     void OnChangeDestination(wxCommandEvent& event);
     bool AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle);
     void UpdateStatusText(void);

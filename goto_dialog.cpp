@@ -66,7 +66,7 @@ GotoDialog::GotoDialog(void)
     : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 265), wxCAPTION | wxCLOSE_BOX)
 {   
     m_doAccuracyMap = false;
-    m_gotoInProgress = false;
+    gotoInProgress = false;
     calibrated = false;
 
     // Now set up GUI.
@@ -93,16 +93,21 @@ GotoDialog::GotoDialog(void)
     wxFlexGridSizer *statusGrid = new wxFlexGridSizer(2, 2, 2, 9);
     statusBox->Add(statusGrid);
     
+    m_stateText                 = new wxStaticText(this, -1, "Idle");
     m_skyPosText                = new wxStaticText(this, -1, "-");
     m_gpsLocText                = new wxStaticText(this, -1, "35.2809° S,\n149.1300° E");
     m_timeText                  = new wxStaticText(this, -1, "-"); 
+    wxStaticText *stateHeading  = new wxStaticText(this, -1, "State");
     wxStaticText *skyPosHeading = new wxStaticText(this, -1, "Sky position");
     wxStaticText *gpsLocHeading = new wxStaticText(this, -1, "GPS location");
     wxStaticText *timeHeading   = new wxStaticText(this, -1, "Time");
+    stateHeading  ->SetFont(boldFont);
     skyPosHeading ->SetFont(boldFont);
     gpsLocHeading ->SetFont(boldFont);
     timeHeading   ->SetFont(boldFont);
 
+    statusGrid->Add(stateHeading,                0, wxALL | wxALIGN_TOP, borderSize);
+    statusGrid->Add(m_stateText,                 0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(skyPosHeading,               0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(m_skyPosText,                0, wxALL | wxALIGN_TOP, borderSize);
     statusGrid->Add(gpsLocHeading,               0, wxALL | wxALIGN_TOP, borderSize);
@@ -191,7 +196,7 @@ GotoDialog::GotoDialog(void)
     m_timer = new wxTimer();
     m_timer->SetOwner(this);
     Bind(wxEVT_TIMER, &GotoDialog::OnTimer, this);
-    m_timer->Start(1500); // Timer goes off every x milliseconds
+    m_timer->Start(1000); // Timer goes off every x milliseconds
 
     // Ask the guider to start saving images - astrometry may soon request one.
     pFrame->pGuider->RequestSaveImage();
@@ -218,7 +223,9 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
 
     if ( m_doAccuracyMap ) AccuracyMap();
 
-    if ( m_gotoInProgress ) {
+    if (gotoInProgress) Goto();  
+
+    /*if ( m_gotoInProgress ) {
         struct stat info;
         Debug.AddLine("Goto: in progress, waiting for 'done' file...");
         if ( stat( MOVE_COMPLETE_FILENAME , &info ) == 0 ) {  // TODO: Get application executable path & use that, rather than absolute path! 
@@ -227,13 +234,15 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
             m_gotoInProgress = false;
             Debug.AddLine("Goto: Sent second move command; complete!");
         } 
-    }
+    }*/
 }
 
 void GotoDialog::UpdateStatusText(void) {
     std::time_t result = std::time(nullptr);
     m_timeText->SetLabel(std::ctime(&result));
     (calibrated) ? m_skyPosText->SetLabel("Calibrated") : m_skyPosText->SetLabel("Not calibrated");
+    (gotoInProgress) ? m_stateText->SetLabel("Goto in progress") : m_stateText->SetLabel("Idle"); 
+
 }
 
 void GotoDialog::UpdateDestinationText(void) {
@@ -442,22 +451,21 @@ void GotoDialog::OnGoto(wxCommandEvent& )
     // Goto!
     // --------------------
 
-    UpdateDestinationText(); // TODO, get the time x seconds from now (calculate how long move is likely to take)
-    double destAlt = std::stod(string(m_destinationAlt->GetLabelText())); // Also, getting the time from the text string is not ideal.
-    double destAz  = std::stod(string(m_destinationAz->GetLabelText())); 
 
-    wxMessageDialog * alert = new wxMessageDialog(pFrame, 
-                                                  wxString::Format("Traversing mount to destination:\n"  
-                                                                    "Alt %f, az %f", destAlt, destAz), 
-                                                  wxString::Format("Goto"), 
-                                                  wxOK|wxCENTRE, wxDefaultPosition);
-    alert->ShowModal(); 
+    //wxMessageDialog * alert = new wxMessageDialog(pFrame, 
+    //                                              wxString::Format("Traversing mount to destination:\n"  
+    //                                                                "Alt %f, az %f", destination.alt, destination.az), 
+    //                                              wxString::Format("Goto"), 
+    //                                              wxOK|wxCENTRE, wxDefaultPosition);
+    //alert->ShowModal(); 
 
-    pMount->HexGoto(destAlt, destAz);
-    if ( m_recalibrateDuringGoto->IsChecked() ) {
-        m_gotoInProgress = true;
-    }
+    gotoInProgress = true;
+    Goto();
+}
 
+void GotoDialog::Goto() {
+    destination.CheckForUpdate();
+    pMount->HexGoto(destination.alt, destination.az);
 }
 
 bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double &outAstroRotationAngle) {
@@ -541,7 +549,6 @@ void GotoDialog::OnClose(wxCommandEvent& event) {
 GotoDialog::~GotoDialog(void)
 {
     m_timer->Stop();
-    //pFrame->SetExposureDuration(prevExposureDuration);
     pFrame->pGuider->InvalidateSavedImage();
 
 }
