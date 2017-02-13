@@ -1053,13 +1053,13 @@ void SimCamState::FillImage(usImage& img, const wxRect& subframe, int exptime, i
     // This value does not change at runtime. Just intended to simulate that people's cameras
     // can be set up at any angle relative to their mount. 
 
-    RotateStarfield(cc, centerX, centerY, SimCamParams::cam_angle);
+    RotateStarfield(cc, centerX, centerY, SimCamParams::cam_angle + SimCamState::mount_rotation_deg);
  
     // Mount rotation
     // Simulates rotational guide commands from the mount.
     // Can be triggered at runtime by either manual or automatic guide commands.
     
-    RotateStarfield(cc, centerX, centerY, SimCamState::mount_rotation_deg);
+    //RotateStarfield(cc, centerX, centerY, SimCamState::mount_rotation_deg);
     //RotateStarfield(cc, 10, 10, SimCamState::mount_rotation_deg);
 
 
@@ -1320,13 +1320,14 @@ bool Camera_SimClass::Capture(int duration, usImage& img, int options, const wxR
 
 bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
 {
+    /* No longer used
     double magnitude = SimCamParams::guide_rate * duration / (250.0 * SimCamParams::image_scale);
     // Note, a sensible step is 11.63
     double theta = radians(sim->mount_rotation_deg);
     switch (direction) {
-    case WEST:    theta -= radians(90);      break;
-    case EAST:    theta += radians(90);      break;
-    case SOUTH:   theta += radians(180);      break;
+    case WEST:    theta -= radians(90);        break;
+    case EAST:    theta += radians(90);        break;
+    case SOUTH:   theta += radians(180);       break;
     }
     double x   = sin(theta) * magnitude;//(sim->mount_rotation_deg);
     double y   = cos(theta) * magnitude;//(sim->mount_rotation_deg);
@@ -1334,6 +1335,7 @@ bool Camera_SimClass::ST4PulseGuideScope(int direction, int duration)
     sim->ra_ofs += x;
     sim->dec_ofs.incr(y);
     WorkerThread::MilliSleep(duration / 1000, WorkerThread::INT_ANY);
+    */
     return false;
 }
 
