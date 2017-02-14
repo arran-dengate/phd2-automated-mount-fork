@@ -386,11 +386,11 @@ bool GuiderMultiStar::AutoSelect(void)
     }
     
     m_originalRotationAngle = RotationAngle();
-    m_previousRotationGuides.clear();
-    // To keep the first few rotations small
-    for (int i = 0; i < 4; i++) {
-        m_previousRotationGuides.push_front(0);
-    }
+    m_previousRotationGuides.clear(); // When starting guiding, clear the array of previous rotation guides.
+    
+    // Have previously been adding some zeroes to the previous rotation guides array to prevent it from lurching suddenly
+    // as guiding begins. There's probably a better way to do this (eg, multiply by a small ramping up value).
+    // m_previousRotationGuides.push_back(0);
     return bError;
 }
 
@@ -680,15 +680,22 @@ bool GuiderMultiStar::UpdateCurrentPosition(usImage *pImage, FrameDroppedInfo *e
             angleSum /= angleCount;
             m_previousRotationGuides.push_front(angleSum * -1);
         }
-        //if m_previousRotationGuides.size() > 100)
         double rotationSum = 0;
         for (double d : m_previousRotationGuides) {
             rotationSum += d;
-            //Debug.Write(wxString::Format(" %f ", d)); 
         }
-        if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back(); // Limit maximum size
+        double rotationAverage = rotationSum / m_previousRotationGuides.size();
+
+        // The array of previous rotation guides is maintained at a maximum size.
+        if (m_previousRotationGuides.size() > 300) m_previousRotationGuides.pop_back();
         
-        m_rotationGuideNeeded = rotationSum / m_previousRotationGuides.size();    
+        // Currently trying a thing where raw input is used for the first few guides, to collect some data before
+        // we start using averages. This seems to speed up the settling process to ~30 seconds. 
+        if (m_previousRotationGuides.size() < 10) {
+            m_rotationGuideNeeded = angleSum * -1;
+        } else {
+            m_rotationGuideNeeded = rotationAverage;    
+        }
         
         Debug.AddLine(wxString::Format("Guider: Naive %f\t algo %f", angleSum * -1, m_rotationGuideNeeded));
         Debug.AddLine(wxString::Format("Guider: Number of secondary stars %d", angleSum));
