@@ -44,6 +44,8 @@
 #include <iostream>
 #include <regex>
 #include <string>
+#include <tuple>
+#include <vector>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <unordered_map>
@@ -314,6 +316,8 @@ void GotoDialog::OnChangeDestination(wxCommandEvent&) {
 }
 
 void GotoDialog::AccuracyMap() {
+    // I started writing something that would go to a variety of alt az locations, and test the actual astrometric alt az
+    // results. If there's repeatable, systematic error, we could perhaps interpolate this map to compensate for the error.
 /*    if ( not pFrame->pGuider->IsImageSaved() ) {
         pFrame->pGuider->RequestSaveImage();
         Debug.AddLine("Goto: image not ready yet");
@@ -370,21 +374,43 @@ bool GotoDialog::Calibrate() {
     double startAz  = 0;
     double astroRotationAngle = 0;
 
-    if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
-        
-        Destination::EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
-        wxString contents = wxString::Format("Astrometry finished! Current location: RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
-        pFrame->Alert(contents);
-        //wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
-        //alert->ShowModal();
-    } else {
+    std::vector<std::tuple<double, double>> calLocations;
+    calLocations.emplace_back(90.0, 0.0);
+    calLocations.emplace_back(80.0, 0.0);
+    calLocations.emplace_back(80.0, 90.0);
+    calLocations.emplace_back(80.0, 180.0);
+    calLocations.emplace_back(80.0, 270.0);
+    calLocations.emplace_back(70.0, 270.0);
+    calLocations.emplace_back(70.0, 180.0);
+    calLocations.emplace_back(70.0, 90.0);
+    calLocations.emplace_back(70.0, 0.0);
+    bool calibrateSuccess = false;
+
+    for (int i = 0; i < calLocations.size(); i++) {
+        Debug.AddLine(wxString::Format("Goto: trying location %f %f", get<0>(calLocations[i]), get<1>(calLocations[i])));
+        pMount->HexGoto(get<0>(calLocations[i]), get<1>(calLocations[i]));
+        sleep(15); // Allow some time for the goto to finish and a clear exposure to happen
+        if ( AstroSolveCurrentLocation(startRa, startDec, astroRotationAngle)) {
+            Destination::EquatorialToHorizontal(startRa, startDec, startAlt, startAz, true);
+            wxString contents = wxString::Format("Astrometry finished! Current location: RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
+            wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+            calibrateSuccess = true;
+            break;
+            //wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+            //alert->ShowModal();
+        } else {
+            Debug.AddLine(wxString::Format("Goto: failed to calibrate at %f %f", get<0>(calLocations[i]), get<1>(calLocations[i])));                                                          
+        }
+    }
+
+    if (not calibrateSuccess) {
         wxString contents = wxString("Unable to work out position with astrometry!\n"
-                                     "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
-                                     "Goto cannot proceed.");
-        wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
+                                         "Please check that the image is in focus, lens cap is off, and no clouds are occluding stars.\n"
+                                         "Goto cannot proceed.");
+            wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
         alert->ShowModal(); 
-        return false;                                                             
-    } 
+        return false;   
+    }       
 
     // -- Center of rotation --
     // Determine rotation center of image
