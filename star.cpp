@@ -907,13 +907,22 @@ bool Star::GetStarList(const usImage& image, int extraEdgeAllowance, int searchR
 
     // Make the list
 
+    // Set a limit on the maximum number of stars since the Pi can't handle too many.
+    // TODO: make sure this chooses the best ones, not just the first ones!
+
+    int MAX_STARS = 8;
+    int num_stars = 0;
+
     for (std::set<Peak>::reverse_iterator it = stars.rbegin(); it != stars.rend(); ++it)
     {
-        Star tmp;
-        tmp.Find(&image, searchRegion, it->x, it->y, FIND_CENTROID);
-        if (tmp.WasFound()) {
+        if (num_stars < MAX_STARS) {
+            Star tmp;
+            tmp.Find(&image, searchRegion, it->x, it->y, FIND_CENTROID);
+            if (tmp.WasFound()) {
             outStars.push_back(tmp);
+            }    
         }
+        num_stars += 1;
     }
 }
 
