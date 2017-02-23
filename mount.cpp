@@ -801,7 +801,7 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
     char commandType[]    = "guide";
     double xVector        = xyVector.X;
     double yVector        = xyVector.Y;
-    char format[]         = "%s,%.10f,%.10f,%.10f";
+    char format[]         = "%s,%.10f,%.10f,%.10f,%1.2f";
     char message[200]     = {0};
 
     // Create directory if does not exist
@@ -811,7 +811,8 @@ bool Mount::HexGuide(const PHD_Point& xyVector, double rotationVector) {
         mkdir(GUIDE_OUTPUT_DIRECTORY, 0755);
     }    
 
-    sprintf(message, format, commandType, yVector, xVector, rotationVector);
+    double moveLength = (double)pFrame->RequestedExposureDuration() / 1000.0;
+    sprintf(message, format, commandType, yVector, xVector, rotationVector, moveLength);
     Debug.AddLine(wxString::Format("Mount: Sent guide command %s", message));
     ofstream pulse_output;
     pulse_output.open (TEMP_FILE_PATH, ios::out | ios::trunc);
