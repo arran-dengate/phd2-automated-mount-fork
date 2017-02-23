@@ -65,7 +65,7 @@ const char CATALOG_FILENAME[]         = "/usr/local/phd2/goto/catalog.csv";
 const char MOVE_COMPLETE_FILENAME[]   = "/dev/shm/phd2/goto/done";
 
 GotoDialog::GotoDialog(void)
-    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(600, 265), wxCAPTION | wxCLOSE_BOX)
+    : wxDialog(pFrame, wxID_ANY, _("Go to..."), wxDefaultPosition, wxSize(800, 400), wxCAPTION | wxCLOSE_BOX)
 {   
     m_doAccuracyMap = false;
     gotoInProgress = false;
@@ -225,7 +225,8 @@ void GotoDialog::OnTimer(wxTimerEvent& event) {
 
     if ( m_doAccuracyMap ) AccuracyMap();
 
-    if (gotoInProgress) Goto();  
+    // DISABLED until we make goto idempotent. Currently it slows the mount unto death.
+    //if (gotoInProgress) Goto();  
 
     /*if ( m_gotoInProgress ) {
         struct stat info;
@@ -395,9 +396,9 @@ bool GotoDialog::Calibrate() {
             wxString contents = wxString::Format("Astrometry finished! Current location: RA %f, Dec %f\n Alt %f Az %f", startRa, startDec, startAlt, startAz);
             wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
             calibrateSuccess = true;
-            break;
             //wxMessageDialog * alert = new wxMessageDialog(pFrame, contents, wxString::Format("Goto"), wxOK|wxCENTRE, wxDefaultPosition);
-            //alert->ShowModal();
+            alert->ShowModal();
+            break;
         } else {
             Debug.AddLine(wxString::Format("Goto: failed to calibrate at %f %f", get<0>(calLocations[i]), get<1>(calLocations[i])));                                                          
         }
@@ -503,15 +504,16 @@ bool GotoDialog::AstroSolveCurrentLocation(double &outRa, double &outDec, double
     char inputFilename[200];
     strcpy(inputFilename, SOLVER_FILENAME);
     // TODO: Detect arcsecperpix ratio from the first astrometry output, instead of hardcoding it here
-    strcat(inputFilename, " --overwrite "); //--no-plots --scale-low=6.08 --scale-high=6.14 --scale-units=arcsecperpix --no-fits2fits --fits-image ");
+    strcat(inputFilename, " --overwrite --no-plots --scale-low=6 --scale-high=6.5 --scale-units=arcsecperpix --no-fits2fits --fits-image ");
     strcat(inputFilename, IMAGE_FILENAME);
     Debug.AddLine(wxString::Format("inputFilename %s", inputFilename));
 
     // If simulator is being used as the camera, override with test input image
-    if (dynamic_cast<Camera_SimClass*>(pCamera)) {
-        pFrame->Alert(wxString::Format("Since the current camera is the simulator, will use fake test image to determine position."));
-        strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite --no-plots /usr/local/astrometry/examples/apod2.jpg");    
-    }
+    // TEMPORARILY DISABLED FOR DEBUGGING
+    //if (dynamic_cast<Camera_SimClass*>(pCamera)) {
+    //    pFrame->Alert(wxString::Format("Since the current camera is the simulator, will use fake test image to determine position."));
+    //    strcpy(inputFilename, "/usr/local/astrometry/bin/solve-field --overwrite --no-plots /usr/local/astrometry/examples/apod2.jpg");    
+    //}
     
     wxProgressDialog(wxString::Format("Solving current location..."), wxString::Format("Solving..."), 100, this, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_ELAPSED_TIME); 
     
